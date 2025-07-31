@@ -1,60 +1,80 @@
 from django.db import models
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 
-class Item(models.Model):
-    CATEGORY_CHOICES = [
-        ('work', 'Travail'),
-        ('personal', 'Personnel'),
-        ('urgent', 'Urgent'),
-        ('other', 'Autre'),
-    ]
-    
-    STATUS_CHOICES = [
-        ('todo', 'À faire'),
-        ('in_progress', 'En cours'),
-        ('completed', 'Terminé'),
-    ]
-    
-    title = models.CharField(max_length=200, verbose_name="Titre")
-    description = models.TextField(blank=True, verbose_name="Description")
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other', verbose_name="Catégorie")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo', verbose_name="Statut")
-    priority = models.IntegerField(default=1, verbose_name="Priorité", help_text="1=Basse, 2=Moyenne, 3=Haute")
+
+class Service(models.Model):
+    nom = models.CharField(max_length=100, verbose_name="Nom du service")
+    parent = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='sous_services',
+        verbose_name="Service parent"
+    )
+    code = models.CharField(
+        max_length=20, 
+        unique=True, 
+        verbose_name="Code du service",
+        help_text="Code unique pour identifier le service (ex: DRH, COMPTA)"
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Modifié le")
     
     class Meta:
-        verbose_name = "Élément"
-        verbose_name_plural = "Éléments"
-        ordering = ['-priority', '-created_at']
-    
+        verbose_name = "1. Service"
+        verbose_name_plural = "1. Services"
+        ordering = ['nom']
+        
     def __str__(self):
-        return self.title
+        return f"{self.code} - {self.nom}"
     
-    def get_absolute_url(self):
-        return reverse('item_detail', kwargs={'pk': self.pk})
+    def clean(self):
+        if self.parent and self.parent == self:
+            raise ValidationError("Un service ne peut pas être son propre parent.")
+        
+        if self.parent and self._check_circular_dependency(self.parent):
+            raise ValidationError("Cette relation créerait une dépendance circulaire.")
     
-    def get_category_display_class(self):
-        category_classes = {
-            'work': 'bg-blue-100 text-blue-800',
-            'personal': 'bg-green-100 text-green-800',
-            'urgent': 'bg-red-100 text-red-800',
-            'other': 'bg-gray-100 text-gray-800',
-        }
-        return category_classes.get(self.category, 'bg-gray-100 text-gray-800')
+    def _check_circular_dependency(self, parent):
+        if parent == self:
+            return True
+        if parent.parent:
+            return self._check_circular_dependency(parent.parent)
+        return False
     
-    def get_status_display_class(self):
-        status_classes = {
-            'todo': 'bg-yellow-100 text-yellow-800',
-            'in_progress': 'bg-blue-100 text-blue-800',
-            'completed': 'bg-green-100 text-green-800',
-        }
-        return status_classes.get(self.status, 'bg-gray-100 text-gray-800')
+    def get_niveau(self):
+        niveau = 0
+        current = self.parent
+        while current:
+            niveau += 1
+            current = current.parent
+        return niveau
     
-    def get_priority_display_class(self):
-        if self.priority >= 3:
-            return 'bg-red-100 text-red-800'
-        elif self.priority == 2:
-            return 'bg-yellow-100 text-yellow-800'
-        else:
-            return 'bg-green-100 text-green-800'
+    def get_chemin_hierarchique(self):
+        chemin = [self.nom]
+        current = self.parent
+        while current:
+            chemin.insert(0, current.nom)
+            current = current.parent
+        return " > ".join(chemin)
+    
+    def get_tous_sous_services_ordonnes(self):
+        """Retourne tous les sous-services ordonnés par nom de façon récursive"""
+        sous_services = list(self.sous_services.order_by('nom'))
+        result = []
+        for sous_service in sous_services:
+            result.append(sous_service)
+            result.extend(sous_service.get_tous_sous_services_ordonnes())
+        return result
+    
+    def get_descendants(self):
+        descendants = []
+        for sous_service in self.sous_services.all():
+            descendants.append(sous_service)
+            descendants.extend(sous_service.get_descendants())
+        return descendants
+    
+    def is_racine(self):
+        return self.parent is None

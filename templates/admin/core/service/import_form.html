@@ -1,0 +1,101 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Import Services JSON{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='core' %}">Core</a>
+    &rsaquo; <a href="{% url 'admin:core_service_changelist' %}">Services</a>
+    &rsaquo; Import JSON
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module filtered">
+    <h1>📁 Import Services depuis JSON</h1>
+    
+    <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin-bottom: 20px;">
+        <h3 style="margin-bottom: 10px; color: #1976d2;">ℹ️ Informations importantes</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #424242;">
+            <li>Le fichier doit être au format JSON avec la structure d'export générée par ce système</li>
+            <li>Les services existants (même code) seront mis à jour</li>
+            <li>Les nouveaux services seront créés automatiquement</li>
+            <li>La hiérarchie parent-enfant sera préservée</li>
+            <li>L'import se fait dans une transaction : en cas d'erreur, rien n'est modifié</li>
+        </ul>
+    </div>
+
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px;">
+        <h3 style="margin-bottom: 10px; color: #856404;">⚠️ Attention</h3>
+        <p style="margin: 0; color: #856404;">
+            Cette opération peut modifier votre base de données. 
+            Il est recommandé de faire une sauvegarde avant d'importer.
+        </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <div>
+                <label for="json_file" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                    📄 Fichier JSON à importer :
+                </label>
+                <input type="file" 
+                       id="json_file" 
+                       name="json_file" 
+                       accept=".json" 
+                       required
+                       style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 400px;">
+                <p style="margin: 8px 0 0 0; color: #666; font-size: 12px;">
+                    Seuls les fichiers .json sont acceptés
+                </p>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+            <button type="submit" 
+                    style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                🚀 Lancer l'import
+            </button>
+            <a href="{% url 'admin:core_service_changelist' %}" 
+               style="margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">
+                ❌ Annuler
+            </a>
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+        <h3 style="margin-bottom: 15px; color: #495057;">📋 Structure JSON attendue</h3>
+        <pre style="background: #343a40; color: #f8f9fa; padding: 15px; border-radius: 4px; font-size: 12px; overflow-x: auto; margin: 0;"><code>{
+  "model": "Service",
+  "export_date": "2024-01-28T14:30:00.000Z",
+  "total_records": 2,
+  "data": [
+    {
+      "id": 1,
+      "nom": "Direction Générale",
+      "code": "DG",
+      "parent_id": null,
+      "parent_code": null,
+      "actif": true,
+      "created_at": "2024-01-28T10:00:00.000Z",
+      "updated_at": "2024-01-28T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "nom": "Ressources Humaines",
+      "code": "RH",
+      "parent_id": 1,
+      "parent_code": "DG",
+      "actif": true,
+      "created_at": "2024-01-28T10:05:00.000Z",
+      "updated_at": "2024-01-28T10:05:00.000Z"
+    }
+  ]
+}</code></pre>
+    </div>
+</div>
+{% endblock %}
