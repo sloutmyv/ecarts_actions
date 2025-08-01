@@ -4,6 +4,7 @@
 
 - [Vue d'ensemble](#vue-densemble)
 - [Architecture technique](#architecture-technique)
+- [Base de données et modèles](#base-de-données-et-modèles)
 - [Installation et configuration](#installation-et-configuration)
 - [Structure du projet](#structure-du-projet)
 - [Stack technologique](#stack-technologique)
@@ -15,14 +16,21 @@
 
 ## 🎯 Vue d'ensemble
 
-EcartsActions est une application web moderne de gestion d'éléments/tâches construite avec Django et une stack frontend moderne privilégiant les interactions fluides sans rechargement de page.
+EcartsActions est une application web moderne de **gestion d'écarts et d'actions** construite avec Django et une stack frontend moderne. L'application permet de gérer une structure organisationnelle hiérarchique avec des services/départements et leurs relations, ainsi que le suivi d'écarts et de plans d'actions.
 
-### Objectifs du projet
+### Fonctionnalités principales
+- **Gestion des Services**: Organisation hiérarchique des départments/services
+- **Import/Export JSON**: Sauvegarde et restauration des données organisationnelles
+- **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
+- **Gestion des Écarts**: Suivi et traitement des non-conformités (à venir)
+- **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
+
+### Objectifs techniques
 - Interface utilisateur moderne et responsive
-- Interactions fluides sans rechargement de page
-- Composants réactifs côté client
+- Interactions fluides sans rechargement de page (HTMX)
+- Composants réactifs côté client (Alpine.js)
 - Modales pour les formulaires de création/modification
-- Split buttons pour les actions combinées
+- Actions alignées visuellement avec icônes intuitives
 
 ### Philosophie technique
 - **Progressive Enhancement**: L'application fonctionne sans JavaScript et s'améliore avec
@@ -45,7 +53,201 @@ Backend (Django)
 ├── Templates (HTML Generation)
 └── Static Files (Assets)
         ↕
-Database (SQLite/PostgreSQL)
+Database (SQLite)
+└── Service (Hierarchical Organization)
+```
+
+## 🗃️ Base de données et modèles
+
+### Structure de la base de données
+
+L'application utilise **SQLite** en développement avec une structure simple mais puissante pour gérer l'organisation hiérarchique.
+
+### Modèle Service
+
+Le modèle `Service` est le cœur de l'application, permettant de créer une structure organisationnelle complète.
+
+```python
+class Service(models.Model):
+    nom = models.CharField(max_length=100)
+    code = models.CharField(max_length=20, unique=True)
+    parent = models.ForeignKey('self', null=True, blank=True, 
+                              related_name='sous_services')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+#### Champs du modèle Service
+
+| Champ | Type | Description | Contraintes |
+|-------|------|-------------|-------------|
+| `nom` | CharField(100) | Nom du service/département | Obligatoire |
+| `code` | CharField(20) | Code unique d'identification | Unique, obligatoire |
+| `parent` | ForeignKey(self) | Service parent dans la hiérarchie | Optionnel |
+| `created_at` | DateTimeField | Date de création automatique | Auto-généré |
+| `updated_at` | DateTimeField | Date de modification automatique | Auto-généré |
+
+#### Relations hiérarchiques
+
+```
+Direction Générale (DG)
+├── Direction des Ressources Humaines (DRH)
+│   ├── Service Recrutement (REC)
+│   └── Service Formation (FORM)
+├── Direction Financière (DF)
+│   ├── Comptabilité (COMPTA)
+│   └── Contrôle de Gestion (CG)
+└── Direction Technique (DT)
+    ├── Bureau d'Études (BE)
+    └── Service Maintenance (MAINT)
+```
+
+#### Méthodes du modèle Service
+
+| Méthode | Description | Retour |
+|---------|-------------|--------|
+| `get_niveau()` | Calcule le niveau hiérarchique | `int` (0 = racine) |
+| `get_chemin_hierarchique()` | Chemin complet depuis la racine | `str` ("DG > DRH > REC") |
+| `get_descendants()` | Tous les sous-services récursivement | `QuerySet` |
+| `is_racine()` | Vérifie si c'est un service racine | `bool` |
+| `clean()` | Validation des dépendances circulaires | `None` |
+
+### Validations et contraintes
+
+#### Validation des dépendances circulaires
+```python
+def clean(self):
+    if self.parent and self.parent == self:
+        raise ValidationError("Un service ne peut pas être son propre parent.")
+    
+    if self.parent and self._check_circular_dependency(self.parent):
+        raise ValidationError("Cette relation créerait une dépendance circulaire.")
+```
+
+#### Exemples de dépendances interdites
+- ❌ `Service A` → parent : `Service A` (auto-référence)
+- ❌ `Service A` → `Service B` → `Service A` (cycle)
+- ✅ `Service A` → `Service B` → `Service C` (hiérarchie valide)
+
+### Interactions avec la base de données
+
+#### Opérations CRUD
+
+**Création d'un service**
+```python
+# Création d'un service racine
+service_dg = Service.objects.create(
+    nom="Direction Générale",
+    code="DG"
+)
+
+# Création d'un sous-service
+service_drh = Service.objects.create(
+    nom="Direction des Ressources Humaines",
+    code="DRH",
+    parent=service_dg  # Référence au service parent
+)
+```
+
+**Requêtes hiérarchiques**
+```python
+# Récupérer tous les services racines
+services_racines = Service.objects.filter(parent=None)
+
+# Récupérer tous les sous-services d'un service
+sous_services = service_dg.sous_services.all()
+
+# Recherche par niveau hiérarchique
+services_niveau_2 = Service.objects.filter(
+    parent__parent__isnull=False,
+    parent__isnull=False
+)
+```
+
+#### Import/Export JSON
+
+**Format d'export**
+```json
+{
+  "model": "Service",
+  "export_date": "2024-01-28T10:30:00",
+  "total_records": 5,
+  "data": [
+    {
+      "id": 1,
+      "nom": "Direction Générale",
+      "code": "DG",
+      "parent_id": null,
+      "parent_code": null,
+      "created_at": "2024-01-28T08:00:00",
+      "updated_at": "2024-01-28T08:00:00"
+    },
+    {
+      "id": 2,
+      "nom": "Direction des Ressources Humaines",
+      "code": "DRH",
+      "parent_id": 1,
+      "parent_code": "DG",
+      "created_at": "2024-01-28T08:15:00",
+      "updated_at": "2024-01-28T08:15:00"
+    }
+  ]
+}
+```
+
+**Processus d'import**
+1. **Validation du fichier** : Format JSON, structure attendue
+2. **Tri hiérarchique** : Parents traités avant les enfants
+3. **Résolution des conflits** : Mise à jour ou création selon le code
+4. **Transaction atomique** : Rollback en cas d'erreur
+5. **Rapport d'import** : Statistiques de création/mise à jour
+
+### Optimisations de performance
+
+#### Requêtes optimisées
+```python
+# Éviter N+1 queries avec select_related
+services = Service.objects.select_related('parent')
+
+# Précharger les sous-services
+services = Service.objects.prefetch_related('sous_services')
+
+# Requête complète optimisée
+services = Service.objects.select_related('parent').prefetch_related('sous_services')
+```
+
+#### Index de base de données
+- Index automatique sur `id` (clé primaire)
+- Index automatique sur `code` (contrainte unique)
+- Index automatique sur `parent_id` (clé étrangère)
+
+### Migration et évolution du schéma
+
+#### Migrations Django appliquées
+```bash
+# Migration initiale (création du modèle Service)
+0001_initial.py
+
+# Suppression du modèle Item (ancien modèle)
+0002_delete_item.py
+
+# Ajout des contraintes de validation
+0003_add_service_constraints.py
+```
+
+#### Commandes utiles
+```bash
+# Vérifier les migrations en attente
+python manage.py showmigrations
+
+# Créer une nouvelle migration
+python manage.py makemigrations
+
+# Appliquer les migrations
+python manage.py migrate
+
+# Rollback vers une migration précédente
+python manage.py migrate core 0001
 ```
 
 ### Patterns d'architecture utilisés

@@ -3,317 +3,426 @@
 ## 📋 Table des matières
 
 - [Introduction](#introduction)
-- [Accès à l'application](#accès-à-lapplication)
-- [Interface utilisateur](#interface-utilisateur)
-- [Gestion des éléments](#gestion-des-éléments)
-- [Fonctionnalités avancées](#fonctionnalités-avancées)
-- [Administration](#administration)
-- [Dépannage](#dépannage)
-- [FAQ](#faq)
+- [Connexion et navigation](#connexion-et-navigation)
+- [Gestion des Services](#gestion-des-services)
+- [Import/Export des données](#importexport-des-données)
+- [Interface d'administration Django](#interface-dadministration-django)
+- [Résolution des problèmes](#résolution-des-problèmes)
+- [Glossaire](#glossaire)
 
-## 🎯 Introduction
+## 📖 Introduction
 
 ### Qu'est-ce qu'EcartsActions ?
 
-EcartsActions est une application web moderne de gestion d'éléments et de tâches conçue pour offrir une expérience utilisateur fluide et intuitive. L'application permet de créer, modifier, organiser et suivre des éléments de travail avec une interface responsive qui s'adapte à tous les appareils.
+EcartsActions est une application de **gestion d'écarts et d'actions** qui permet de :
+- Gérer une structure organisationnelle hiérarchique (services/départements)
+- Suivre et traiter les écarts/non-conformités (fonctionnalité à venir)
+- Planifier et suivre les actions correctives (fonctionnalité à venir)
 
-### Objectifs de l'application
-- Centraliser la gestion des éléments/tâches
-- Offrir une interface moderne et intuitive
-- Permettre une collaboration efficace entre les utilisateurs
-- Fournir un suivi en temps réel des activités
+### Public cible
 
-### Publics cibles
-- **Administrateurs métier**: Gestion globale et configuration
-- **Utilisateurs finaux**: Création et gestion des éléments
-- **Superviseurs**: Suivi et reporting
+Ce manuel s'adresse aux :
+- **Administrateurs** : Responsables de la configuration et de la maintenance
+- **Gestionnaires** : Utilisateurs gérant les services et l'organisation
+- **Utilisateurs finaux** : Personnels utilisant l'application pour consulter et saisir des données
 
-## 🔐 Accès à l'application
+## 🔐 Connexion et navigation
 
-### URL d'accès
-- **Application principale**: https://votre-domaine.com/
-- **Interface d'administration**: https://votre-domaine.com/admin/
+### Se connecter à l'application
 
-### Authentification
-1. **Accéder à la page de connexion**
-2. **Saisir vos identifiants**:
-   - Nom d'utilisateur
-   - Mot de passe
-3. **Cliquer sur "Se connecter"**
+1. **Accéder à l'application**
+   - Ouvrez votre navigateur web
+   - Rendez-vous à l'adresse fournie par votre administrateur
+   - Exemple : `http://votre-serveur.com:8000/`
 
-### Gestion des comptes
-- **Création de compte**: Contactez votre administrateur système
-- **Mot de passe oublié**: Utilisez le lien "Mot de passe oublié" sur la page de connexion
-- **Modification du profil**: Accessible via le menu utilisateur
+2. **Page de connexion**
+   - Cliquez sur le lien "Administration" dans la navigation
+   - Saisissez vos identifiants (nom d'utilisateur et mot de passe)
+   - Cliquez sur "Se connecter"
 
-## 🖥️ Interface utilisateur
+### Interface principale
 
-### Vue d'ensemble de l'interface
-
-L'interface d'EcartsActions est conçue pour être intuitive et moderne :
+Une fois connecté, vous accédez à l'interface principale avec :
 
 #### Barre de navigation supérieure
-- **Logo et nom de l'application** (côté gauche)
-- **Menu principal** avec les fonctionnalités principales
-- **Boutons d'action rapide** (Ajouter un élément)
-- **Menu utilisateur** (côté droit) avec profil et déconnexion
+- **Écarts & Actions** : Nom de l'application (lien vers l'accueil)
+- **Tableau de bord** : Vue d'ensemble des statistiques
+- **Écarts** : Gestion des non-conformités (à venir)
+- **Plan d'actions** : Suivi des actions correctives (à venir)
+- **Administration** : Menu déroulant avec les options de gestion
 
-#### Zone de contenu principal
-- **Liste des éléments** avec vue tabulaire ou en cartes
-- **Filtres et recherche** pour organiser l'affichage
-- **Boutons d'action** sur chaque élément
+#### Menu Administration
+- **Gestion des Services** : Interface principale pour les services
+- **Administration Django** : Interface d'administration avancée
 
-#### Interface responsive
-- **Version desktop**: Interface complète avec tous les éléments visibles
-- **Version tablette**: Interface adaptée avec menus optimisés
-- **Version mobile**: Interface simplifiée avec navigation par menus déroulants
+#### Zone utilisateur (coin supérieur droit)
+- **Avatar** : Initiales de l'utilisateur connecté
+- **Nom** : Nom complet de l'utilisateur
+- **Déconnexion** : Bouton de déconnexion sécurisée
 
-### Navigation et interactions
+## 🏢 Gestion des Services
 
-#### Interactions sans rechargement
-L'application utilise une technologie moderne qui permet :
-- **Ajout d'éléments** via des modales (fenêtres contextuelles)
-- **Modification en place** sans quitter la page
-- **Suppression instantanée** avec confirmation
-- **Mise à jour automatique** de l'affichage
+### Vue d'ensemble des Services
 
-#### Boutons d'action combinés (Split Buttons)
-Certains éléments disposent de boutons d'action combinés :
-- **Action principale** (côté gauche) : Action la plus courante
-- **Menu déroulant** (côté droit) : Actions supplémentaires
+Les **Services** représentent l'organisation hiérarchique de votre entreprise :
+- **Services racines** : Directions principales
+- **Sous-services** : Départements et sous-départements
+- **Hiérarchie illimitée** : Autant de niveaux que nécessaire
 
-## 📝 Gestion des éléments
+### Accéder à la gestion des Services
 
-### Création d'un nouvel élément
+1. Dans la barre de navigation, cliquez sur **Administration**
+2. Sélectionnez **Gestion des Services**
+3. Vous arrivez sur la page de liste des services
 
-1. **Cliquer sur "Ajouter un élément"** dans la barre de navigation
-2. **Remplir le formulaire** dans la modale qui s'ouvre :
-   - **Titre** (obligatoire) : Nom de l'élément
-   - **Description** (optionnel) : Détails de l'élément
-   - **Catégorie** : Classification de l'élément
-     - 🔵 Travail
-     - 🟢 Personnel
-     - 🔴 Urgent
-     - ⚫ Autre
-   - **Statut** : État actuel de l'élément
-     - 🟡 À faire
-     - 🔵 En cours
-     - 🟢 Terminé
-   - **Priorité** : Niveau d'importance (1=Basse, 2=Moyenne, 3=Haute)
-3. **Cliquer sur "Créer"** pour valider
-4. **L'élément apparaît automatiquement** dans la liste
+### Interface de liste des Services
 
-### Consultation des éléments
+#### Affichage hiérarchique
+- **Structure en arbre** : Les services sont affichés avec leur hiérarchie
+- **Indicateurs visuels** : Lignes et icônes pour montrer les niveaux
+- **Dropdowns** : Boutons fléchés pour plier/déplier les niveaux
 
-#### Liste principale
-- **Vue tabulaire** : Affichage en tableau avec colonnes
-- **Informations visibles** :
-  - Titre et description
-  - Catégorie (avec code couleur)
-  - Statut actuel
-  - Priorité
-  - Dates de création et modification
+#### Informations affichées pour chaque service
+- **Icône** : 🏢 pour les services racines, 👥 pour les sous-services
+- **Nom du service** : Nom complet du service
+- **Code** : Code d'identification unique (ex: DG, DRH, COMPTA)
+- **Nombre de sous-services** : Compteur des services enfants
+- **Date de création** : Date de création du service
 
-#### Détails d'un élément
-- **Cliquer sur le titre** d'un élément pour voir ses détails
-- **Modale de détail** avec toutes les informations
-- **Historique des modifications** (si activé)
+#### Actions disponibles
+- **✏️ Modifier** : Bouton bleu pour éditer le service
+- **🗑️ Supprimer** : Bouton rouge pour supprimer le service
 
-### Modification d'un élément
+### Créer un nouveau Service
 
-1. **Localiser l'élément** dans la liste
-2. **Cliquer sur le bouton d'édition** (crayon) ou utiliser le split button
-3. **Modifier les informations** dans la modale qui s'ouvre
-4. **Cliquer sur "Modifier"** pour valider les changements
-5. **L'affichage se met à jour automatiquement**
+1. **Accéder au formulaire**
+   - Cliquez sur le bouton **"Nouveau Service"** (coin supérieur droit)
+   - Une fenêtre modale s'ouvre
 
-### Suppression d'un élément
+2. **Remplir le formulaire**
+   - **Nom du service** : Nom complet (ex: "Direction des Ressources Humaines")
+   - **Code du service** : Code unique court (ex: "DRH")
+   - **Service parent** : Sélectionner le service parent dans la liste déroulante
+     - Laisser vide pour créer un service racine
 
-1. **Localiser l'élément** à supprimer
-2. **Cliquer sur le bouton de suppression** (poubelle) ou via le split button
-3. **Confirmer la suppression** dans la boîte de dialogue
-4. **L'élément disparaît automatiquement** de la liste
+3. **Valider la création**
+   - Cliquez sur **"Créer"**
+   - Le service apparaît immédiatement dans la liste
+   - Un message de confirmation s'affiche
 
-⚠️ **Attention** : La suppression est définitive et ne peut pas être annulée.
+### Modifier un Service existant
 
-### Filtrage et recherche
+1. **Accéder au formulaire**
+   - Cliquez sur l'icône **✏️** à droite du service à modifier
+   - Une fenêtre modale s'ouvre avec les données actuelles
 
-#### Filtres disponibles
-- **Par catégorie** : Afficher seulement certaines catégories
-- **Par statut** : Filtrer selon l'état des éléments
-- **Par priorité** : Afficher selon le niveau d'importance
-- **Par date** : Éléments créés dans une période donnée
+2. **Modifier les informations**
+   - Changez le nom, le code ou le service parent
+   - **Attention** : Modifier le service parent change la hiérarchie
 
-#### Recherche textuelle
-- **Barre de recherche** en haut de la liste
-- **Recherche dans** : Titre et description
-- **Recherche en temps réel** : Résultats instantanés
+3. **Valider les modifications**
+   - Cliquez sur **"Modifier"**
+   - Les changements sont appliqués immédiatement
+   - Un message de confirmation s'affiche
 
-## ⚡ Fonctionnalités avancées
+### Supprimer un Service
 
-### Actions en lot
-- **Sélection multiple** : Cocher plusieurs éléments
-- **Actions groupées** :
-  - Changement de statut en masse
-  - Modification de catégorie
-  - Suppression multiple
+1. **Conditions de suppression**
+   - ⚠️ Un service avec des sous-services ne peut pas être supprimé
+   - Il faut d'abord supprimer ou déplacer tous les sous-services
 
-### Export et import
-- **Export** : Télécharger la liste au format CSV/Excel
-- **Import** : Importer des éléments depuis un fichier
+2. **Processus de suppression**
+   - Cliquez sur l'icône **🗑️** à droite du service
+   - Une confirmation est demandée
+   - Confirmez la suppression
+   - Le service disparaît de la liste
 
-### Notifications
-- **Notifications en temps réel** pour les actions importantes
-- **Messages de confirmation** pour les actions réussies
-- **Alertes d'erreur** en cas de problème
+### Bonnes pratiques
 
-### Raccourcis clavier
-- **Ctrl + N** : Nouvel élément
-- **Échap** : Fermer les modales
-- **Ctrl + F** : Recherche
-- **Entrée** : Valider les formulaires
+#### Nomenclature des codes
+- **Services racines** : 2-3 lettres (DG, DRH, DF, DT)
+- **Sous-services** : 3-6 lettres explicites (COMPTA, REC, FORM)
+- **Cohérence** : Utilisez une logique commune dans votre organisation
 
-## 🔧 Administration
+#### Organisation hiérarchique
+```
+✅ Structure recommandée :
+Direction Générale (DG)
+├── Direction des Ressources Humaines (DRH)
+│   ├── Service Recrutement (REC)
+│   └── Service Formation (FORM)
+└── Direction Financière (DF)
+    ├── Comptabilité (COMPTA)
+    └── Contrôle de Gestion (CG)
+```
 
-### Interface d'administration Django
+## 📥📤 Import/Export des données
 
-L'application dispose d'une interface d'administration complète accessible aux administrateurs :
+### Export des Services en JSON
 
-#### Accès à l'administration
-1. **Se rendre sur** `/admin/`
-2. **Se connecter** avec un compte administrateur
-3. **Naviguer** dans les différentes sections
+L'export permet de sauvegarder vos données organisationnelles au format JSON.
 
-#### Gestion des utilisateurs
-- **Création** de nouveaux comptes utilisateurs
-- **Attribution** des permissions et groupes
-- **Désactivation** de comptes si nécessaire
-- **Réinitialisation** des mots de passe
+#### Processus d'export
+1. **Accéder à l'export**
+   - Allez dans **Administration Django** → **Services**
+   - Cliquez sur **"Exporter en JSON"** (bouton vert)
 
-#### Gestion des éléments
-- **Vue administrative** de tous les éléments
-- **Modification en masse** des données
-- **Export** pour reporting
-- **Suppression** avec confirmation
+2. **Téléchargement automatique**
+   - Le fichier se télécharge automatiquement
+   - Nom du fichier : `Service_YYMMDD.json` (ex: `Service_241028.json`)
 
-#### Configuration système
-- **Paramètres généraux** de l'application
-- **Configuration** des catégories et statuts
-- **Gestion** des permissions et accès
+3. **Contenu du fichier**
+   - Tous les services avec leur hiérarchie
+   - Métadonnées : date d'export, nombre d'enregistrements
+   - Données complètes : nom, code, relations parent-enfant
 
-### Maintenance et monitoring
+### Import des Services depuis JSON
 
-#### Surveillance du système
-- **Monitoring** des performances
-- **Logs** d'activité et d'erreurs
-- **Statistiques** d'utilisation
+L'import permet de restaurer ou de synchroniser vos données depuis un fichier JSON.
 
-#### Sauvegarde des données
-- **Sauvegarde automatique** quotidienne
-- **Export manuel** des données
-- **Procédure de restauration** en cas de problème
+⚠️ **ATTENTION - Import destructif** : Cette opération remplace **INTÉGRALEMENT** la base de données existante.
 
-## 🆘 Dépannage
+#### Préparer le fichier d'import
+- **Format requis** : JSON avec structure spécifique
+- **Source** : Fichier exporté depuis EcartsActions ou compatible
+- **Sauvegarde obligatoire** : Effectuez toujours un export avant l'import
 
-### Problèmes courants
+#### Processus d'import
+1. **Accéder à l'import**
+   - Allez dans **Administration Django** → **Services**
+   - Cliquez sur **"Importer depuis JSON"** (bouton bleu)
 
-#### L'application ne se charge pas
-1. **Vérifier la connexion internet**
-2. **Actualiser la page** (F5 ou Ctrl+R)
-3. **Vider le cache** du navigateur
-4. **Contacter l'administrateur** si le problème persiste
+2. **⚠️ Avertissements importants**
+   - **Import destructif** : TOUS les services existants seront SUPPRIMÉS
+   - **Remplacement total** : La base de données sera ENTIÈREMENT REMPLACÉE
+   - **Action irréversible** : Il est IMPOSSIBLE d'annuler cette opération
+   - **Sauvegarde obligatoire** : Exportez vos données avant l'import
 
-#### Les modales ne s'ouvrent pas
-1. **Vérifier que JavaScript est activé**
-2. **Désactiver les bloqueurs de publicité** temporairement
-3. **Essayer avec un autre navigateur**
-4. **Signaler le problème** à l'équipe technique
+3. **Sélectionner le fichier**
+   - Cliquez sur **"📄 Fichier JSON à importer"**
+   - Sélectionnez votre fichier `.json`
+   - Vérifiez que le fichier correspond à la structure attendue
+   - Cliquez sur **"🚀 Lancer l'import"**
 
-#### Problèmes de performance
-1. **Fermer les onglets inutiles**
-2. **Vider le cache** du navigateur
-3. **Redémarrer le navigateur**
-4. **Vérifier la connexion réseau**
+4. **Traitement automatique en deux phases**
+   
+   **Phase 1 - Suppression :**
+   - Suppression de TOUS les services existants
+   - Nettoyage complet de la base de données
+   
+   **Phase 2 - Import en deux passes :**
+   - **Première passe** : Création de tous les services sans relations parent-enfant
+   - **Deuxième passe** : Établissement des relations hiérarchiques
+   - **Respect de l'ordre** : Les dépendances sont automatiquement résolues
+   - **Mapping des ID** : Les anciens ID sont mappés vers les nouveaux
 
-#### Erreurs de sauvegarde
-1. **Vérifier les champs obligatoires**
-2. **Réessayer l'opération**
-3. **Actualiser la page** et recommencer
-4. **Contacter le support** si l'erreur persiste
+5. **Rapport d'import**
+   - Nombre de services supprimés
+   - Nombre de services importés
+   - Erreurs éventuelles détaillées
+   - Confirmation de la réussite ou échec
 
-### Messages d'erreur fréquents
+#### Gestion des dépendances hiérarchiques
 
-| Message | Cause probable | Solution |
-|---------|----------------|----------|
-| "Champ obligatoire" | Information manquante | Remplir tous les champs marqués * |
-| "Session expirée" | Connexion trop ancienne | Se reconnecter |
-| "Erreur de réseau" | Problème de connexion | Vérifier la connexion internet |
-| "Accès refusé" | Permissions insuffisantes | Contacter l'administrateur |
+**Problématique** : Les services étant liés entre eux par des relations parent-enfant, l'ordre d'import est crucial pour éviter d'endommager la base de données.
 
-### Navigateurs supportés
+**Solution automatique** :
+1. **Tri automatique** : Les services sont triés (parents avant enfants)
+2. **Import en deux passes** :
+   - **Passe 1** : Création de tous les services sans parent
+   - **Passe 2** : Attribution des relations parent-enfant
+3. **Mapping des ID** : Les anciens ID sont conservés en mémoire pour reconstituer les liens
+4. **Transaction atomique** : En cas d'erreur, AUCUNE modification n'est appliquée
 
-#### Navigateurs recommandés
-✅ **Chrome** (version 90+)  
-✅ **Firefox** (version 88+)  
-✅ **Safari** (version 14+)  
-✅ **Edge** (version 90+)
+**Exemple d'ordre de traitement** :
+```
+❌ Ordre problématique (échouerait) :
+- Service Comptabilité (parent: Direction Financière) → parent n'existe pas encore
+- Direction Financière (parent: null) → créé après son enfant
 
-#### Navigateurs non supportés
-❌ **Internet Explorer** (toutes versions)  
-❌ **Versions obsolètes** des navigateurs listés
+✅ Ordre automatique (réussi) :
+- Direction Financière (parent: null) → créé en premier
+- Service Comptabilité (parent: Direction Financière) → parent existe déjà
+```
 
-## ❓ FAQ
+#### Gestion des erreurs et rollback
+- **Transaction atomique** : Tous les changements sont dans une transaction unique
+- **Rollback automatique** : En cas d'erreur, la base de données est restaurée à son état initial
+- **Validation préalable** : Le fichier JSON est validé avant le traitement
+- **Messages d'erreur détaillés** : Chaque erreur est documentée avec le service concerné
 
-### Questions générales
+### Format de fichier JSON
 
-**Q : Puis-je utiliser l'application sur mon téléphone ?**  
-R : Oui, l'application est entièrement responsive et s'adapte aux écrans mobiles et tablettes.
+#### Structure du fichier d'export
+```json
+{
+  "model": "Service",
+  "export_date": "2024-10-28T14:30:00",
+  "total_records": 3,
+  "data": [
+    {
+      "id": 1,
+      "nom": "Direction Générale",
+      "code": "DG",
+      "parent_id": null,
+      "parent_code": null,
+      "created_at": "2024-10-28T10:00:00",
+      "updated_at": "2024-10-28T10:00:00"
+    },
+    {
+      "id": 2,
+      "nom": "Direction des Ressources Humaines",
+      "code": "DRH",
+      "parent_id": 1,
+      "parent_code": "DG",
+      "created_at": "2024-10-28T10:15:00",
+      "updated_at": "2024-10-28T10:15:00"
+    }
+  ]
+}
+```
 
-**Q : Mes données sont-elles sauvegardées automatiquement ?**  
-R : Oui, toutes les modifications sont sauvegardées instantanément et des sauvegardes automatiques sont effectuées quotidiennement.
+## ⚙️ Interface d'administration Django
 
-**Q : Puis-je récupérer un élément supprimé par erreur ?**  
-R : Non, les suppressions sont définitives. Contactez l'administrateur qui pourra éventuellement récupérer les données depuis une sauvegarde.
+### Accès à l'administration Django
 
-**Q : Combien d'éléments puis-je créer ?**  
-R : Il n'y a pas de limite définie pour les utilisateurs standard. Les limitations dépendent de la configuration du serveur.
+L'interface Django Admin offre des fonctionnalités avancées pour les administrateurs.
 
-### Questions techniques
+#### Se connecter
+1. Cliquez sur **Administration** → **Administration Django**
+2. Saisissez vos identifiants administrateur
+3. Accédez au panneau d'administration
 
-**Q : Pourquoi l'application ne fonctionne-t-elle pas avec Internet Explorer ?**  
-R : L'application utilise des technologies modernes non supportées par Internet Explorer. Utilisez un navigateur moderne.
+#### Fonctionnalités disponibles
 
-**Q : Les modales ne se ferment pas, que faire ?**  
-R : Cliquez en dehors de la modale ou appuyez sur la touche Échap. Si cela ne fonctionne pas, actualisez la page.
+##### Section "1. Services"
+- **Liste des services** : Vue tableau avec filtres et recherche
+- **Ajout/Modification** : Formulaires détaillés
+- **Actions en masse** : Opérations sur plusieurs services
+- **Import/Export** : Boutons d'import/export JSON
 
-**Q : Comment signaler un bug ?**  
-R : Contactez l'équipe de support en décrivant précisément le problème, les étapes pour le reproduire et votre environnement (navigateur, système d'exploitation).
+##### Fonctionnalités avancées
+- **Filtres** : Par service parent, date de création
+- **Recherche** : Par nom ou code de service
+- **Tri** : Par colonnes (nom, code, date)
+- **Pagination** : Navigation dans les listes longues
 
-### Questions de sécurité
+### Gestion des utilisateurs (Administrateurs uniquement)
 
-**Q : Mon mot de passe est-il sécurisé ?**  
-R : Oui, les mots de passe sont chiffrés et stockés de manière sécurisée. Choisissez un mot de passe fort et unique.
+#### Accès à la gestion des utilisateurs
+- Section **"Authentification et autorisation"**
+- **Utilisateurs** : Gestion des comptes utilisateurs
+- **Groupes** : Organisation par rôles et permissions
 
-**Q : Puis-je partager mon compte avec un collègue ?**  
-R : Non, chaque utilisateur doit avoir son propre compte pour des raisons de sécurité et de traçabilité.
+#### Créer un nouvel utilisateur
+1. Cliquez sur **"Ajouter"** dans la section Utilisateurs
+2. Remplissez les informations obligatoires :
+   - Nom d'utilisateur
+   - Mot de passe
+3. Définissez les permissions :
+   - **Statut de l'équipe** : Accès à l'admin
+   - **Statut de superutilisateur** : Tous les droits
+   - **Permissions spécifiques** : Droits granulaires
 
-**Q : Comment me déconnecter de manière sécurisée ?**  
-R : Utilisez toujours le bouton "Déconnexion" dans le menu utilisateur, surtout sur un ordinateur partagé.
+## 🔧 Résolution des problèmes
+
+### Problèmes fréquents
+
+#### Impossible de supprimer un service
+**Symptôme** : Message d'erreur lors de la suppression
+**Cause** : Le service contient des sous-services
+**Solution** :
+1. Déplacez ou supprimez d'abord tous les sous-services
+2. Recommencez la suppression du service parent
+
+#### Erreur "Code déjà existant"
+**Symptôme** : Impossible de créer/modifier un service
+**Cause** : Le code saisi existe déjà
+**Solution** :
+1. Vérifiez l'unicité du code
+2. Choisissez un code différent
+3. Ou modifiez le service existant
+
+#### Import JSON échoue
+**Symptôme** : Erreur lors de l'import
+**Causes possibles** :
+- Format JSON invalide
+- Structure de données incorrecte
+- Dépendances circulaires
+
+**Solutions** :
+1. Vérifiez la validité du JSON (outil en ligne)
+2. Utilisez uniquement des fichiers exportés depuis EcartsActions
+3. Contactez votre administrateur
+
+#### Page ne se charge pas
+**Symptôme** : Erreur 404 ou 500
+**Solutions** :
+1. Actualisez la page (F5)
+2. Vérifiez votre connexion internet
+3. Contactez votre administrateur système
+
+### Support technique
+
+#### Informations à fournir en cas de problème
+- **URL de la page** où le problème survient
+- **Message d'erreur** exact (capture d'écran)
+- **Actions effectuées** avant le problème
+- **Navigateur utilisé** (Chrome, Firefox, etc.)
+- **Heure approximative** du problème
+
+#### Contact support
+Contactez votre administrateur système en fournissant toutes les informations ci-dessus.
+
+## 📚 Glossaire
+
+### Termes techniques
+
+**Service**
+: Unité organisationnelle représentant un département, une direction ou un service de l'entreprise.
+
+**Service racine**
+: Service situé au plus haut niveau hiérarchique, sans service parent.
+
+**Sous-service**
+: Service ayant un service parent dans la hiérarchie organisationnelle.
+
+**Code de service**
+: Identifiant unique court (2-6 caractères) permettant d'identifier rapidement un service.
+
+**Hiérarchie**
+: Structure arborescente des services montrant les relations parent-enfant.
+
+**Import/Export JSON**
+: Fonctionnalité de sauvegarde et restauration des données au format JSON.
+
+### Termes métier
+
+**Écart**
+: Non-conformité ou dysfonctionnement identifié dans un processus (fonctionnalité à venir).
+
+**Action corrective**
+: Mesure prise pour corriger un écart identifié (fonctionnalité à venir).
+
+**Plan d'actions**
+: Ensemble coordonné d'actions correctives avec échéances et responsables (fonctionnalité à venir).
+
+### Conventions d'interface
+
+**Modal/Fenêtre modale**
+: Fenêtre qui s'ouvre par-dessus l'interface principale pour afficher un formulaire.
+
+**Dropdown**
+: Menu déroulant permettant de sélectionner une option parmi plusieurs.
+
+**HTMX**
+: Technologie permettant les interactions sans rechargement de page.
+
+**Alpine.js**
+: Framework JavaScript léger pour l'interactivité côté client.
 
 ---
 
-## 📞 Support et contact
+**📝 Note** : Ce manuel est mis à jour régulièrement. La version la plus récente est disponible dans le repository du projet.
 
-### Équipe de support
-- **Email support** : support@votredomaine.com
-- **Téléphone** : +33 X XX XX XX XX
-- **Horaires** : Lundi-Vendredi 9h-18h
-
-### Ressources supplémentaires
-- **Base de connaissances** : https://support.votredomaine.com
-- **Formations** : Disponibles sur demande
-- **Mises à jour** : Annoncées par email
-
----
-
-**📝 Note importante** : Ce manuel utilisateur doit être mis à jour avant chaque commit qui introduit des changements fonctionnels visibles par les utilisateurs finaux.
+**🔄 Dernière mise à jour** : Janvier 2025

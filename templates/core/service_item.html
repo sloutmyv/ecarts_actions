@@ -4,7 +4,8 @@
      x-data="{ expanded: true }" 
      data-level="{{ level }}">
     
-    <div class="flex items-center py-3 hover:bg-gray-50 transition-colors">
+    <div class="flex items-center py-3 hover:bg-gray-50 transition-colors
+                {% if level > 0 %}border-l-2 border-gray-200{% endif %}">
         <!-- Colonne gauche : Indicateur de niveau + Dropdown + Icône + Info -->
         <div class="flex items-center gap-3 flex-1 min-w-0" 
              style="margin-left: {{ level }}rem;">
@@ -12,9 +13,13 @@
             <!-- Indicateur de niveau avec dropdown -->
             <div class="flex items-center gap-2">
                 {% if level > 0 %}
-                    <div class="flex items-center text-gray-300 mr-2">
+                    <div class="flex items-center mr-2">
                         {% for i in "x"|ljust:level %}
-                            <span class="text-gray-300">│</span>
+                            {% if forloop.last %}
+                                <span class="text-gray-400 font-bold">├─</span>
+                            {% else %}
+                                <span class="text-gray-400 font-bold mr-1">│</span>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 {% endif %}
@@ -36,7 +41,7 @@
 
             <!-- Icône du service -->
             <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                        {% if service.is_racine %}bg-blue-100 text-blue-600{% else %}bg-gray-100 text-gray-600{% endif %}">
+                        {% if service.is_racine %}bg-blue-100 text-blue-600 ring-2 ring-blue-200{% else %}bg-gray-100 text-gray-600 ring-1 ring-gray-300{% endif %}">
                 {% if service.is_racine %}
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
@@ -51,8 +56,9 @@
             <!-- Détails du service -->
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-3 mb-1">
-                    <h3 class="font-semibold text-gray-900 truncate">{{ service.nom }}</h3>
-                    <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono flex-shrink-0">{{ service.code }}</span>
+                    <h3 class="font-semibold text-gray-900 truncate
+                             {% if service.is_racine %}text-blue-800{% else %}text-gray-700{% endif %}">{{ service.nom }}</h3>
+                    <span class="{% if service.is_racine %}bg-blue-100 text-blue-800 border border-blue-200{% else %}bg-gray-100 text-gray-700 border border-gray-200{% endif %} px-2 py-1 rounded text-xs font-mono flex-shrink-0">{{ service.code }}</span>
                 </div>
 
                 <div class="flex items-center gap-4 text-xs text-gray-500">

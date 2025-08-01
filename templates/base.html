@@ -295,6 +295,12 @@
                 }
             }
         });
+        
+        // Handle service deletion success
+        document.body.addEventListener('serviceDeleted', function(evt) {
+            // Recharger la page pour afficher le message de succès et la liste mise à jour
+            window.location.reload();
+        });
     </script>
 </body>
 </html>
