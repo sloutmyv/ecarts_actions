@@ -32,4 +32,9 @@ urlpatterns = [
     path('users/<int:pk>/delete-confirm/', views.user_delete_confirm, name='user_delete_confirm'),
     path('users/<int:pk>/reset-password/', views.user_reset_password, name='user_reset_password'),
     
+    # URLs pour import/export JSON des utilisateurs
+    path('users/export-json/', views.export_users_json, name='export_users_json'),
+    path('users/import-json/', views.import_users_json, name='import_users_json'),
+    path('users/import-form/', views.import_users_form, name='import_users_form'),
+    
 ]

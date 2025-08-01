@@ -1,0 +1,152 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Import Utilisateurs JSON{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='core' %}">Core</a>
+    &rsaquo; <a href="{% url 'admin:core_user_changelist' %}">Utilisateurs</a>
+    &rsaquo; Import JSON
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module filtered">
+    <h1>📁 Import Utilisateurs depuis JSON</h1>
+    
+    <!-- Messages Django -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" style="
+                    padding: 12px 20px; 
+                    margin: 10px 0; 
+                    border-radius: 5px;
+                    border-left: 4px solid;
+                    {% if message.tags == 'error' %}
+                        background: #f8d7da; 
+                        color: #721c24; 
+                        border-left-color: #dc3545;
+                    {% elif message.tags == 'warning' %}
+                        background: #fff3cd; 
+                        color: #856404; 
+                        border-left-color: #ffc107;
+                    {% elif message.tags == 'success' %}
+                        background: #d4edda; 
+                        color: #155724; 
+                        border-left-color: #28a745;
+                    {% else %}
+                        background: #d1ecf1; 
+                        color: #0c5460; 
+                        border-left-color: #17a2b8;
+                    {% endif %}
+                ">
+                    <strong>{{ message.tags|title }}:</strong> {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <div style="background: #fff8e1; border-left: 4px solid #ff9800; padding: 15px; margin-bottom: 20px;">
+        <h3 style="margin-bottom: 10px; color: #e65100;">⚠️ ATTENTION - Import destructif</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #bf360c; font-weight: bold;">
+            <li>🗑️ TOUS les utilisateurs existants seront SUPPRIMÉS (sauf l'utilisateur actuel)</li>
+            <li>🔄 La base de données sera ENTIÈREMENT REMPLACÉE par le contenu du fichier JSON</li>
+            <li>💾 Il est OBLIGATOIRE de faire une sauvegarde avant d'importer</li>
+            <li>🚫 Cette action est IRRÉVERSIBLE</li>
+            <li>🛡️ Votre compte actuel sera préservé pour des raisons de sécurité</li>
+        </ul>
+    </div>
+
+    <div style="background: #e8f5e8; border-left: 4px solid #4caf50; padding: 15px; margin-bottom: 20px;">
+        <h3 style="margin-bottom: 10px; color: #2e7d32;">ℹ️ Informations sur l'import</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #1b5e20;">
+            <li>Le fichier doit être au format JSON avec la structure d'export générée par ce système</li>
+            <li>Les services liés seront automatiquement associés par code de service</li>
+            <li>L'import se fait dans une transaction : en cas d'erreur, rien n'est modifié</li>
+            <li>Les IDs des utilisateurs peuvent changer après l'import</li>
+            <li>Tous les mots de passe seront réinitialisés à "azerty"</li>
+            <li><strong>Changement de mot de passe obligatoire</strong> à la première connexion pour tous les utilisateurs importés</li>
+        </ul>
+    </div>
+
+
+    <form method="post" action="{% url 'import_users_json' %}" enctype="multipart/form-data" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <div>
+                <label for="json_file" style="display: block; margin-bottom: 8px; font-weight: bold; color: #333333; font-size: 16px;">
+                    📄 Fichier JSON à importer :
+                </label>
+                <input type="file" 
+                       id="json_file" 
+                       name="json_file" 
+                       accept=".json" 
+                       required
+                       style="padding: 12px; border: 2px solid #007bff; border-radius: 6px; width: 100%; max-width: 400px; background: #ffffff; color: #333333; font-size: 14px; font-weight: bold; cursor: pointer;"
+                       onchange="this.style.background='#e8f4fd'; this.style.borderColor='#0056b3';">
+                <p style="margin: 8px 0 0 0; color: #666; font-size: 12px;">
+                    Seuls les fichiers .json sont acceptés
+                </p>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+            <button type="submit" 
+                    style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                🚀 Lancer l'import
+            </button>
+            <a href="{% url 'admin:core_user_changelist' %}" 
+               style="margin-left: 10px; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">
+                ❌ Annuler
+            </a>
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+        <h3 style="margin-bottom: 15px; color: #495057;">📋 Structure JSON attendue (exemple réel)</h3>
+        <pre style="background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; font-size: 13px; overflow-x: auto; margin: 0; font-family: 'Courier New', monospace; line-height: 1.4;"><code>{
+  <span style="color: #f7fafc;">"model"</span>: <span style="color: #68d391;">"User"</span>,
+  <span style="color: #f7fafc;">"export_date"</span>: <span style="color: #68d391;">"2025-08-01T14:30:00.123456"</span>,
+  <span style="color: #f7fafc;">"total_records"</span>: <span style="color: #fbb6ce;">3</span>,
+  <span style="color: #f7fafc;">"data"</span>: [
+    {
+      <span style="color: #f7fafc;">"id"</span>: <span style="color: #fbb6ce;">1</span>,
+      <span style="color: #f7fafc;">"matricule"</span>: <span style="color: #68d391;">"A1234"</span>,
+      <span style="color: #f7fafc;">"nom"</span>: <span style="color: #68d391;">"Dupont"</span>,
+      <span style="color: #f7fafc;">"prenom"</span>: <span style="color: #68d391;">"Jean"</span>,
+      <span style="color: #f7fafc;">"email"</span>: <span style="color: #68d391;">"jean.dupont@entreprise.nc"</span>,
+      <span style="color: #f7fafc;">"droits"</span>: <span style="color: #68d391;">"AD"</span>,
+      <span style="color: #f7fafc;">"service_id"</span>: <span style="color: #fbb6ce;">2</span>,
+      <span style="color: #f7fafc;">"service_code"</span>: <span style="color: #68d391;">"DRH"</span>,
+      <span style="color: #f7fafc;">"must_change_password"</span>: <span style="color: #a0aec0;">true</span>,
+      <span style="color: #f7fafc;">"is_staff"</span>: <span style="color: #a0aec0;">true</span>,
+      <span style="color: #f7fafc;">"is_superuser"</span>: <span style="color: #a0aec0;">false</span>,
+      <span style="color: #f7fafc;">"created_at"</span>: <span style="color: #68d391;">"2025-08-01T08:00:00.000000+00:00"</span>,
+      <span style="color: #f7fafc;">"updated_at"</span>: <span style="color: #68d391;">"2025-08-01T08:00:00.000000+00:00"</span>,
+      <span style="color: #f7fafc;">"last_login"</span>: <span style="color: #68d391;">"2025-08-01T10:30:00.000000+00:00"</span>
+    },
+    {
+      <span style="color: #f7fafc;">"id"</span>: <span style="color: #fbb6ce;">2</span>,
+      <span style="color: #f7fafc;">"matricule"</span>: <span style="color: #68d391;">"B5678"</span>,
+      <span style="color: #f7fafc;">"nom"</span>: <span style="color: #68d391;">"Martin"</span>,
+      <span style="color: #f7fafc;">"prenom"</span>: <span style="color: #68d391;">"Marie"</span>,
+      <span style="color: #f7fafc;">"email"</span>: <span style="color: #a0aec0;">null</span>,
+      <span style="color: #f7fafc;">"droits"</span>: <span style="color: #68d391;">"US"</span>,
+      <span style="color: #f7fafc;">"service_id"</span>: <span style="color: #a0aec0;">null</span>,
+      <span style="color: #f7fafc;">"service_code"</span>: <span style="color: #a0aec0;">null</span>,
+      <span style="color: #f7fafc;">"must_change_password"</span>: <span style="color: #a0aec0;">true</span>,
+      <span style="color: #f7fafc;">"is_staff"</span>: <span style="color: #a0aec0;">false</span>,
+      <span style="color: #f7fafc;">"is_superuser"</span>: <span style="color: #a0aec0;">false</span>,
+      <span style="color: #f7fafc;">"created_at"</span>: <span style="color: #68d391;">"2025-08-01T09:15:00.000000+00:00"</span>,
+      <span style="color: #f7fafc;">"updated_at"</span>: <span style="color: #68d391;">"2025-08-01T09:15:00.000000+00:00"</span>,
+      <span style="color: #f7fafc;">"last_login"</span>: <span style="color: #a0aec0;">null</span>
+    }
+  ]
+}</code></pre>
+    </div>
+</div>
+{% endblock %}

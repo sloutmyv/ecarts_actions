@@ -362,22 +362,82 @@ La gestion des utilisateurs permet de :
 - **Suppression** : Supprimer immédiatement les comptes des employés qui quittent l'entreprise
 - **Audit** : Vérifier régulièrement les droits attribués
 
-### Export des Utilisateurs
+### Import/Export des Utilisateurs
+
+**Accès requis** : Super Administrateur uniquement
+
+#### Export des Utilisateurs
 
 La fonctionnalité d'export permet de sauvegarder la liste des utilisateurs au format JSON.
 
-#### Processus d'export
-1. Dans la page de gestion des utilisateurs
-2. Cliquez sur **"Exporter JSON"** (bouton vert, coin supérieur droit)
-3. Le fichier se télécharge automatiquement
-4. Nom du fichier : `Users_YYMMDD.json`
+##### Processus d'export
+1. **Accéder à l'export**
+   - Allez dans **Administration Django** → **Utilisateurs**
+   - Cliquez sur **"Exporter en JSON"** (bouton vert)
 
-#### Utilisation de l'export
+2. **Téléchargement automatique**
+   - Le fichier se télécharge automatiquement
+   - Nom du fichier : `Users_YYMMDD.json` (ex: `Users_250801.json`)
+
+3. **Contenu du fichier**
+   - Tous les utilisateurs avec leurs informations complètes
+   - Métadonnées : date d'export, nombre d'enregistrements
+   - Données complètes : matricule, nom, droits, service associé
+
+##### Utilisation de l'export
 - **Sauvegarde** : Conservation de la liste des utilisateurs
 - **Audit** : Analyse des droits et affectations
 - **Migration** : Transfert vers un autre système (avec adaptation)
 
 ⚠️ **Attention sécurité** : Le fichier d'export ne contient pas les mots de passe pour des raisons de sécurité.
+
+#### Import des Utilisateurs
+
+L'import permet de restaurer ou de synchroniser vos utilisateurs depuis un fichier JSON.
+
+⚠️ **ATTENTION - Import destructif** : Cette opération supprime **TOUS** les utilisateurs existants (sauf l'utilisateur actuel).
+
+##### Préparer le fichier d'import
+- **Format requis** : JSON avec structure spécifique
+- **Source** : Fichier exporté depuis EcartsActions ou compatible
+- **Sauvegarde obligatoire** : Effectuez toujours un export avant l'import
+
+##### Processus d'import
+1. **Accéder à l'import**
+   - Allez dans **Administration Django** → **Utilisateurs**
+   - Cliquez sur **"Importer depuis JSON"** (bouton bleu)
+
+2. **⚠️ Avertissements importants**
+   - **Import destructif** : TOUS les utilisateurs existants seront SUPPRIMÉS (sauf vous-même)
+   - **Remplacement total** : La base sera ENTIÈREMENT REMPLACÉE par le contenu du fichier JSON
+   - **Action irréversible** : Il est IMPOSSIBLE d'annuler cette opération
+   - **Sauvegarde obligatoire** : Exportez vos données avant l'import
+   - **Protection administrateur** : Votre compte actuel sera préservé
+
+3. **Sélectionner le fichier**
+   - Cliquez sur **"📄 Fichier JSON à importer"**
+   - Sélectionnez votre fichier `.json`
+   - Vérifiez que le fichier correspond à la structure attendue
+   - Cliquez sur **"🚀 Lancer l'import"**
+
+4. **Traitement automatique**
+   - **Suppression sécurisée** : Suppression de tous les utilisateurs sauf l'administrateur actuel
+   - **Import des utilisateurs** : Création des nouveaux utilisateurs depuis le JSON
+   - **Réinitialisation des mots de passe** : Tous les utilisateurs importés reçoivent le mot de passe "azerty"
+   - **Changement obligatoire** : Tous devront changer leur mot de passe à la première connexion
+   - **Association des services** : Les services sont automatiquement liés par code
+
+5. **Rapport d'import**
+   - Nombre d'utilisateurs supprimés
+   - Nombre d'utilisateurs importés
+   - Erreurs éventuelles détaillées
+   - Confirmation de la réussite ou échec
+
+##### Sécurités de l'import
+- **Transaction atomique** : En cas d'erreur, AUCUNE modification n'est appliquée
+- **Validation du fichier** : Format JSON et structure vérifiés avant traitement
+- **Protection administrateur** : L'utilisateur effectuant l'import ne sera jamais supprimé
+- **Mots de passe sécurisés** : Réinitialisation forcée avec changement obligatoire
 
 ## 📥📤 Import/Export des données
 

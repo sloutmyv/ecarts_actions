@@ -98,7 +98,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
     )
     
     # Champs pour Django Auth
-    is_active = models.BooleanField(default=True, verbose_name="Actif")
     is_staff = models.BooleanField(default=False, verbose_name="Membre du staff")
     must_change_password = models.BooleanField(
         default=True, 

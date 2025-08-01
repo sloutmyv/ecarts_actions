@@ -23,7 +23,7 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Gestion des Utilisateurs**: Système d'authentification personnalisé avec 3 niveaux de droits
 - **Authentification Matricule**: Connexion par matricule (format: Lettre + 4 chiffres)
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
-- **Import/Export JSON**: Sauvegarde et restauration des données organisationnelles
+- **Import/Export JSON**: Sauvegarde et restauration des données (services et utilisateurs)
 - **Modales de confirmation**: Système uniforme de confirmation pour les suppressions
 - **Gestion des Écarts**: Suivi et traitement des non-conformités (à venir)
 - **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
@@ -242,6 +242,42 @@ services_niveau_2 = Service.objects.filter(
 4. **Transaction atomique** : Rollback en cas d'erreur
 5. **Rapport d'import** : Statistiques de création/mise à jour
 
+#### Import/Export des Utilisateurs
+
+**Format d'export utilisateurs**
+```json
+{
+  "model": "User",
+  "export_date": "2025-08-01T14:30:00.123456",
+  "total_records": 3,
+  "data": [
+    {
+      "id": 1,
+      "matricule": "A1234",
+      "nom": "Dupont",
+      "prenom": "Jean",
+      "email": "jean.dupont@entreprise.nc",
+      "droits": "AD",
+      "service_code": "DRH",
+      "must_change_password": true,
+      "is_staff": true,
+      "is_superuser": false,
+      "created_at": "2025-08-01T08:00:00.000000+00:00",
+      "updated_at": "2025-08-01T08:00:00.000000+00:00",
+      "last_login": "2025-08-01T10:30:00.000000+00:00"
+    }
+  ]
+}
+```
+
+**Processus d'import utilisateurs**
+1. **Suppression sécurisée** : Tous les utilisateurs supprimés sauf l'utilisateur actuel
+2. **Réinitialisation des mots de passe** : Tous les utilisateurs importés reçoivent le mot de passe "azerty"
+3. **Changement obligatoire** : `must_change_password=True` forcé pour tous les utilisateurs importés
+4. **Association des services** : Lien automatique par code de service
+5. **Protection administrateur** : L'utilisateur effectuant l'import est préservé
+6. **Transaction atomique** : Import complet ou échec total (pas de demi-mesure)
+
 ### Optimisations de performance
 
 #### Requêtes optimisées
@@ -369,7 +405,7 @@ ecarts_actions/
 │   │   ├── __init__.py       # 📦 Import centralisé
 │   │   ├── dashboard.py      # 📊 Vue tableau de bord
 │   │   ├── services.py       # 🏢 CRUD services + import/export
-│   │   ├── users.py          # 👤 CRUD utilisateurs + gestion droits
+│   │   ├── users.py          # 👤 CRUD utilisateurs + gestion droits + import/export
 │   │   ├── auth.py           # 🔐 Authentification personnalisée
 │   │   ├── ecarts.py         # ⚠️ Gestion des écarts (à venir)
 │   │   └── actions.py        # 📋 Gestion des plans d'actions (à venir)
@@ -384,7 +420,8 @@ ecarts_actions/
 ├── 📁 templates/              # 🎨 Templates par domaine
 │   ├── base.html             # 🏠 Template de base avec Tailwind/HTMX/Alpine
 │   ├── 📁 admin/              # 🔧 Templates admin personnalisés
-│   │   └── core/service/     # 🏢 Templates import/export services
+│   │   ├── core/service/     # 🏢 Templates import/export services
+│   │   └── core/user/        # 👤 Templates import/export utilisateurs
 │   └── 📁 core/               # 📁 Templates de l'app core
 │       ├── 📁 dashboard/      # 📊 Templates tableau de bord
 │       │   └── dashboard.html # 📊 Page principale dashboard

@@ -20,9 +20,9 @@ class UserAdmin(BaseUserAdmin):
     # Affichage dans la liste
     list_display = (
         'matricule', 'get_full_name', 'email', 'droits_badge', 'service_link', 
-        'is_active', 'must_change_password', 'created_at'
+        'must_change_password', 'created_at'
     )
-    list_filter = ('droits', 'is_active', 'must_change_password', 'service', 'created_at')
+    list_filter = ('droits', 'must_change_password', 'service', 'created_at')
     search_fields = ('matricule', 'nom', 'prenom', 'email')
     ordering = ('nom', 'prenom')
     
@@ -32,7 +32,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('matricule', 'nom', 'prenom', 'email')
         }),
         ('Droits et permissions', {
-            'fields': ('droits', 'service', 'is_active', 'is_staff', 'is_superuser')
+            'fields': ('droits', 'service', 'is_staff', 'is_superuser')
         }),
         ('Mot de passe', {
             'fields': ('password', 'must_change_password')
@@ -102,6 +102,12 @@ class UserAdmin(BaseUserAdmin):
             obj.must_change_password = True
         
         super().save_model(request, obj, form, change)
+    
+    def changelist_view(self, request, extra_context=None):
+        """Ajoute le contexte pour les boutons import/export."""
+        extra_context = extra_context or {}
+        extra_context['has_import_export'] = True
+        return super().changelist_view(request, extra_context=extra_context)
     
     def get_form(self, request, obj=None, **kwargs):
         """Personnalise le formulaire selon l'utilisateur connecté."""

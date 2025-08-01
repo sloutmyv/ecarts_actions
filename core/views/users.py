@@ -295,3 +295,182 @@ def user_reset_password(request, pk):
     return redirect('users_list')
 
 
+@login_required
+@user_passes_test(user_can_manage_users)
+def export_users_json(request):
+    """
+    Export tous les utilisateurs au format JSON.
+    """
+    from django.contrib.admin.views.decorators import staff_member_required
+    
+    # Récupérer tous les utilisateurs avec leurs services
+    users = User.objects.select_related('service').order_by('matricule')
+    
+    # Préparer les données pour l'export
+    data = []
+    for user in users:
+        user_data = {
+            'id': user.id,
+            'matricule': user.matricule,
+            'nom': user.nom,
+            'prenom': user.prenom,
+            'email': user.email or None,
+            'droits': user.droits,
+            'service_id': user.service.id if user.service else None,
+            'service_code': user.service.code if user.service else None,
+            'must_change_password': user.must_change_password,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
+            'created_at': user.created_at.isoformat() if hasattr(user, 'created_at') else None,
+            'updated_at': user.updated_at.isoformat() if hasattr(user, 'updated_at') else None,
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+        }
+        data.append(user_data)
+    
+    # Créer la structure d'export
+    export_data = {
+        'model': 'User',
+        'export_date': datetime.now().isoformat(),
+        'total_records': len(data),
+        'data': data
+    }
+    
+    # Générer le nom de fichier avec la date
+    filename = f"Users_{datetime.now().strftime('%y%m%d')}.json"
+    
+    # Créer la réponse HTTP avec le fichier JSON
+    response = HttpResponse(
+        json.dumps(export_data, indent=2, ensure_ascii=False),
+        content_type='application/json; charset=utf-8'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Message de succès
+    messages.success(request, f'Export terminé : {len(data)} utilisateurs exportés dans {filename}')
+    
+    return response
+
+
+@login_required
+@user_passes_test(user_can_manage_users)
+def import_users_json(request):
+    """
+    Import des utilisateurs depuis un fichier JSON.
+    ⚠️ ATTENTION : Cette opération supprime TOUS les utilisateurs existants.
+    """
+    from django.contrib.admin.views.decorators import staff_member_required
+    
+    if request.method == 'POST':
+        if 'json_file' not in request.FILES:
+            messages.error(request, 'Aucun fichier sélectionné.')
+            return redirect('import_users_form')
+        
+        json_file = request.FILES['json_file']
+        if not json_file.name.endswith('.json'):
+            messages.error(request, 'Le fichier doit être au format JSON.')
+            return redirect('import_users_form')
+        
+        try:
+            # Lire et parser le JSON
+            file_content = json_file.read().decode('utf-8')
+            try:
+                data = json.loads(file_content)
+            except json.JSONDecodeError as e:
+                messages.error(request, f'Fichier JSON invalide : {str(e)}')
+                return redirect('import_users_form')
+            
+            # Vérifier la structure du fichier
+            if not isinstance(data, dict) or 'data' not in data:
+                messages.error(request, 'Structure de fichier JSON invalide. Le fichier doit contenir une clé "data".')
+                return redirect('import_users_form')
+            
+            users_data = data['data']
+            if not isinstance(users_data, list):
+                messages.error(request, 'La clé "data" doit contenir une liste d\'utilisateurs.')
+                return redirect('import_users_form')
+            
+            # Statistiques d'import
+            deleted_count = 0
+            created_count = 0
+            
+            # Transaction atomique pour assurer la cohérence
+            try:
+                with transaction.atomic():
+                    # Étape 1: Supprimer TOUS les utilisateurs existants (sauf l'utilisateur actuel)
+                    current_user = request.user
+                    existing_users = User.objects.exclude(pk=current_user.pk)
+                    deleted_count = existing_users.count()
+                    existing_users.delete()
+                    
+                    # Étape 2: Créer les utilisateurs depuis le JSON
+                    services_map = {}  # Cache pour les services
+                    
+                    for user_data in users_data:
+                        # Éviter de recréer l'utilisateur actuel
+                        if user_data.get('id') == current_user.pk or user_data.get('matricule') == current_user.matricule:
+                            continue
+                            
+                        # Récupérer ou créer le service si spécifié
+                        service = None
+                        if user_data.get('service_code'):
+                            service_code = user_data['service_code']
+                            if service_code not in services_map:
+                                try:
+                                    services_map[service_code] = Service.objects.get(code=service_code)
+                                except Service.DoesNotExist:
+                                    # Si le service n'existe pas, on ignore cette affectation
+                                    services_map[service_code] = None
+                            service = services_map[service_code]
+                        
+                        # Créer l'utilisateur
+                        user = User(
+                            matricule=user_data.get('matricule'),
+                            nom=user_data.get('nom', ''),
+                            prenom=user_data.get('prenom', ''),
+                            email=user_data.get('email') or '',
+                            droits=user_data.get('droits', User.USER),
+                            service=service,
+                            must_change_password=True,  # Toujours True pour les imports
+                            is_staff=user_data.get('is_staff', False),
+                            is_superuser=user_data.get('is_superuser', False),
+                        )
+                        
+                        # Définir le mot de passe par défaut
+                        user.set_password('azerty')
+                        
+                        # Sauvegarder
+                        user.full_clean()  # Validation
+                        user.save()
+                        created_count += 1
+                
+                # Message de succès
+                messages.success(
+                    request,
+                    f'Import terminé : {deleted_count} utilisateurs supprimés, {created_count} utilisateurs importés depuis le fichier JSON.'
+                )
+                
+                # Rediriger vers la page admin des utilisateurs après un import réussi
+                from django.urls import reverse
+                return redirect('admin:core_user_changelist')
+                
+            except Exception as e:
+                messages.error(request, f'Erreur lors de l\'import : {str(e)}')
+                return redirect('import_users_form')
+            
+        except Exception as e:
+            messages.error(request, f'Erreur lors de l\'import : {str(e)}')
+            return redirect('import_users_form')
+    
+    # Si GET, afficher le formulaire d'import
+    return render(request, 'admin/core/user/import_form.html')
+
+
+@login_required
+@user_passes_test(user_can_manage_users)
+def import_users_form(request):
+    """
+    Affiche le formulaire d'import des utilisateurs.
+    """
+    return render(request, 'admin/core/user/import_form.html')
+
+
