@@ -20,8 +20,10 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 
 ### Fonctionnalités principales
 - **Gestion des Services**: Organisation hiérarchique des départments/services
-- **Import/Export JSON**: Sauvegarde et restauration des données organisationnelles
+- **Gestion des Utilisateurs**: Système d'authentification personnalisé avec 3 niveaux de droits
+- **Authentification Matricule**: Connexion par matricule (format: Lettre + 4 chiffres)
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
+- **Import/Export JSON**: Sauvegarde et restauration des données organisationnelles
 - **Gestion des Écarts**: Suivi et traitement des non-conformités (à venir)
 - **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
 
@@ -54,14 +56,50 @@ Backend (Django)
 └── Static Files (Assets)
         ↕
 Database (SQLite)
-└── Service (Hierarchical Organization)
+├── Service (Hierarchical Organization)
+└── User (Custom Authentication Model)
 ```
 
 ## 🗃️ Base de données et modèles
 
 ### Structure de la base de données
 
-L'application utilise **SQLite** en développement avec une structure simple mais puissante pour gérer l'organisation hiérarchique.
+L'application utilise **SQLite** en développement avec une structure simple mais puissante pour gérer l'organisation hiérarchique et l'authentification personnalisée.
+
+### Modèle User (Authentification personnalisée)
+
+Le modèle `User` utilise l'authentification par matricule avec 3 niveaux de droits.
+
+```python
+class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
+    # Matricule unique (Lettre + 4 chiffres)
+    matricule = models.CharField(max_length=5, unique=True)
+    nom = models.CharField(max_length=50)
+    prenom = models.CharField(max_length=50)
+    email = models.EmailField(blank=True)
+    
+    # Niveaux de droits
+    SUPER_ADMIN = 'SA'  # Accès complet + Admin Django
+    ADMIN = 'AD'        # Accès administratif (sans Admin Django)
+    USER = 'US'         # Utilisateur standard
+    
+    droits = models.CharField(max_length=2, choices=DROITS_CHOICES, default=USER)
+    service = models.ForeignKey(Service, null=True, blank=True)
+    must_change_password = models.BooleanField(default=True)
+```
+
+#### Système d'authentification
+- **Matricule**: Format requis `[A-Z][0-9]{4}` (ex: A1234)
+- **Mot de passe par défaut**: `azerty` (changement obligatoire à la première connexion)
+- **Interface dédiée**: Templates de connexion et changement de mot de passe personnalisés
+- **Middleware**: Force le changement de mot de passe si nécessaire
+
+#### Niveaux de droits et accès
+| Niveau | Code | Accès Navigation | Accès Administration | Admin Django |
+|--------|------|------------------|---------------------|--------------|
+| Super Administrateur | `SA` | ✅ Tous menus | ✅ Services + Utilisateurs | ✅ Oui |
+| Administrateur | `AD` | ✅ Tous menus | ✅ Services + Utilisateurs | ❌ Non |
+| Utilisateur | `US` | ✅ Dashboard, Écarts, Actions | ❌ Aucun | ❌ Non |
 
 ### Modèle Service
 
@@ -322,17 +360,21 @@ ecarts_actions/
 │   │   ├── __init__.py       # 📦 Import centralisé
 │   │   ├── base.py           # 🏗️ Modèles abstraits (TimestampedModel, CodedModel)
 │   │   ├── services.py       # 🏢 Modèle Service (organisation hiérarchique)
+│   │   ├── users.py          # 👤 Modèle User (authentification personnalisée)
 │   │   ├── ecarts.py         # ⚠️ Modèles Écart, TypeEcart (à venir)
 │   │   └── actions.py        # 📋 Modèles Action, PlanAction (à venir)
 │   ├── 📁 views/              # 👁️ Vues par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
 │   │   ├── dashboard.py      # 📊 Vue tableau de bord
 │   │   ├── services.py       # 🏢 CRUD services + import/export
+│   │   ├── users.py          # 👤 CRUD utilisateurs + gestion droits
+│   │   ├── auth.py           # 🔐 Authentification personnalisée
 │   │   ├── ecarts.py         # ⚠️ Gestion des écarts (à venir)
 │   │   └── actions.py        # 📋 Gestion des plans d'actions (à venir)
 │   ├── 📁 admin/              # 🔧 Configuration admin par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
 │   │   ├── services.py       # 🏢 ServiceAdmin
+│   │   ├── users.py          # 👤 UserAdmin
 │   │   ├── ecarts.py         # ⚠️ EcartAdmin (à venir)
 │   │   └── actions.py        # 📋 ActionAdmin (à venir)
 │   ├── urls.py               # 🔗 URLs de l'app
@@ -344,12 +386,22 @@ ecarts_actions/
 │   └── 📁 core/               # 📁 Templates de l'app core
 │       ├── 📁 dashboard/      # 📊 Templates tableau de bord
 │       │   └── dashboard.html # 📊 Page principale dashboard
+│       ├── 📁 auth/           # 🔐 Templates authentification
+│       │   ├── login.html    # 🔑 Page de connexion personnalisée
+│       │   └── change_password.html # 🔒 Changement mot de passe
 │       ├── 📁 services/       # 🏢 Templates gestion services
 │       │   ├── list.html     # 📋 Liste hiérarchique des services
 │       │   ├── item.html     # 📄 Item service (récursif)
 │       │   ├── detail.html   # 🔍 Détail d'un service
 │       │   ├── form.html     # 📝 Formulaire service
 │       │   └── form_modal.html # 📝 Formulaire modal HTMX
+│       ├── 📁 users/          # 👤 Templates gestion utilisateurs
+│       │   ├── list.html     # 📋 Liste des utilisateurs
+│       │   ├── item.html     # 📄 Item utilisateur
+│       │   ├── detail.html   # 🔍 Détail d'un utilisateur
+│       │   ├── form.html     # 📝 Formulaire utilisateur
+│       │   ├── form_modal.html # 📝 Formulaire modal HTMX
+│       │   └── icons.html    # 🎨 Icônes utilisateurs
 │       ├── 📁 ecarts/         # ⚠️ Templates gestion écarts (à venir)
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Breadcrumb -->
+    <nav class="flex mb-8" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+                <a href="{% url 'users_list' %}" class="text-gray-700 hover:text-blue-600 inline-flex items-center">
+                    <svg class="w-5 h-5 mr-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Utilisateurs
+                </a>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="ml-1 text-gray-500 md:ml-2">{{ page_title }}</span>
+                </div>
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Formulaire -->
+    <div class="bg-white shadow-lg rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-900">{{ page_title }}</h1>
+        </div>
+
+        <form 
+            method="post"
+            class="p-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Matricule -->
+                <div>
+                    <label for="matricule" class="block text-sm font-medium text-gray-700 mb-2">
+                        Matricule <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="matricule" 
+                        name="matricule" 
+                        value="{% if user_to_edit %}{{ user_to_edit.matricule }}{% endif %}" 
+                        required
+                        pattern="[A-Z][0-9]{4}"
+                        maxlength="5"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase"
+                        placeholder="A1234">
+                    <p class="mt-1 text-sm text-gray-500">Format : 1 lettre + 4 chiffres (ex: A1234)</p>
+                </div>
+
+                <!-- Droits -->
+                <div>
+                    <label for="droits" class="block text-sm font-medium text-gray-700 mb-2">
+                        Droits d'accès <span class="text-red-500">*</span>
+                    </label>
+                    <select 
+                        id="droits" 
+                        name="droits"
+                        required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        {% for value, label in droits_choices %}
+                            <option value="{{ value }}" 
+                                    {% if user_to_edit and user_to_edit.droits == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Nom -->
+                <div>
+                    <label for="nom" class="block text-sm font-medium text-gray-700 mb-2">
+                        Nom <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="nom" 
+                        name="nom" 
+                        value="{% if user_to_edit %}{{ user_to_edit.nom }}{% endif %}" 
+                        required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Prénom -->
+                <div>
+                    <label for="prenom" class="block text-sm font-medium text-gray-700 mb-2">
+                        Prénom <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="prenom" 
+                        name="prenom" 
+                        value="{% if user_to_edit %}{{ user_to_edit.prenom }}{% endif %}" 
+                        required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Email -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                        Email
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        value="{% if user_to_edit %}{{ user_to_edit.email|default:'' }}{% endif %}" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Service -->
+                <div>
+                    <label for="service" class="block text-sm font-medium text-gray-700 mb-2">
+                        Service
+                    </label>
+                    <select 
+                        id="service" 
+                        name="service"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Aucun service --</option>
+                        {% for service in services %}
+                            <option value="{{ service.pk }}" 
+                                    {% if user_to_edit and user_to_edit.service and user_to_edit.service.pk == service.pk %}selected{% endif %}>
+                                {{ service.get_chemin_hierarchique }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            {% if not user_to_edit %}
+            <!-- Information mot de passe par défaut -->
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800">
+                            Mot de passe par défaut
+                        </h3>
+                        <div class="mt-2 text-sm text-blue-700">
+                            <p>Le nouvel utilisateur recevra le mot de passe par défaut <strong>"azerty"</strong> et devra le changer lors de sa première connexion.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Boutons d'action -->
+            <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+                <a 
+                    href="{% url 'users_list' %}"
+                    class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                    Annuler
+                </a>
+                <button 
+                    type="submit"
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    {% if user_to_edit %}Modifier{% else %}Créer{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

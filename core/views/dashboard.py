@@ -2,8 +2,10 @@
 Vues pour le tableau de bord principal de l'application.
 """
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 
+@login_required
 def dashboard(request):
     """
     Vue principale du tableau de bord avec statistiques et activités récentes.

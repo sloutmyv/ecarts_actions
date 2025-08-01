@@ -49,6 +49,7 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% load static %}{% static 'css/common-buttons.css' %}">
     <style>
         /* Custom scrollbar for light theme */
         ::-webkit-scrollbar {
@@ -139,7 +140,8 @@
                             Plan d'actions
                         </a>
                         
-                        <!-- Menu déroulant Administration -->
+                        <!-- Menu déroulant Administration - Visible seulement pour Super Admin et Admin -->
+                        {% if user.is_authenticated and user.droits != 'US' %}
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" 
                                     class="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1">
@@ -161,6 +163,17 @@
                                     </svg>
                                     Gestion des Services
                                 </a>
+                                {% if user.is_authenticated and user.can_manage_users %}
+                                <a href="{% url 'users_list' %}" 
+                                   class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-2.25"/>
+                                    </svg>
+                                    Gestion des Utilisateurs
+                                </a>
+                                {% endif %}
+                                <!-- Administration Django - Visible seulement pour Super Admin -->
+                                {% if user.is_authenticated and user.droits == 'SA' %}
                                 <hr class="border-gray-200 my-1">
                                 <a href="/admin/" 
                                    class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
@@ -169,8 +182,10 @@
                                     </svg>
                                     Administration Django
                                 </a>
+                                {% endif %}
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -179,13 +194,13 @@
                     <!-- Identification utilisateur -->
                     <div class="flex items-center space-x-2 text-gray-600">
                         <div class="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
-                            <span class="text-sm font-medium text-white">{{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}</span>
+                            <span class="text-sm font-medium text-white">{{ user.prenom|first|default:'U' }}{{ user.nom|first|default:'' }}</span>
                         </div>
-                        <span class="text-sm font-medium">{{ user.get_full_name|default:user.username }}</span>
+                        <span class="text-sm font-medium">{{ user.get_full_name|default:user.matricule }}</span>
                     </div>
                     
                     <!-- Bouton déconnexion -->
-                    <a href="/admin/logout/" 
+                    <a href="{% url 'logout' %}" 
                        class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -219,14 +234,22 @@
                 <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Écarts</a>
                 <a href="#" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Plan d'actions</a>
                 
-                <!-- Administration mobile -->
+                <!-- Administration mobile - Visible seulement pour Super Admin et Admin -->
+                {% if user.is_authenticated and user.droits != 'US' %}
                 <div class="border-t border-gray-200 pt-2 mt-2">
                     <div class="px-3 py-1">
                         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Administration</p>
                     </div>
                     <a href="{% url 'services_list' %}" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Gestion des Services</a>
+                    {% if user.is_authenticated and user.can_manage_users %}
+                    <a href="{% url 'users_list' %}" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Gestion des Utilisateurs</a>
+                    {% endif %}
+                    <!-- Administration Django - Visible seulement pour Super Admin -->
+                    {% if user.is_authenticated and user.droits == 'SA' %}
                     <a href="/admin/" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Administration Django</a>
+                    {% endif %}
                 </div>
+                {% endif %}
             </div>
             <!-- Utilisateur mobile -->
             <div class="pt-4 pb-3 border-t border-gray-200">
@@ -234,12 +257,12 @@
                     <!-- Identification utilisateur mobile -->
                     <div class="flex items-center px-3 py-2 text-base font-medium text-gray-600">
                         <div class="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-sm font-medium text-white">{{ user.first_name|first|default:'U' }}{{ user.last_name|first|default:'' }}</span>
+                            <span class="text-sm font-medium text-white">{{ user.prenom|first|default:'U' }}{{ user.nom|first|default:'' }}</span>
                         </div>
-                        <span>{{ user.get_full_name|default:user.username }}</span>
+                        <span>{{ user.get_full_name|default:user.matricule }}</span>
                     </div>
                     <!-- Bouton déconnexion mobile -->
-                    <a href="/admin/logout/" class="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-md">
+                    <a href="{% url 'logout' %}" class="flex items-center gap-2 px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-md">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                         </svg>

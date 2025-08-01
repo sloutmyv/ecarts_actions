@@ -3,8 +3,10 @@
 ## 📋 Table des matières
 
 - [Introduction](#introduction)
-- [Connexion et navigation](#connexion-et-navigation)
+- [Connexion et authentification](#connexion-et-authentification)
+- [Navigation et droits d'accès](#navigation-et-droits-dacces)
 - [Gestion des Services](#gestion-des-services)
+- [Gestion des Utilisateurs](#gestion-des-utilisateurs)
 - [Import/Export des données](#importexport-des-données)
 - [Interface d'administration Django](#interface-dadministration-django)
 - [Résolution des problèmes](#résolution-des-problèmes)
@@ -16,17 +18,20 @@
 
 EcartsActions est une application de **gestion d'écarts et d'actions** qui permet de :
 - Gérer une structure organisationnelle hiérarchique (services/départements)
+- Gérer les utilisateurs avec un système de droits à 3 niveaux
+- Authentification sécurisée par matricule avec changement de mot de passe obligatoire
 - Suivre et traiter les écarts/non-conformités (fonctionnalité à venir)
 - Planifier et suivre les actions correctives (fonctionnalité à venir)
 
 ### Public cible
 
 Ce manuel s'adresse aux :
-- **Administrateurs** : Responsables de la configuration et de la maintenance
-- **Gestionnaires** : Utilisateurs gérant les services et l'organisation
-- **Utilisateurs finaux** : Personnels utilisant l'application pour consulter et saisir des données
+- **Super Administrateurs** : Accès complet à toutes les fonctionnalités (y compris Admin Django)
+- **Administrateurs** : Gestion des services et utilisateurs (sans Admin Django)
+- **Utilisateurs** : Accès aux fonctionnalités principales (Dashboard, Écarts, Actions)
+- **Gestionnaires IT** : Responsables de la configuration technique et maintenance
 
-## 🔐 Connexion et navigation
+## 🔐 Connexion et authentification
 
 ### Se connecter à l'application
 
@@ -35,10 +40,57 @@ Ce manuel s'adresse aux :
    - Rendez-vous à l'adresse fournie par votre administrateur
    - Exemple : `http://votre-serveur.com:8000/`
 
-2. **Page de connexion**
-   - Cliquez sur le lien "Administration" dans la navigation
-   - Saisissez vos identifiants (nom d'utilisateur et mot de passe)
-   - Cliquez sur "Se connecter"
+2. **Page de connexion personnalisée**
+   - La page de connexion affiche le logo ENERCAL
+   - **Matricule** : Saisissez votre matricule (format : Lettre + 4 chiffres, ex: A1234)
+   - **Mot de passe** : Saisissez votre mot de passe
+   - **Mot de passe par défaut** : `azerty` (vous devrez le changer à la première connexion)
+   - Cliquez sur **"Se connecter"**
+
+3. **Première connexion - Changement de mot de passe obligatoire**
+   - Si c'est votre première connexion, vous serez automatiquement redirigé
+   - Page de changement de mot de passe avec logo ENERCAL
+   - **Mot de passe actuel** : Saisissez `azerty`
+   - **Nouveau mot de passe** : Choisissez un mot de passe sécurisé (min. 8 caractères)
+   - **Confirmer** : Ressaisissez le nouveau mot de passe
+   - Cliquez sur **"Changer le mot de passe"**
+   - Vous serez automatiquement redirigé vers le tableau de bord
+
+### Déconnexion
+
+- Cliquez sur le bouton **"Déconnexion"** dans la barre de navigation (coin supérieur droit)
+- Vous serez redirigé vers la page de connexion
+- Votre session sera complètement fermée pour la sécurité
+
+## 🔒 Navigation et droits d'accès
+
+### Système de droits à 3 niveaux
+
+EcartsActions utilise un système de droits hiérarchique qui détermine l'accès aux fonctionnalités :
+
+#### 🏆 Super Administrateur (SA)
+**Accès complet** - Toutes les fonctionnalités disponibles
+- ✅ **Navigation** : Tableau de bord, Écarts, Plan d'actions
+- ✅ **Administration** : Menu Administration visible
+  - ✅ Gestion des Services
+  - ✅ Gestion des Utilisateurs  
+  - ✅ Administration Django
+- 🎯 **Utilisation** : Administrateurs système, Directeurs IT
+
+#### 👨‍💼 Administrateur (AD)
+**Accès administratif** - Gestion sans accès technique
+- ✅ **Navigation** : Tableau de bord, Écarts, Plan d'actions
+- ✅ **Administration** : Menu Administration visible
+  - ✅ Gestion des Services
+  - ✅ Gestion des Utilisateurs
+  - ❌ Administration Django (masquée)
+- 🎯 **Utilisation** : Responsables RH, Managers, Responsables qualité
+
+#### 👤 Utilisateur (US)
+**Accès standard** - Utilisation quotidienne
+- ✅ **Navigation** : Tableau de bord, Écarts, Plan d'actions
+- ❌ **Administration** : Menu Administration complètement masqué
+- 🎯 **Utilisation** : Employés, Consultants, Utilisateurs finaux
 
 ### Interface principale
 
@@ -155,6 +207,149 @@ Direction Générale (DG)
     ├── Comptabilité (COMPTA)
     └── Contrôle de Gestion (CG)
 ```
+
+## 👤 Gestion des Utilisateurs
+
+**Accès requis** : Super Administrateur ou Administrateur uniquement
+
+### Vue d'ensemble des Utilisateurs
+
+La gestion des utilisateurs permet de :
+- **Créer et gérer** les comptes utilisateurs
+- **Définir les niveaux de droits** (3 niveaux disponibles)
+- **Associer** les utilisateurs aux services
+- **Réinitialiser** les mots de passe
+- **Gérer** les premières connexions
+
+### Accéder à la gestion des Utilisateurs
+
+1. Dans la barre de navigation, cliquez sur **Administration**
+2. Sélectionnez **Gestion des Utilisateurs**
+3. Vous arrivez sur la page de liste des utilisateurs
+
+### Interface de liste des Utilisateurs
+
+#### Informations affichées pour chaque utilisateur
+- **Avatar** : Initiales (Prénom + Nom)
+- **Nom complet** : Prénom et Nom de l'utilisateur  
+- **Matricule** : Identifiant unique (ex: A1234)
+- **Niveau de droits** : Badge coloré indiquant le niveau
+  - 🔴 **Super Administrateur** : Badge rouge
+  - 🔵 **Administrateur** : Badge bleu  
+  - 🟢 **Utilisateur** : Badge vert
+- **Service** : Service d'affectation (si assigné)
+- **Email** : Adresse email (si renseignée)
+- **Statut** : Indication si changement de mot de passe requis
+
+#### Actions disponibles par utilisateur
+- **👁️ Voir** : Consulter les détails de l'utilisateur (bouton indigo)
+- **✏️ Modifier** : Éditer les informations (bouton bleu)
+- **🔑 Réinitialiser** : Remettre le mot de passe à `azerty` (bouton orange)
+- **🗑️ Supprimer** : Supprimer l'utilisateur (bouton rouge)
+  - ⚠️ **Restriction** : Impossible de supprimer son propre compte
+
+### Créer un nouvel Utilisateur
+
+1. **Accéder au formulaire**
+   - Cliquez sur le bouton **"Nouvel Utilisateur"** (coin supérieur droit)
+   - Une fenêtre modale s'ouvre
+
+2. **Remplir le formulaire**
+   - **Nom** : Nom de famille de l'utilisateur
+   - **Prénom** : Prénom de l'utilisateur
+   - **Matricule** : Format obligatoire `[A-Z][0-9]{4}` (ex: A1234)
+     - 1 lettre majuscule suivie de 4 chiffres
+     - Doit être unique dans le système
+   - **Email** : Adresse email (optionnel)
+   - **Droits** : Sélectionner le niveau d'accès
+     - Super Administrateur (SA)
+     - Administrateur (AD) 
+     - Utilisateur (US)
+   - **Service** : Associer à un service existant (optionnel)
+
+3. **Validation automatique**
+   - **Mot de passe par défaut** : `azerty` (assigné automatiquement)
+   - **Changement obligatoire** : L'utilisateur devra changer son mot de passe à la première connexion
+   - **Validation matricule** : Vérification automatique du format
+
+4. **Finaliser la création**
+   - Cliquez sur **"Créer"**
+   - L'utilisateur apparaît dans la liste
+   - Un message de confirmation s'affiche
+
+### Modifier un Utilisateur existant
+
+1. **Accéder au formulaire**
+   - Cliquez sur l'icône **✏️** à droite de l'utilisateur à modifier
+   - Une fenêtre modale s'ouvre avec les données actuelles
+
+2. **Modifier les informations**
+   - Changez les informations nécessaires
+   - **Attention** : Modifier les droits change immédiatement les accès
+   - **Matricule** : Peut être modifié si nécessaire (doit rester unique)
+
+3. **Valider les modifications**
+   - Cliquez sur **"Modifier"**
+   - Les changements sont appliqués immédiatement
+   - L'utilisateur verra ses accès mis à jour à sa prochaine connexion
+
+### Réinitialiser un mot de passe
+
+1. **Processus de réinitialisation**
+   - Cliquez sur l'icône **🔑** à droite de l'utilisateur
+   - Une confirmation est demandée
+   - Confirmez la réinitialisation
+
+2. **Effet de la réinitialisation**
+   - **Nouveau mot de passe** : `azerty`
+   - **Changement obligatoire** : L'utilisateur devra changer son mot de passe à la prochaine connexion
+   - **Session active** : Si l'utilisateur est connecté, il sera déconnecté automatiquement
+
+### Supprimer un Utilisateur
+
+1. **Conditions de suppression**
+   - ✅ Peut supprimer tout utilisateur sauf soi-même
+   - ❌ Impossible de supprimer son propre compte (protection)
+
+2. **Processus de suppression**
+   - Cliquez sur l'icône **🗑️** à droite de l'utilisateur
+   - Une confirmation avec le nom complet est demandée
+   - Confirmez la suppression
+   - L'utilisateur disparaît de la liste et ne peut plus se connecter
+
+### Bonnes pratiques de gestion des utilisateurs
+
+#### Attribution des droits
+- **Super Administrateur** : Réservé aux administrateurs système uniquement
+- **Administrateur** : Pour les responsables RH, managers, responsables qualité
+- **Utilisateur** : Pour tous les autres employés
+
+#### Gestion des matricules
+- **Format strict** : Respecter [A-Z][0-9]{4} (ex: A1234, B5678, Z9999)
+- **Unicité** : Chaque matricule doit être unique dans l'organisation
+- **Logique métier** : Utiliser une logique cohérente (ex: première lettre = service)
+
+#### Sécurité
+- **Réinitialisation** : Réinitialiser les mots de passe en cas de compromission
+- **Suppression** : Supprimer immédiatement les comptes des employés qui quittent l'entreprise
+- **Audit** : Vérifier régulièrement les droits attribués
+
+### Export des Utilisateurs
+
+La fonctionnalité d'export permet de sauvegarder la liste des utilisateurs au format JSON.
+
+#### Processus d'export
+1. Dans la page de gestion des utilisateurs
+2. Cliquez sur **"Exporter JSON"** (bouton vert, coin supérieur droit)
+3. Le fichier se télécharge automatiquement
+4. Nom du fichier : `Users_YYMMDD.json`
+
+#### Utilisation de l'export
+- **Sauvegarde** : Conservation de la liste des utilisateurs
+- **Audit** : Analyse des droits et affectations
+- **Migration** : Transfert vers un autre système (avec adaptation)
+
+⚠️ **Attention sécurité** : Le fichier d'export ne contient pas les mots de passe pour des raisons de sécurité.
 
 ## 📥📤 Import/Export des données
 
@@ -286,62 +481,129 @@ L'import permet de restaurer ou de synchroniser vos données depuis un fichier J
 
 ### Accès à l'administration Django
 
-L'interface Django Admin offre des fonctionnalités avancées pour les administrateurs.
+**Accès requis** : Super Administrateur uniquement
+
+L'interface Django Admin offre des fonctionnalités techniques avancées pour les super administrateurs.
 
 #### Se connecter
 1. Cliquez sur **Administration** → **Administration Django**
-2. Saisissez vos identifiants administrateur
-3. Accédez au panneau d'administration
+2. Vous êtes automatiquement connecté avec votre session active
+3. Accédez au panneau d'administration technique
 
 #### Fonctionnalités disponibles
 
-##### Section "1. Services"
+##### Section "2. Services"
 - **Liste des services** : Vue tableau avec filtres et recherche
 - **Ajout/Modification** : Formulaires détaillés
 - **Actions en masse** : Opérations sur plusieurs services
 - **Import/Export** : Boutons d'import/export JSON
 
+##### Section "3. Utilisateurs (Custom)"
+- **Liste des utilisateurs** : Vue tableau avec tous les champs
+- **Ajout/Modification** : Formulaires complets avec validation
+- **Actions en masse** : Opérations sur plusieurs utilisateurs
+- **Export JSON** : Sauvegarde des utilisateurs
+- **Filtres avancés** : Par droits, service, dates
+
 ##### Fonctionnalités avancées
-- **Filtres** : Par service parent, date de création
-- **Recherche** : Par nom ou code de service
-- **Tri** : Par colonnes (nom, code, date)
+- **Filtres** : Par service parent, date de création, droits utilisateur
+- **Recherche** : Par nom, code de service, matricule utilisateur
+- **Tri** : Par colonnes (nom, code, date, matricule)
 - **Pagination** : Navigation dans les listes longues
+- **Actions en masse** : Modification multiple d'enregistrements
 
-### Gestion des utilisateurs (Administrateurs uniquement)
+### Gestion technique avancée
 
-#### Accès à la gestion des utilisateurs
-- Section **"Authentification et autorisation"**
-- **Utilisateurs** : Gestion des comptes utilisateurs
-- **Groupes** : Organisation par rôles et permissions
+#### Section "Authentification et autorisation" (Django standard)
+- **Utilisateurs Django** : Comptes techniques (différent des utilisateurs métier)
+- **Groupes** : Organisation par rôles Django
+- **Permissions** : Droits granulaires sur les modèles
 
-#### Créer un nouvel utilisateur
-1. Cliquez sur **"Ajouter"** dans la section Utilisateurs
-2. Remplissez les informations obligatoires :
-   - Nom d'utilisateur
-   - Mot de passe
-3. Définissez les permissions :
-   - **Statut de l'équipe** : Accès à l'admin
-   - **Statut de superutilisateur** : Tous les droits
-   - **Permissions spécifiques** : Droits granulaires
+⚠️ **Important** : Ne pas confondre avec la gestion des utilisateurs métier accessible via le menu Administration principal.
 
 ## 🔧 Résolution des problèmes
 
 ### Problèmes fréquents
 
-#### Impossible de supprimer un service
+#### Problèmes d'authentification
+
+##### Impossible de se connecter
+**Symptôme** : "Matricule ou mot de passe incorrect" 
+**Causes possibles** :
+- Matricule mal saisi (format [A-Z][0-9]{4} requis)
+- Mot de passe incorrect
+- Compte désactivé ou supprimé
+**Solutions** :
+1. Vérifiez le format du matricule (ex: A1234)
+2. Demandez une réinitialisation de mot de passe à un administrateur
+3. Contactez votre administrateur système
+
+##### Redirection forcée vers changement de mot de passe
+**Symptôme** : Impossible d'accéder aux autres pages
+**Cause** : Première connexion ou réinitialisation
+**Solution** :
+1. Changez votre mot de passe sur la page dédiée
+2. Utilisez un mot de passe sécurisé (min. 8 caractères)
+
+#### Problèmes de droits d'accès
+
+##### Menu Administration invisible
+**Symptôme** : Le menu Administration n'apparaît pas
+**Cause** : Droits utilisateur insuffisants (niveau "US")
+**Solution** :
+1. Seuls les Administrateurs et Super Administrateurs voient ce menu
+2. Demandez une élévation de droits à votre administrateur
+
+##### Administration Django inaccessible
+**Symptôme** : Lien "Administration Django" absent ou erreur d'accès
+**Cause** : Seuls les Super Administrateurs ont accès
+**Solution** :
+1. Vérifiez votre niveau de droits
+2. Demandez l'accès Super Administrateur si nécessaire
+
+#### Problèmes de gestion des services
+
+##### Impossible de supprimer un service
 **Symptôme** : Message d'erreur lors de la suppression
 **Cause** : Le service contient des sous-services
 **Solution** :
 1. Déplacez ou supprimez d'abord tous les sous-services
 2. Recommencez la suppression du service parent
 
-#### Erreur "Code déjà existant"
-**Symptôme** : Impossible de créer/modifier un service
-**Cause** : Le code saisi existe déjà
+##### Erreur "Code déjà existant"
+**Symptôme** : Impossible de créer/modifier un service ou utilisateur
+**Cause** : Le code/matricule saisi existe déjà
 **Solution** :
-1. Vérifiez l'unicité du code
-2. Choisissez un code différent
-3. Ou modifiez le service existant
+1. Vérifiez l'unicité du code ou matricule
+2. Choisissez un identifiant différent
+3. Ou modifiez l'enregistrement existant
+
+#### Problèmes de gestion des utilisateurs
+
+##### Erreur de format de matricule
+**Symptôme** : "Le matricule doit contenir une lettre majuscule suivie de 4 chiffres"
+**Cause** : Format de matricule incorrect
+**Solution** :
+1. Respectez le format exact : [A-Z][0-9]{4}
+2. Exemples valides : A1234, B5678, Z9999
+3. Exemples invalides : a1234, AB123, A12345
+
+##### Impossible de supprimer un utilisateur
+**Symptôme** : Bouton de suppression grisé ou absent
+**Cause** : Tentative de suppression de son propre compte
+**Solution** :
+1. Un utilisateur ne peut pas supprimer son propre compte
+2. Demandez à un autre administrateur de procéder à la suppression
+
+##### Utilisateur ne peut pas se connecter après création
+**Symptôme** : Nouvel utilisateur ne peut pas se connecter
+**Causes possibles** :
+- Mot de passe par défaut non communiqué
+- Matricule mal saisi lors de la création
+**Solutions** :
+1. Vérifiez que le mot de passe par défaut est `azerty`
+2. Vérifiez le matricule exact dans la liste des utilisateurs
+3. Réinitialisez le mot de passe si nécessaire
 
 #### Import JSON échoue
 **Symptôme** : Erreur lors de l'import
@@ -393,8 +655,29 @@ Contactez votre administrateur système en fournissant toutes les informations c
 **Hiérarchie**
 : Structure arborescente des services montrant les relations parent-enfant.
 
+**Utilisateur**
+: Compte d'accès à l'application avec matricule, droits et informations personnelles.
+
+**Matricule**
+: Identifiant unique de l'utilisateur au format [Lettre][4 chiffres] (ex: A1234).
+
+**Droits d'accès**
+: Niveau d'autorisation déterminant les fonctionnalités accessibles (SA, AD, US).
+
+**Super Administrateur (SA)**
+: Niveau de droits maximum avec accès à toutes les fonctionnalités y compris Admin Django.
+
+**Administrateur (AD)**
+: Niveau de droits permettant la gestion des services et utilisateurs (sans Admin Django).
+
+**Utilisateur (US)**
+: Niveau de droits standard pour l'utilisation quotidienne sans accès administration.
+
 **Import/Export JSON**
 : Fonctionnalité de sauvegarde et restauration des données au format JSON.
+
+**Authentification matricule**
+: Système de connexion utilisant le matricule comme identifiant au lieu d'un nom d'utilisateur.
 
 ### Termes métier
 
@@ -425,4 +708,20 @@ Contactez votre administrateur système en fournissant toutes les informations c
 
 **📝 Note** : Ce manuel est mis à jour régulièrement. La version la plus récente est disponible dans le repository du projet.
 
-**🔄 Dernière mise à jour** : Janvier 2025
+**🔄 Dernière mise à jour** : Août 2025
+
+### Historique des versions
+
+**Version 2.0** (Août 2025)
+- ✨ **Nouvelle fonctionnalité** : Gestion complète des utilisateurs
+- 🔐 **Authentification personnalisée** : Système de connexion par matricule
+- 👥 **Système de droits** : 3 niveaux d'accès (Super Admin, Admin, User)
+- 🎨 **Interface dédiée** : Templates de connexion et changement de mot de passe
+- 🔒 **Sécurité renforcée** : Changement de mot de passe obligatoire à la première connexion
+- 📋 **Export utilisateurs** : Fonctionnalité d'export JSON des utilisateurs
+
+**Version 1.0** (Janvier 2025)
+- 🏢 **Gestion des services** : CRUD complet avec hiérarchie
+- 📥📤 **Import/Export JSON** : Sauvegarde et restauration des services
+- 🎨 **Interface moderne** : Tailwind CSS + HTMX + Alpine.js
+- ⚙️ **Administration Django** : Interface d'administration avancée
