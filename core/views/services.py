@@ -73,7 +73,7 @@ def service_create(request):
             if request.headers.get('HX-Request'):
                 return JsonResponse({'success': False, 'error': str(e)})
     
-    services = Service.objects.order_by('nom')
+    services = Service.objects.select_related('parent').order_by('nom')
     context = {
         'services': services,
         'page_title': 'Créer un Service'
@@ -120,7 +120,7 @@ def service_edit(request, pk):
             if request.headers.get('HX-Request'):
                 return JsonResponse({'success': False, 'error': str(e)})
     
-    services = Service.objects.exclude(pk=service.pk).order_by('nom')
+    services = Service.objects.exclude(pk=service.pk).select_related('parent').order_by('nom')
     context = {
         'service': service,
         'services': services,
@@ -143,35 +143,12 @@ def service_delete(request, pk):
     if service.sous_services.exists():
         message = f'Impossible de supprimer "{service.nom}" car il contient des sous-services.'
         if request.headers.get('HX-Request'):
-            # Pour HTMX, retourner une réponse avec le message d'erreur
-            response = HttpResponse(f'''
-                <div class="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50" 
-                     x-data="{{open: true}}" 
-                     x-show="open"
-                     x-transition>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>{message}</span>
-                        </div>
-                        <button @click="open = false" class="ml-4 text-red-500 hover:text-red-600">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <script>
-                    setTimeout(() => {{
-                        const errorDiv = document.querySelector('[x-data*="open: true"]');
-                        if (errorDiv && errorDiv.__x) {{
-                            errorDiv.__x.$data.open = false;
-                        }}
-                    }}, 5000);
-                </script>
-            ''')
+            # Pour HTMX, utiliser un template dédié pour la notification
+            from django.template.loader import render_to_string
+            notification_html = render_to_string('core/services/notification_error.html', {
+                'message': message
+            })
+            response = HttpResponse(notification_html)
             response['HX-Swap'] = 'beforeend'
             response['HX-Target'] = 'body'
             return response
@@ -197,7 +174,7 @@ def export_services_json(request):
     """
     Exporte tous les services en JSON avec nommage automatique.
     """
-    services = Service.objects.all().select_related('parent')
+    services = Service.objects.all().select_related('parent').order_by('nom')
     
     # Préparer les données pour l'export
     data = []
@@ -333,12 +310,15 @@ def import_services_json(request):
                 if len(errors) > 5:
                     messages.error(request, f'... et {len(errors) - 5} autres erreurs.')
             
+            # Rediriger vers la page admin des services après un import réussi
+            return redirect('/admin/core/service/')
+            
         except json.JSONDecodeError:
             messages.error(request, 'Fichier JSON invalide.')
+            return redirect('import_services_form')
         except Exception as e:
             messages.error(request, f'Erreur lors de l\'import : {str(e)}')
-        
-        return redirect('import_services_form')
+            return redirect('import_services_form')
     
     # Si GET, afficher le formulaire d'import
     return render(request, 'admin/core/service/import_form.html')

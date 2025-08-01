@@ -92,14 +92,6 @@
 </div>
 
 <script>
-    function closeModal() {
-        const modal = document.querySelector('#service-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-            document.querySelector('#modal-container').innerHTML = '';
-        }
-    }
-
     // Ouvrir automatiquement la modale
     setTimeout(() => {
         const modal = document.querySelector('#service-modal');
@@ -107,11 +99,4 @@
             modal.classList.remove('hidden');
         }
     }, 100);
-
-    // Fermer la modale avec Escape
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeModal();
-        }
-    });
 </script>

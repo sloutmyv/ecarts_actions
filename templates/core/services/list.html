@@ -15,9 +15,7 @@
             hx-target="#modal-container" 
             hx-trigger="click"
             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-            </svg>
+            {% include 'core/services/icons.html' with icon_name="plus" %}
             Nouveau Service
         </button>
     </div>
@@ -54,39 +52,6 @@
 <!-- Container pour les modales HTMX -->
 <div id="modal-container"></div>
 
-<!-- Scripts pour les modales et interactions -->
-<script>
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'modal-container') {
-            // Ouvrir la modale après chargement du contenu
-            const modal = document.querySelector('#service-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-    });
-
-    // Gérer les réponses JSON des actions
-    document.body.addEventListener('htmx:responseError', function(evt) {
-        console.error('Erreur HTMX:', evt.detail);
-    });
-
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-        const xhr = evt.detail.xhr;
-        if (xhr.status === 200) {
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.success) {
-                    if (response.redirect) {
-                        window.location.href = response.redirect;
-                    }
-                } else if (response.error) {
-                    alert('Erreur: ' + response.error);
-                }
-            } catch (e) {
-                // Response n'est pas JSON, comportement normal pour les templates
-            }
-        }
-    });
-</script>
+<!-- Script pour les services -->
+<script src="{% load static %}{% static 'js/services.js' %}"></script>
 {% endblock %}
