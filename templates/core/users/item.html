@@ -78,10 +78,8 @@
             <button 
                 hx-post="{% url 'user_delete' user_item.pk %}"
                 hx-trigger="click"
-                hx-confirm="Êtes-vous sûr de vouloir supprimer l'utilisateur '{{ user_item.get_full_name }}' ?"
+                hx-target="#modal-container"
                 hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                hx-target="closest tr"
-                hx-swap="outerHTML"
                 title="Supprimer l'utilisateur"
                 class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                 {% include 'core/users/icons.html' with icon_name="delete" class="w-4 h-4" %}

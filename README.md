@@ -24,6 +24,7 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Authentification Matricule**: Connexion par matricule (format: Lettre + 4 chiffres)
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
 - **Import/Export JSON**: Sauvegarde et restauration des données organisationnelles
+- **Modales de confirmation**: Système uniforme de confirmation pour les suppressions
 - **Gestion des Écarts**: Suivi et traitement des non-conformités (à venir)
 - **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
 
@@ -32,6 +33,7 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - Interactions fluides sans rechargement de page (HTMX)
 - Composants réactifs côté client (Alpine.js)
 - Modales pour les formulaires de création/modification
+- Modales de confirmation centrées avec design uniforme
 - Actions alignées visuellement avec icônes intuitives
 
 ### Philosophie technique
@@ -394,13 +396,19 @@ ecarts_actions/
 │       │   ├── item.html     # 📄 Item service (récursif)
 │       │   ├── detail.html   # 🔍 Détail d'un service
 │       │   ├── form.html     # 📝 Formulaire service
-│       │   └── form_modal.html # 📝 Formulaire modal HTMX
+│       │   ├── form_modal.html # 📝 Formulaire modal HTMX
+│       │   ├── notification_confirm.html # ⚠️ Modale confirmation suppression
+│       │   ├── notification_warning.html # ⚠️ Modale warning suppression
+│       │   └── notification_error.html   # ❌ Modale erreur suppression
 │       ├── 📁 users/          # 👤 Templates gestion utilisateurs
 │       │   ├── list.html     # 📋 Liste des utilisateurs
 │       │   ├── item.html     # 📄 Item utilisateur
 │       │   ├── detail.html   # 🔍 Détail d'un utilisateur
 │       │   ├── form.html     # 📝 Formulaire utilisateur
 │       │   ├── form_modal.html # 📝 Formulaire modal HTMX
+│       │   ├── notification_confirm.html # ⚠️ Modale confirmation suppression
+│       │   ├── notification_warning.html # ⚠️ Modale warning suppression
+│       │   ├── notification_error.html   # ❌ Modale erreur suppression
 │       │   └── icons.html    # 🎨 Icônes utilisateurs
 │       ├── 📁 ecarts/         # ⚠️ Templates gestion écarts (à venir)
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)

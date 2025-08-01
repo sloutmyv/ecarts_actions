@@ -53,9 +53,9 @@ document.addEventListener('htmx:afterRequest', function(event) {
 
 // Gestion des événements HTMX personnalisés
 document.body.addEventListener('userDeleted', function(event) {
-    // Optionnel : afficher une notification de succès ou rafraîchir la page
     console.log('Utilisateur supprimé avec succès');
-    // La ligne est déjà supprimée par HTMX grâce à hx-target="closest tr" et hx-swap="outerHTML"
+    // Recharger la page pour refléter les changements
+    location.reload();
 });
 
 // Auto-focus sur le premier champ des formulaires modaux

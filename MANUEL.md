@@ -179,15 +179,34 @@ Les **Services** représentent l'organisation hiérarchique de votre entreprise 
 
 ### Supprimer un Service
 
-1. **Conditions de suppression**
-   - ⚠️ Un service avec des sous-services ne peut pas être supprimé
-   - Il faut d'abord supprimer ou déplacer tous les sous-services
+1. **Système de confirmation par modales**
+   - Un nouveau système de confirmation sécurisé a été mis en place
+   - Toutes les suppressions utilisent des modales de couleur orange pastel
+   - Messages d'avertissement clairs et informatifs
 
 2. **Processus de suppression**
    - Cliquez sur l'icône **🗑️** à droite du service
-   - Une confirmation est demandée
-   - Confirmez la suppression
-   - Le service disparaît de la liste
+   - **Modal de confirmation** s'affiche avec fond orange pastel
+   - **Trois scénarios possibles** :
+
+   **🟢 Service sans dépendances**
+   - Modal simple : "Êtes-vous sûr de vouloir supprimer ce service ?"
+   - Cliquez sur **"Confirmer la suppression"** (rouge) ou **"Annuler"** (gris)
+
+   **🟡 Service avec utilisateurs liés**
+   - Modal d'avertissement : "Ce service est lié à X utilisateur(s)"
+   - Message explicatif : "En le supprimant, vous allez retirer l'affectation des utilisateurs"
+   - Cliquez sur **"Confirmer la suppression"** (rouge) ou **"Annuler"** (gris)
+
+   **🔴 Service avec sous-services** 
+   - Modal d'erreur : "Impossible de supprimer ce service"
+   - Explication : "Ce service contient des sous-services"
+   - Action requise : Supprimer d'abord tous les sous-services
+   - Seul bouton **"Fermer"** disponible
+
+3. **Finalisation**
+   - Si confirmé, le service disparaît de la liste
+   - Les utilisateurs liés sont automatiquement désaffectés
 
 ### Bonnes pratiques
 
@@ -311,11 +330,20 @@ La gestion des utilisateurs permet de :
    - ✅ Peut supprimer tout utilisateur sauf soi-même
    - ❌ Impossible de supprimer son propre compte (protection)
 
-2. **Processus de suppression**
+2. **Système de confirmation par modale**
+   - Nouveau système de confirmation sécurisé identique aux services
+   - Modal de couleur orange pastel pour une expérience unifiée
+
+3. **Processus de suppression**
    - Cliquez sur l'icône **🗑️** à droite de l'utilisateur
-   - Une confirmation avec le nom complet est demandée
-   - Confirmez la suppression
-   - L'utilisateur disparaît de la liste et ne peut plus se connecter
+   - **Modal de confirmation** s'affiche avec fond orange pastel
+   - Message : "Êtes-vous sûr de vouloir supprimer cet utilisateur ?"
+   - Nom complet de l'utilisateur affiché pour confirmation
+   - Cliquez sur **"Confirmer la suppression"** (rouge) ou **"Annuler"** (gris)
+
+4. **Finalisation**
+   - Si confirmé, l'utilisateur disparaît de la liste
+   - L'utilisateur ne peut plus se connecter à l'application
 
 ### Bonnes pratiques de gestion des utilisateurs
 
@@ -719,6 +747,8 @@ Contactez votre administrateur système en fournissant toutes les informations c
 - 🎨 **Interface dédiée** : Templates de connexion et changement de mot de passe
 - 🔒 **Sécurité renforcée** : Changement de mot de passe obligatoire à la première connexion
 - 📋 **Export utilisateurs** : Fonctionnalité d'export JSON des utilisateurs
+- 🛡️ **Modales de confirmation** : Système uniforme de confirmation pour toutes les suppressions
+- ⚠️ **Avertissements intelligents** : Messages contextuels pour les suppressions avec dépendances
 
 **Version 1.0** (Janvier 2025)
 - 🏢 **Gestion des services** : CRUD complet avec hiérarchie

@@ -180,12 +180,13 @@ def user_edit(request, pk):
     return render(request, 'core/users/form.html', context)
 
 
-@login_required
+@login_required 
 @user_passes_test(user_can_manage_users)
 @require_POST
 def user_delete(request, pk):
     """
     Vue suppression d'un utilisateur.
+    Affiche une modale de confirmation avant suppression.
     """
     user_to_delete = get_object_or_404(User, pk=pk)
     
@@ -194,27 +195,69 @@ def user_delete(request, pk):
         message = 'Vous ne pouvez pas supprimer votre propre compte.'
         if request.headers.get('HX-Request'):
             from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
             notification_html = render_to_string('core/users/notification_error.html', {
-                'message': message
+                'message': message,
+                'csrf_token': get_token(request)
             })
             response = HttpResponse(notification_html)
-            response['HX-Swap'] = 'beforeend'
-            response['HX-Target'] = 'body'
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
             return response
         else:
             messages.error(request, message)
     else:
-        nom_complet = user_to_delete.get_full_name()
-        user_to_delete.delete()
-        message = f'L\'utilisateur "{nom_complet}" a été supprimé avec succès.'
+        # Afficher la modale de confirmation
+        message = f'Êtes-vous sûr de vouloir supprimer l\'utilisateur "{user_to_delete.get_full_name()}" ?'
+        
         if request.headers.get('HX-Request'):
-            # Pour HTMX, retourner un contenu vide pour supprimer la ligne
-            response = HttpResponse('')
-            response['HX-Trigger'] = 'userDeleted'
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/users/notification_confirm.html', {
+                'message': message,
+                'user': user_to_delete,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
             return response
         else:
-            messages.success(request, message)
-            return redirect('users_list')
+            # Pour les requêtes non-HTMX, supprimer directement (ancien comportement)
+            nom_complet = user_to_delete.get_full_name()
+            user_to_delete.delete()
+            messages.success(request, f'L\'utilisateur "{nom_complet}" a été supprimé avec succès.')
+    
+    return redirect('users_list')
+
+
+@login_required
+@user_passes_test(user_can_manage_users)
+@require_POST
+def user_delete_confirm(request, pk):
+    """
+    Confirmation définitive de suppression d'un utilisateur.
+    """
+    user_to_delete = get_object_or_404(User, pk=pk)
+    
+    # Empêcher la suppression de son propre compte (sécurité supplémentaire)
+    if user_to_delete == request.user:
+        messages.error(request, 'Vous ne pouvez pas supprimer votre propre compte.')
+        return redirect('users_list')
+    
+    # Supprimer l'utilisateur
+    nom_complet = user_to_delete.get_full_name()
+    user_to_delete.delete()
+    
+    message = f'L\'utilisateur "{nom_complet}" a été supprimé avec succès.'
+    
+    if request.headers.get('HX-Request'):
+        # Pour HTMX, retourner un contenu vide pour déclencher le rechargement
+        response = HttpResponse('')
+        response['HX-Trigger'] = 'userDeleted'
+        return response
+    else:
+        messages.success(request, message)
     
     return redirect('users_list')
 
@@ -252,49 +295,3 @@ def user_reset_password(request, pk):
     return redirect('users_list')
 
 
-@login_required
-@user_passes_test(user_can_manage_users)
-def export_users_json(request):
-    """
-    Exporte tous les utilisateurs en JSON avec nommage automatique.
-    """
-    users = User.objects.all().select_related('service').order_by('nom', 'prenom')
-    
-    # Préparer les données pour l'export
-    data = []
-    for user in users:
-        user_data = {
-            'id': user.id,
-            'matricule': user.matricule,
-            'nom': user.nom,
-            'prenom': user.prenom,
-            'email': user.email,
-            'droits': user.droits,
-            'service_id': user.service.id if user.service else None,
-            'service_code': user.service.code if user.service else None,
-            'is_active': user.is_active,
-            'created_at': user.created_at.isoformat() if user.created_at else None,
-            'updated_at': user.updated_at.isoformat() if user.updated_at else None,
-        }
-        data.append(user_data)
-    
-    # Préparer le fichier JSON avec métadonnées
-    export_data = {
-        'model': 'User',
-        'export_date': datetime.now().isoformat(),
-        'total_records': len(data),
-        'data': data
-    }
-    
-    # Créer la réponse HTTP avec le fichier JSON
-    response = HttpResponse(
-        json.dumps(export_data, indent=2, ensure_ascii=False),
-        content_type='application/json; charset=utf-8'
-    )
-    
-    # Nom du fichier avec convention : modele_YYMMDD.json
-    filename = f"User_{datetime.now().strftime('%y%m%d')}.json"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
-    messages.success(request, f'Export terminé : {len(data)} utilisateurs exportés dans {filename}')
-    return response

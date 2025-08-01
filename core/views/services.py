@@ -136,35 +136,98 @@ def service_edit(request, pk):
 def service_delete(request, pk):
     """
     Vue suppression d'un service.
-    Vérifie qu'il n'y a pas de sous-services avant suppression.
+    Vérifie qu'il n'y a pas de sous-services et d'utilisateurs liés avant suppression.
     """
     service = get_object_or_404(Service, pk=pk)
     
+    # Vérifier s'il y a des sous-services
     if service.sous_services.exists():
         message = f'Impossible de supprimer "{service.nom}" car il contient des sous-services.'
         if request.headers.get('HX-Request'):
-            # Pour HTMX, utiliser un template dédié pour la notification
             from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
             notification_html = render_to_string('core/services/notification_error.html', {
-                'message': message
+                'message': message,
+                'csrf_token': get_token(request)
             })
             response = HttpResponse(notification_html)
-            response['HX-Swap'] = 'beforeend'
-            response['HX-Target'] = 'body'
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
             return response
         else:
             messages.error(request, message)
-    else:
-        nom_service = service.nom
-        service.delete()
-        message = f'Le service "{nom_service}" a été supprimé avec succès.'
+    # Vérifier s'il y a des utilisateurs liés au service
+    elif service.utilisateurs.exists():
+        utilisateurs_lies = service.utilisateurs.all()
+        nb_utilisateurs = utilisateurs_lies.count()
+        
+        message = f'Attention ! Le service "{service.nom}" est actuellement affecté à {nb_utilisateurs} utilisateur(s). En supprimant ce service, ces utilisateurs ne seront plus affectés à aucun service.'
+        
         if request.headers.get('HX-Request'):
-            # Pour HTMX, recharger la liste des services
-            response = HttpResponse('')
-            response['HX-Trigger'] = 'serviceDeleted'
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/services/notification_warning.html', {
+                'message': message,
+                'service': service,
+                'utilisateurs_lies': utilisateurs_lies,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
             return response
         else:
-            messages.success(request, message)
+            messages.warning(request, message)
+    else:
+        # Service sans utilisateurs ni sous-services - demander confirmation simple
+        message = f'Êtes-vous sûr de vouloir supprimer le service "{service.nom}" ?'
+        
+        if request.headers.get('HX-Request'):
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/services/notification_confirm.html', {
+                'message': message,
+                'service': service,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
+        else:
+            # Pour les requêtes non-HTMX, supprimer directement (ancien comportement)
+            nom_service = service.nom
+            service.delete()
+            messages.success(request, f'Le service "{nom_service}" a été supprimé avec succès.')
+    
+    return redirect('services_list')
+
+
+@require_POST
+def service_delete_confirm(request, pk):
+    """
+    Confirmation définitive de suppression d'un service avec utilisateurs liés.
+    """
+    print(f"DEBUG: service_delete_confirm appelée pour service pk={pk}")
+    service = get_object_or_404(Service, pk=pk)
+    print(f"DEBUG: Service trouvé: {service.nom}")
+    
+    # Supprimer le service (les utilisateurs liés auront leur service mis à None automatiquement)
+    nom_service = service.nom
+    service.delete()
+    print(f"DEBUG: Service {nom_service} supprimé")
+    
+    message = f'Le service "{nom_service}" a été supprimé avec succès. Les utilisateurs précédemment affectés à ce service ne sont plus rattachés à aucun service.'
+    
+    if request.headers.get('HX-Request'):
+        print("DEBUG: Requête HTMX détectée")
+        # Pour HTMX, recharger la liste des services
+        response = HttpResponse('')
+        response['HX-Trigger'] = 'serviceDeleted'
+        return response
+    else:
+        print("DEBUG: Requête non-HTMX")
+        messages.success(request, message)
     
     return redirect('services_list')
 
