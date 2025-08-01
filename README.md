@@ -308,6 +308,8 @@ DATABASE_URL=sqlite:///db.sqlite3
 
 ## 📁 Structure du projet
 
+### Architecture modulaire par domaine métier
+
 ```
 ecarts_actions/
 ├── 📁 ecarts_actions/          # Configuration Django
@@ -316,29 +318,80 @@ ecarts_actions/
 │   ├── wsgi.py               # 🚀 Configuration WSGI
 │   └── asgi.py               # 🚀 Configuration ASGI
 ├── 📁 core/                   # 🎯 Application principale
-│   ├── models.py             # 🗃️ Modèles de données
-│   ├── views.py              # 👁️ Logique métier
-│   ├── forms.py              # 📝 Formulaires Django
+│   ├── 📁 models/             # 🗃️ Modèles par domaine
+│   │   ├── __init__.py       # 📦 Import centralisé
+│   │   ├── base.py           # 🏗️ Modèles abstraits (TimestampedModel, CodedModel)
+│   │   ├── services.py       # 🏢 Modèle Service (organisation hiérarchique)
+│   │   ├── ecarts.py         # ⚠️ Modèles Écart, TypeEcart (à venir)
+│   │   └── actions.py        # 📋 Modèles Action, PlanAction (à venir)
+│   ├── 📁 views/              # 👁️ Vues par domaine
+│   │   ├── __init__.py       # 📦 Import centralisé
+│   │   ├── dashboard.py      # 📊 Vue tableau de bord
+│   │   ├── services.py       # 🏢 CRUD services + import/export
+│   │   ├── ecarts.py         # ⚠️ Gestion des écarts (à venir)
+│   │   └── actions.py        # 📋 Gestion des plans d'actions (à venir)
+│   ├── 📁 admin/              # 🔧 Configuration admin par domaine
+│   │   ├── __init__.py       # 📦 Import centralisé
+│   │   ├── services.py       # 🏢 ServiceAdmin
+│   │   ├── ecarts.py         # ⚠️ EcartAdmin (à venir)
+│   │   └── actions.py        # 📋 ActionAdmin (à venir)
 │   ├── urls.py               # 🔗 URLs de l'app
-│   ├── admin.py              # 🔧 Configuration admin
 │   └── migrations/           # 📦 Migrations DB
-├── 📁 templates/              # 🎨 Templates Django
-│   ├── base.html             # 🏠 Template de base
-│   └── core/                 # 📁 Templates de l'app core
-│       ├── item_list.html    # 📋 Liste des éléments
-│       ├── item_form_modal.html  # 📝 Formulaire modal
-│       └── item_row.html     # 📄 Ligne d'élément
+├── 📁 templates/              # 🎨 Templates par domaine
+│   ├── base.html             # 🏠 Template de base avec Tailwind/HTMX/Alpine
+│   ├── 📁 admin/              # 🔧 Templates admin personnalisés
+│   │   └── core/service/     # 🏢 Templates import/export services
+│   └── 📁 core/               # 📁 Templates de l'app core
+│       ├── 📁 dashboard/      # 📊 Templates tableau de bord
+│       │   └── dashboard.html # 📊 Page principale dashboard
+│       ├── 📁 services/       # 🏢 Templates gestion services
+│       │   ├── list.html     # 📋 Liste hiérarchique des services
+│       │   ├── item.html     # 📄 Item service (récursif)
+│       │   ├── detail.html   # 🔍 Détail d'un service
+│       │   ├── form.html     # 📝 Formulaire service
+│       │   └── form_modal.html # 📝 Formulaire modal HTMX
+│       ├── 📁 ecarts/         # ⚠️ Templates gestion écarts (à venir)
+│       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques
 │   ├── css/                  # 🎨 CSS personnalisés
 │   ├── js/                   # ⚡ JavaScript personnalisés
 │   └── images/               # 🖼️ Images
-├── 📁 venv/                   # 🐍 Environnement virtuel
+├── 📁 venv/                   # 🐍 Environnement virtuel Python 3.12.3
 ├── manage.py                 # 🛠️ CLI Django
 ├── requirements.txt          # 📦 Dépendances Python
 ├── README.md                 # 📖 Documentation développeur
 ├── MANUEL.md                 # 📋 Manuel utilisateur
 └── CLAUDE.md                 # 🤖 Guide Claude Code
 ```
+
+### Principe de l'architecture modulaire
+
+#### 🏗️ Organisation par domaine métier
+Chaque domaine métier (services, écarts, actions) est organisé dans sa propre structure :
+- **Modèles** : `models/domaine.py` - Logique de données
+- **Vues** : `views/domaine.py` - Logique métier et interaction
+- **Admin** : `admin/domaine.py` - Configuration interface d'administration
+- **Templates** : `templates/core/domaine/` - Interface utilisateur
+
+#### 📦 Import centralisé
+Les fichiers `__init__.py` permettent d'importer tous les composants d'un domaine :
+```python
+# core/models/__init__.py
+from .services import Service
+from .ecarts import Ecart, TypeEcart  # À venir
+from .actions import Action, PlanAction  # À venir
+
+# core/views/__init__.py
+from .dashboard import dashboard
+from .services import services_list, service_create, service_edit
+```
+
+#### 🔄 Évolutivité et maintenance
+- **Ajout facile** de nouveaux domaines métier
+- **Séparation claire** des responsabilités
+- **Tests isolés** par domaine
+- **Réutilisabilité** des composants de base
+- **Collaboration** facilitée (plusieurs développeurs)
 
 ## 🛠️ Stack technologique
 
@@ -359,34 +412,135 @@ ecarts_actions/
 
 ## 📏 Conventions de développement
 
+### Architecture modulaire par domaine
+
+#### 🗂️ Organisation des fichiers
+Suivre la structure modulaire pour tous les nouveaux domaines métier :
+
+```python
+# ✅ Correct : Organisation par domaine
+core/
+├── models/
+│   ├── __init__.py          # Import centralisé
+│   ├── base.py              # Modèles abstraits réutilisables
+│   ├── services.py          # Domaine services
+│   ├── ecarts.py            # Domaine écarts
+│   └── actions.py           # Domaine actions
+├── views/
+│   ├── __init__.py          # Import centralisé
+│   ├── dashboard.py         # Vue transversale
+│   ├── services.py          # Vues domaine services
+│   ├── ecarts.py            # Vues domaine écarts
+│   └── actions.py           # Vues domaine actions
+```
+
+#### 📦 Règles d'import centralisé
+Chaque module doit exposer ses composants via `__init__.py` :
+
+```python
+# core/models/__init__.py
+from .services import Service
+from .ecarts import Ecart, TypeEcart, StatutEcart
+from .actions import Action, PlanAction, Responsable
+
+# Permet d'importer simplement :
+from core.models import Service, Ecart, Action
+```
+
+#### 🏗️ Modèles de base
+Utiliser les modèles abstraits pour la cohérence :
+
+```python
+# Utiliser les modèles de base
+from .base import TimestampedModel, CodedModel
+
+class NouveauModele(TimestampedModel, CodedModel):
+    nom = models.CharField(max_length=100)
+    # Hérite automatiquement de : created_at, updated_at, code
+```
+
 ### Conventions Python/Django
 - **PEP 8**: Style guide Python standard
 - **Django Conventions**: Nommage des modèles, vues, URLs
-- **Docstrings**: Documentation des fonctions et classes
+- **Docstrings**: Documentation des fonctions et classes avec format Google/NumPy
+- **Type Hints**: Utiliser les annotations de type quand c'est pertinent
 
 ### Conventions Frontend
 - **Tailwind Classes**: Utiliser les classes Tailwind plutôt que du CSS custom
 - **HTMX Attributes**: Préfixer avec `hx-` et documenter les interactions
 - **Alpine.js**: Utiliser `x-data`, `x-show`, etc. avec parcimonie
 
-### Conventions de nommage
+### Conventions de nommage par domaine
 ```python
-# Modèles : PascalCase
-class Item(models.Model):
-    pass
+# Modèles : PascalCase avec préfixe domaine si nécessaire
+class Service(models.Model):          # ✅ Simple et clair
+class EcartQualite(models.Model):     # ✅ Préfixe si ambigu
+class Action(models.Model):           # ✅ Simple et clair
 
-# Vues : snake_case
-def item_create(request):
-    pass
+# Vues : snake_case avec préfixe domaine
+def services_list(request):           # ✅ services_list
+def service_create(request):          # ✅ service_create
+def ecart_validate(request):          # ✅ ecart_validate
 
-# URLs : kebab-case
-path('items/create/', views.item_create, name='item-create')
+# URLs : kebab-case avec préfixe domaine
+path('services/', views.services_list, name='services-list')
+path('services/create/', views.service_create, name='service-create')
+path('ecarts/validate/<int:pk>/', views.ecart_validate, name='ecart-validate')
 
-# Templates : snake_case
-item_form_modal.html
+# Templates : Organisation par dossier domaine
+templates/core/services/list.html     # ✅ Organisé par domaine
+templates/core/services/form.html     # ✅ Nom explicite
+templates/core/ecarts/detail.html     # ✅ Cohérent
+```
 
-# CSS Classes : kebab-case (Tailwind)
-class="bg-blue-500 hover:bg-blue-700"
+### Structure des fichiers par domaine
+
+#### 📝 Template d'un nouveau domaine
+```python
+# core/models/nouveau_domaine.py
+"""
+Modèles liés au domaine [Nom du domaine].
+Description du domaine et de ses responsabilités.
+"""
+from django.db import models
+from .base import TimestampedModel, CodedModel
+
+class NouveauModele(TimestampedModel, CodedModel):
+    """Documentation du modèle."""
+    nom = models.CharField(max_length=100, verbose_name="Nom")
+    
+    class Meta:
+        verbose_name = "N. Nouveau Modèle"  # N = ordre d'affichage
+        verbose_name_plural = "N. Nouveaux Modèles"
+        
+    def __str__(self):
+        return f"{self.code} - {self.nom}"
+```
+
+```python
+# core/views/nouveau_domaine.py
+"""
+Vues pour la gestion du domaine [Nom du domaine].
+"""
+from django.shortcuts import render, get_object_or_404
+from ..models import NouveauModele
+
+def nouveau_domaine_list(request):
+    """Vue liste du domaine."""
+    items = NouveauModele.objects.all()
+    return render(request, 'core/nouveau_domaine/list.html', {
+        'items': items
+    })
+```
+
+#### 🗂️ Organisation des templates
+```
+templates/core/nouveau_domaine/
+├── list.html           # Liste des éléments
+├── detail.html         # Détail d'un élément
+├── form.html           # Formulaire standard
+├── form_modal.html     # Formulaire modal HTMX
+└── item.html           # Item dans une liste (si récursif)
 ```
 
 ### Structure des commits

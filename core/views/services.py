@@ -1,81 +1,34 @@
+"""
+Vues pour la gestion des services et de l'organisation hiérarchique.
+"""
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import reverse
-from django.core import serializers
 from django.db import transaction
 from datetime import datetime
 import json
-from .models import Service
-
-def dashboard(request):
-    # Données simulées pour le tableau de bord
-    context = {
-        'user_stats': {
-            'total_ecarts': 24,
-            'ecarts_en_cours': 8,
-            'ecarts_resolus': 16,
-            'plans_actions': 12,
-        },
-        'recent_ecarts': [
-            {
-                'id': 1,
-                'title': 'Non-conformité process qualité',
-                'status': 'En cours',
-                'priority': 'Haute',
-                'date': '2024-01-28',
-                'assignee': 'Marie Dupont'
-            },
-            {
-                'id': 2,
-                'title': 'Écart documentaire ISO 9001',
-                'status': 'Nouveau',
-                'priority': 'Moyenne',
-                'date': '2024-01-27',
-                'assignee': 'Jean Martin'
-            },
-            {
-                'id': 3,
-                'title': 'Incident sécurité atelier',
-                'status': 'Résolu',
-                'priority': 'Haute',
-                'date': '2024-01-26',
-                'assignee': 'Paul Bernard'
-            },
-        ],
-        'notifications': [
-            {
-                'type': 'warning',
-                'message': 'Vous avez 3 écarts en attente de validation',
-                'time': 'Il y a 2h'
-            },
-            {
-                'type': 'info',
-                'message': 'Nouveau plan d\'action assigné',
-                'time': 'Il y a 4h'
-            },
-            {
-                'type': 'success',
-                'message': 'Écart #15 résolu avec succès',
-                'time': 'Hier'
-            },
-        ]
-    }
-    return render(request, 'core/dashboard.html', context)
+from ..models import Service
 
 
 def services_list(request):
+    """
+    Vue liste des services avec affichage hiérarchique.
+    """
     services_racines = Service.objects.filter(parent=None).order_by('nom')
     context = {
         'services_racines': services_racines,
         'page_title': 'Gestion des Services'
     }
-    return render(request, 'core/services_list.html', context)
+    return render(request, 'core/services/list.html', context)
 
 
 def service_detail(request, pk):
+    """
+    Vue détail d'un service avec ses sous-services.
+    """
     service = get_object_or_404(Service, pk=pk)
     sous_services = service.sous_services.order_by('nom')
     context = {
@@ -83,10 +36,14 @@ def service_detail(request, pk):
         'sous_services': sous_services,
         'breadcrumb': service.get_chemin_hierarchique().split(' > ')
     }
-    return render(request, 'core/service_detail.html', context)
+    return render(request, 'core/services/detail.html', context)
 
 
 def service_create(request):
+    """
+    Vue création d'un nouveau service.
+    Supporte les requêtes HTMX pour affichage en modal.
+    """
     if request.method == 'POST':
         try:
             service = Service(
@@ -123,11 +80,15 @@ def service_create(request):
     }
     
     if request.headers.get('HX-Request'):
-        return render(request, 'core/service_form_modal.html', context)
-    return render(request, 'core/service_form.html', context)
+        return render(request, 'core/services/form_modal.html', context)
+    return render(request, 'core/services/form.html', context)
 
 
 def service_edit(request, pk):
+    """
+    Vue modification d'un service existant.
+    Supporte les requêtes HTMX pour affichage en modal.
+    """
     service = get_object_or_404(Service, pk=pk)
     
     if request.method == 'POST':
@@ -167,12 +128,16 @@ def service_edit(request, pk):
     }
     
     if request.headers.get('HX-Request'):
-        return render(request, 'core/service_form_modal.html', context)
-    return render(request, 'core/service_form.html', context)
+        return render(request, 'core/services/form_modal.html', context)
+    return render(request, 'core/services/form.html', context)
 
 
 @require_POST
 def service_delete(request, pk):
+    """
+    Vue suppression d'un service.
+    Vérifie qu'il n'y a pas de sous-services avant suppression.
+    """
     service = get_object_or_404(Service, pk=pk)
     
     if service.sous_services.exists():
@@ -227,11 +192,11 @@ def service_delete(request, pk):
     return redirect('services_list')
 
 
-
-
 @staff_member_required
 def export_services_json(request):
-    """Exporte tous les services en JSON avec nommage automatique"""
+    """
+    Exporte tous les services en JSON avec nommage automatique.
+    """
     services = Service.objects.all().select_related('parent')
     
     # Préparer les données pour l'export
@@ -272,7 +237,10 @@ def export_services_json(request):
 
 @staff_member_required
 def import_services_json(request):
-    """Importe des services depuis un fichier JSON"""
+    """
+    Importe des services depuis un fichier JSON.
+    Import destructif qui remplace toute la base de données existante.
+    """
     if request.method == 'POST':
         json_file = request.FILES.get('json_file')
         
@@ -378,5 +346,7 @@ def import_services_json(request):
 
 @staff_member_required  
 def import_services_form(request):
-    """Affiche le formulaire d'import"""
+    """
+    Affiche le formulaire d'import des services.
+    """
     return render(request, 'admin/core/service/import_form.html')

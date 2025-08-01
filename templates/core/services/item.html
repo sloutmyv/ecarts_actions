@@ -114,7 +114,7 @@
          x-transition:leave-end="opacity-0 max-h-0"
          class="overflow-hidden">
         {% for sous_service in service.sous_services.all %}
-            {% include 'core/service_item.html' with service=sous_service level=level|add:1 %}
+            {% include 'core/services/item.html' with service=sous_service level=level|add:1 %}
         {% endfor %}
     </div>
 </div>
