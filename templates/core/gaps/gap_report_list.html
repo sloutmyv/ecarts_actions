@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Déclarations d'écart{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- En-tête -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Déclarations d'écart
+            </h1>
+            <p class="text-gray-600 mt-2">Gérez les déclarations d'écart groupées</p>
+        </div>
+        <button 
+            onclick="window.location.href='{% url 'gaps:gap_report_create' %}'"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            Nouvelle déclaration
+        </button>
+    </div>
+
+    <!-- Liste des déclarations -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+        {% if gap_reports %}
+            <ul role="list" class="divide-y divide-gray-200">
+                {% for gap_report in gap_reports %}
+                <li>
+                    <a href="{% url 'gaps:gap_report_detail' gap_report.pk %}" class="block hover:bg-gray-50 transition-colors">
+                        <div class="px-6 py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            Déclaration #{{ gap_report.id }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ gap_report.audit_source.name }} - {{ gap_report.service.nom }}
+                                        </div>
+                                        {% if gap_report.location %}
+                                        <div class="text-xs text-gray-400">
+                                            📍 {{ gap_report.location }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <div class="text-sm text-gray-900">
+                                        {{ gap_report.observation_date|date:"d/m/Y" }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        par {{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.username }}
+                                    </div>
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ gap_report.gaps.count }} écart{{ gap_report.gaps.count|pluralize }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="p-8 text-center">
+                <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune déclaration d'écart</h3>
+                <p class="text-gray-500 mb-4">Commencez par créer votre première déclaration d'écart.</p>
+                <button 
+                    onclick="window.location.href='{% url 'gaps:gap_report_create' %}'"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Nouvelle déclaration
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

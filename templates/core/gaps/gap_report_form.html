@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- En-tête -->
+    <div class="mb-6">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol class="flex items-center space-x-4">
+                <li>
+                    <div class="flex items-center">
+                        <a href="{% url 'gaps:gap_report_list' %}" class="text-gray-400 hover:text-gray-500">
+                            <svg class="flex-shrink-0 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="sr-only">Retour</span>
+                        </a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <span class="ml-4 text-sm font-medium text-gray-500">{{ title }}</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+        <h1 class="mt-2 text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+            </svg>
+            {{ title }}
+        </h1>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+        <form method="post" hx-post="{% if gap_report %}{% url 'gaps:gap_report_edit' gap_report.pk %}{% else %}{% url 'gaps:gap_report_create' %}{% endif %}" 
+              hx-swap="outerHTML" class="space-y-6">
+            {% csrf_token %}
+            
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    
+                    <!-- Source d'audit -->
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.audit_source.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.audit_source.label }}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.audit_source }}
+                        </div>
+                        {% if form.audit_source.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.audit_source.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Référence source -->
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.source_reference.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.source_reference.label }}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.source_reference }}
+                        </div>
+                        {% if form.source_reference.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.source_reference.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Service concerné -->
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.service.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.service.label }}
+                            {% if user.service and not gap_report %}
+                                <span class="text-xs text-blue-600 font-normal">(Votre service est pré-sélectionné)</span>
+                            {% endif %}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.service }}
+                        </div>
+                        {% if form.service.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.service.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Processus (champ dynamique) -->
+                    <div id="process-field" class="sm:col-span-3">
+                        {% if form.process.field.required or form.instance.process %}
+                        <label for="{{ form.process.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.process.label }}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.process }}
+                        </div>
+                        {% if form.process.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.process.errors.0 }}</p>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Lieu -->
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.location.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.location.label }}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.location }}
+                        </div>
+                        {% if form.location.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.location.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Date d'observation -->
+                    <div class="sm:col-span-3">
+                        <label for="{{ form.observation_date.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.observation_date.label }}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.observation_date }}
+                        </div>
+                        {% if form.observation_date.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.observation_date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Utilisateurs impliqués -->
+                    <div class="sm:col-span-6">
+                        <label for="{{ form.involved_users.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ form.involved_users.label }}
+                        </label>
+                        <div class="mt-1">
+                            {{ form.involved_users }}
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">Maintenez Ctrl (Cmd sur Mac) pour sélectionner plusieurs utilisateurs.</p>
+                        {% if form.involved_users.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.involved_users.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                <div class="flex justify-end space-x-3">
+                    <a href="{% if gap_report %}{% url 'gaps:gap_report_detail' gap_report.pk %}{% else %}{% url 'gaps:gap_report_list' %}{% endif %}" 
+                       class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Annuler
+                    </a>
+                    <button type="submit"
+                            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        {{ submit_text }}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-input, .form-select, .form-textarea {
+    @apply block w-full shadow-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+}
+</style>
+{% endblock %}

@@ -7,6 +7,7 @@
 - [Navigation et droits d'accès](#navigation-et-droits-dacces)
 - [Gestion des Services](#gestion-des-services)
 - [Gestion des Utilisateurs](#gestion-des-utilisateurs)
+- [Gestion des Écarts](#gestion-des-écarts)
 - [Import/Export des données](#importexport-des-données)
 - [Interface d'administration Django](#interface-dadministration-django)
 - [Résolution des problèmes](#résolution-des-problèmes)
@@ -20,7 +21,7 @@ EcartsActions est une application de **gestion d'écarts et d'actions** qui perm
 - Gérer une structure organisationnelle hiérarchique (services/départements)
 - Gérer les utilisateurs avec un système de droits à 3 niveaux
 - Authentification sécurisée par matricule avec changement de mot de passe obligatoire
-- Suivre et traiter les écarts/non-conformités (fonctionnalité à venir)
+- Déclarer et suivre les écarts/non-conformités avec un système complet de gestion
 - Planifier et suivre les actions correctives (fonctionnalité à venir)
 
 ### Public cible
@@ -131,6 +132,7 @@ Les **Services** représentent l'organisation hiérarchique de votre entreprise 
 
 #### Affichage hiérarchique
 - **Structure en arbre** : Les services sont affichés avec leur hiérarchie
+- **Tri alphabétique automatique** : Services et sous-services triés par nom à tous les niveaux
 - **Indicateurs visuels** : Lignes et icônes pour montrer les niveaux
 - **Dropdowns** : Boutons fléchés pour plier/déplier les niveaux
 
@@ -138,7 +140,7 @@ Les **Services** représentent l'organisation hiérarchique de votre entreprise 
 - **Icône** : 🏢 pour les services racines, 👥 pour les sous-services
 - **Nom du service** : Nom complet du service
 - **Code** : Code d'identification unique (ex: DG, DRH, COMPTA)
-- **Nombre de sous-services** : Compteur des services enfants
+- **Nombre total de sous-services** : Compteur récursif incluant tous les niveaux de descendants
 - **Date de création** : Date de création du service
 
 #### Actions disponibles
@@ -438,6 +440,152 @@ L'import permet de restaurer ou de synchroniser vos utilisateurs depuis un fichi
 - **Validation du fichier** : Format JSON et structure vérifiés avant traitement
 - **Protection administrateur** : L'utilisateur effectuant l'import ne sera jamais supprimé
 - **Mots de passe sécurisés** : Réinitialisation forcée avec changement obligatoire
+
+## ⚠️ Gestion des Écarts
+
+### Vue d'ensemble de la gestion des écarts
+
+La gestion des écarts permet de déclarer, suivre et traiter les non-conformités qualité dans votre organisation. Le système offre une approche structurée pour identifier et résoudre les problèmes.
+
+### Accéder à la gestion des écarts
+
+1. **Naviguer vers les écarts**
+   - Dans le menu principal, cliquez sur **"Écarts"**
+   - Vous verrez deux options :
+     - 📝 **"Déclarer un écart"** : Créer une nouvelle déclaration
+     - 📋 **"Liste des écarts"** : Consulter tous les écarts existants
+
+### Déclarer un nouvel écart
+
+#### Étape 1 : Accès à la déclaration
+- Cliquez sur **"Déclarer un écart"** dans le menu ou sur la page de liste
+- Une modale moderne s'ouvre avec le formulaire de déclaration
+
+#### Étape 2 : Section "QUI ?" - Personnes impliquées
+La déclaration commence par identifier les personnes présentes lors de l'observation :
+
+**Déclarant (vous)**
+- Affiché automatiquement à droite
+- Votre nom, prénom et matricule
+- Non modifiable (vous êtes toujours le déclarant)
+
+**Autres personnes présentes** (optionnel)
+- Champ de recherche intelligent à gauche
+- Tapez au moins 2 caractères pour rechercher par :
+  - Matricule
+  - Nom
+  - Prénom
+- Sélectionnez les personnes en cliquant sur les résultats
+- Supprimez une personne avec le bouton "✕"
+
+#### Étape 3 : Informations sur l'audit
+**Source de l'audit** (obligatoire)
+- Sélectionnez la source de l'audit dans la liste déroulante
+- Les options sont configurées par les administrateurs
+
+**Processus associé** (conditionnel)
+- Ce champ apparaît automatiquement si la source d'audit l'exige
+- Sélectionnez le processus concerné dans la liste
+
+**Référence source** (optionnel)
+- Référence externe de l'audit si applicable
+
+#### Étape 4 : Détails de l'observation
+**Service concerné** (obligatoire)
+- Votre service est automatiquement pré-sélectionné
+- Vous pouvez le modifier si l'écart concerne un autre service
+- Indication visuelle : "Votre service est pré-sélectionné"
+
+**Lieu** (optionnel)
+- Localisation précise où l'écart a été observé
+
+**Date d'observation** (obligatoire)
+- Date par défaut : aujourd'hui
+- Modifiable selon la date réelle d'observation
+
+#### Étape 5 : Validation
+- Cliquez sur **"Créer la déclaration"**
+- Un message de succès confirme la création
+- Redirection automatique vers la liste des écarts
+
+### Consulter la liste des écarts
+
+#### Interface de la liste
+La liste des écarts offre une vue d'ensemble complète :
+
+**Filtrage**
+- **Filtre par service** : Dropdown pour filtrer par service spécifique
+- **Bouton "Filtrer"** : Applique le filtre sélectionné
+- **Bouton "Effacer"** : Supprime le filtre actuel
+
+**Colonnes affichées**
+- **Écart** : Numéro d'écart (format EC-YYYY-XXXX) et description tronquée
+- **Type** : Type d'écart configuré
+- **Service** : Service concerné par l'écart
+- **Source** : Source de l'audit ayant identifié l'écart
+- **Statut** : État actuel (Déclaré, Rejeté, Fermé) avec code couleur
+- **Déclaré le** : Date de création de l'écart
+
+**Actions disponibles**
+- 👁️ **Voir les détails** : Accès au détail complet de l'écart
+- ✏️ **Modifier** : Édition de l'écart (selon les droits)
+
+#### États et couleurs des écarts
+- 🟡 **Déclaré** : Écart nouvellement créé (badge jaune)
+- 🔴 **Rejeté** : Écart refusé après analyse (badge rouge)
+- 🟢 **Fermé** : Écart traité et résolu (badge vert)
+
+### Navigation et raccourcis
+
+**Boutons rapides**
+- **"Déclarer un écart"** disponible en permanence dans l'en-tête de liste
+- **Message d'état vide** : Si aucun écart n'existe, bouton central pour démarrer
+
+**Interface responsive**
+- Les modales s'adaptent à la taille de l'écran
+- Formulaires optimisés pour mobile et desktop
+- Recherche d'utilisateurs fluide sur tous les appareils
+
+### Bonnes pratiques
+
+#### Pour les déclarants
+1. **Soyez précis** : Décrivez clairement l'écart observé
+2. **Documentez le contexte** : Renseignez le lieu et les personnes présentes
+3. **Choisissez le bon service** : Vérifiez que le service sélectionné est correct
+4. **Respectez les délais** : Déclarez rapidement après observation
+
+#### Pour les gestionnaires
+1. **Filtrez efficacement** : Utilisez les filtres pour traiter les écarts par service
+2. **Suivez les statuts** : Surveillez l'évolution des écarts via les codes couleur
+3. **Analysez les tendances** : Identifiez les services avec le plus d'écarts
+
+### Droits et permissions
+
+**Tous les utilisateurs authentifiés peuvent :**
+- Déclarer des écarts
+- Consulter la liste des écarts
+- Voir les détails des écarts
+
+**Les administrateurs peuvent en plus :**
+- Modifier les écarts existants
+- Configurer les sources d'audit, processus et types d'écarts
+- Accéder aux fonctionnalités d'administration
+
+### Résolution des problèmes courants
+
+**"Le bouton ne fait rien"**
+- Vérifiez votre connexion internet
+- Rafraîchissez la page
+- Vérifiez que JavaScript est activé
+
+**"Je ne trouve pas un utilisateur"**
+- Vérifiez l'orthographe du nom/matricule
+- L'utilisateur doit être créé dans le système au préalable
+- Contactez votre administrateur si nécessaire
+
+**"Le champ processus n'apparaît pas"**
+- C'est normal si la source d'audit ne l'exige pas
+- Le champ apparaît automatiquement selon la source sélectionnée
 
 ## 📥📤 Import/Export des données
 

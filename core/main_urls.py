@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 from .views import auth
 
@@ -37,4 +37,6 @@ urlpatterns = [
     path('users/import-json/', views.import_users_json, name='import_users_json'),
     path('users/import-form/', views.import_users_form, name='import_users_form'),
     
+    # URLs pour la gestion des écarts
+    path('gaps/', include('core.urls.gaps')),
 ]

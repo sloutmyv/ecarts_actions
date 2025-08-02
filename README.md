@@ -19,13 +19,13 @@
 EcartsActions est une application web moderne de **gestion d'écarts et d'actions** construite avec Django et une stack frontend moderne. L'application permet de gérer une structure organisationnelle hiérarchique avec des services/départements et leurs relations, ainsi que le suivi d'écarts et de plans d'actions.
 
 ### Fonctionnalités principales
-- **Gestion des Services**: Organisation hiérarchique des départments/services
+- **Gestion des Services**: Organisation hiérarchique des départements/services avec tri alphabétique automatique
 - **Gestion des Utilisateurs**: Système d'authentification personnalisé avec 3 niveaux de droits
 - **Authentification Matricule**: Connexion par matricule (format: Lettre + 4 chiffres)
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
 - **Import/Export JSON**: Sauvegarde et restauration des données (services et utilisateurs)
 - **Modales de confirmation**: Système uniforme de confirmation pour les suppressions
-- **Gestion des Écarts**: Suivi et traitement des non-conformités (à venir)
+- **Gestion des Écarts**: Système complet de déclaration et suivi des écarts qualité
 - **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
 
 ### Objectifs techniques
@@ -149,6 +149,7 @@ Direction Générale (DG)
 | `get_niveau()` | Calcule le niveau hiérarchique | `int` (0 = racine) |
 | `get_chemin_hierarchique()` | Chemin complet depuis la racine | `str` ("DG > DRH > REC") |
 | `get_descendants()` | Tous les sous-services récursivement | `QuerySet` |
+| `get_descendants_count()` | Nombre total de descendants (tous niveaux) | `int` |
 | `is_racine()` | Vérifie si c'est un service racine | `bool` |
 | `clean()` | Validation des dépendances circulaires | `None` |
 
@@ -399,7 +400,7 @@ ecarts_actions/
 │   │   ├── base.py           # 🏗️ Modèles abstraits (TimestampedModel, CodedModel)
 │   │   ├── services.py       # 🏢 Modèle Service (organisation hiérarchique)
 │   │   ├── users.py          # 👤 Modèle User (authentification personnalisée)
-│   │   ├── ecarts.py         # ⚠️ Modèles Écart, TypeEcart (à venir)
+│   │   ├── gaps.py           # ⚠️ Modèles pour la gestion des écarts qualité
 │   │   └── actions.py        # 📋 Modèles Action, PlanAction (à venir)
 │   ├── 📁 views/              # 👁️ Vues par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
@@ -407,13 +408,13 @@ ecarts_actions/
 │   │   ├── services.py       # 🏢 CRUD services + import/export
 │   │   ├── users.py          # 👤 CRUD utilisateurs + gestion droits + import/export
 │   │   ├── auth.py           # 🔐 Authentification personnalisée
-│   │   ├── ecarts.py         # ⚠️ Gestion des écarts (à venir)
+│   │   ├── gaps.py           # ⚠️ Gestion complète des écarts qualité
 │   │   └── actions.py        # 📋 Gestion des plans d'actions (à venir)
 │   ├── 📁 admin/              # 🔧 Configuration admin par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
 │   │   ├── services.py       # 🏢 ServiceAdmin
 │   │   ├── users.py          # 👤 UserAdmin
-│   │   ├── ecarts.py         # ⚠️ EcartAdmin (à venir)
+│   │   ├── gaps.py           # ⚠️ Administration des écarts qualité
 │   │   └── actions.py        # 📋 ActionAdmin (à venir)
 │   ├── urls.py               # 🔗 URLs de l'app
 │   └── migrations/           # 📦 Migrations DB
@@ -447,7 +448,7 @@ ecarts_actions/
 │       │   ├── notification_warning.html # ⚠️ Modale warning suppression
 │       │   ├── notification_error.html   # ❌ Modale erreur suppression
 │       │   └── icons.html    # 🎨 Icônes utilisateurs
-│       ├── 📁 ecarts/         # ⚠️ Templates gestion écarts (à venir)
+│       ├── 📁 gaps/           # ⚠️ Templates gestion des écarts qualité
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques
 │   ├── css/                  # 🎨 CSS personnalisés

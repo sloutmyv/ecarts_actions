@@ -46,7 +46,7 @@
 
                 <div class="flex items-center gap-4 text-xs text-gray-500">
                     <span>
-                        {{ service.sous_services.count }} sous-service{{ service.sous_services.count|pluralize }}
+                        {{ service.get_descendants_count }} sous-service{{ service.get_descendants_count|pluralize }} total{{ service.get_descendants_count|pluralize:"," }}
                     </span>
                     
                     {% if service.created_at %}

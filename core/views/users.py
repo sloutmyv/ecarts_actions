@@ -99,11 +99,10 @@ def user_create(request):
             messages.success(request, f'L\'utilisateur "{user.get_full_name()}" a été créé avec succès.')
             
             if request.headers.get('HX-Request'):
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Utilisateur "{user.get_full_name()}" créé avec succès',
-                    'redirect': reverse('users_list')
-                })
+                from django.http import HttpResponse
+                response = HttpResponse()
+                response['HX-Redirect'] = reverse('users_list')
+                return response
             return redirect('users_list')
             
         except Exception as e:
@@ -155,11 +154,10 @@ def user_edit(request, pk):
             messages.success(request, f'L\'utilisateur "{user_to_edit.get_full_name()}" a été modifié avec succès.')
             
             if request.headers.get('HX-Request'):
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Utilisateur "{user_to_edit.get_full_name()}" modifié avec succès',
-                    'redirect': reverse('users_list')
-                })
+                from django.http import HttpResponse
+                response = HttpResponse()
+                response['HX-Redirect'] = reverse('users_list')
+                return response
             return redirect('users_list')
             
         except Exception as e:

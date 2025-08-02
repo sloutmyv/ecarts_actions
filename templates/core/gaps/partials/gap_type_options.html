@@ -1,0 +1,6 @@
+<option value="">Sélectionner un type d'écart</option>
+{% for gap_type in gap_types %}
+<option value="{{ gap_type.id }}"{% if selected_gap_type == gap_type.id|stringformat:"s" %} selected{% endif %}>
+    {{ gap_type.name }}
+</option>
+{% endfor %}

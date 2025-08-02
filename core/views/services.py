@@ -61,11 +61,10 @@ def service_create(request):
             messages.success(request, f'Le service "{service.nom}" a été créé avec succès.')
             
             if request.headers.get('HX-Request'):
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Service "{service.nom}" créé avec succès',
-                    'redirect': reverse('services_list')
-                })
+                from django.http import HttpResponse
+                response = HttpResponse()
+                response['HX-Redirect'] = reverse('services_list')
+                return response
             return redirect('services_list')
             
         except Exception as e:
@@ -108,11 +107,10 @@ def service_edit(request, pk):
             messages.success(request, f'Le service "{service.nom}" a été modifié avec succès.')
             
             if request.headers.get('HX-Request'):
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Service "{service.nom}" modifié avec succès',
-                    'redirect': reverse('services_list')
-                })
+                from django.http import HttpResponse
+                response = HttpResponse()
+                response['HX-Redirect'] = reverse('services_list')
+                return response
             return redirect('services_list')
             
         except Exception as e:

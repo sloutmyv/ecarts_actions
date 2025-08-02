@@ -81,6 +81,14 @@ class Service(TimestampedModel, CodedModel):
             descendants.extend(sous_service.get_descendants())
         return descendants
     
+    def get_descendants_count(self):
+        """Retourne le nombre total de descendants (tous niveaux confondus)."""
+        count = 0
+        for sous_service in self.sous_services.all():
+            count += 1  # Compter le sous-service direct
+            count += sous_service.get_descendants_count()  # Compter ses descendants
+        return count
+    
     def is_racine(self):
         """Vérifie si le service est un service racine (sans parent)."""
         return self.parent is None
