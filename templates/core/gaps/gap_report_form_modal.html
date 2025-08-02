@@ -1,6 +1,7 @@
-<!-- Modale pour formulaire de déclaration d'écart -->
-<div id="gap-report-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+<!-- Modale HTMX pour formulaire de déclaration d'écart -->
+<div class="modal-content fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-10">
         <!-- En-tête de la modale -->
         <div class="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -9,7 +10,7 @@
                 </svg>
                 Déclarer un écart
             </h2>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button onclick="closeGlobalModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -177,7 +178,7 @@
             <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
                 <button 
                     type="button" 
-                    onclick="closeModal()"
+                    onclick="closeGlobalModal()"
                     class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                     Annuler
                 </button>
@@ -192,14 +193,6 @@
 </div>
 
 <script>
-    // Ouvrir automatiquement la modale
-    setTimeout(() => {
-        const modal = document.querySelector('#gap-report-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        }
-    }, 100);
-    
     // Données des utilisateurs pour la recherche
     const allUsers = [
         {% for user_item in users %}

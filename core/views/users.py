@@ -25,9 +25,9 @@ def user_can_manage_users(user):
 @user_passes_test(user_can_manage_users)
 def users_list(request):
     """
-    Vue liste des utilisateurs avec filtrage par service.
+    Vue liste des utilisateurs avec filtrage par service et tri.
     """
-    users = User.objects.select_related('service').order_by('nom', 'prenom')
+    users = User.objects.select_related('service')
     services = Service.objects.all().order_by('nom')
     
     # Filtrage par service si spécifié
@@ -35,11 +35,44 @@ def users_list(request):
     if service_filter:
         users = users.filter(service_id=service_filter)
     
+    # Gestion du tri
+    sort_by = request.GET.get('sort', 'nom')  # Tri par défaut par nom
+    order = request.GET.get('order', 'asc')   # Ordre par défaut croissant
+    
+    # Définir les champs de tri autorisés et leurs correspondances
+    sort_fields = {
+        'nom': 'nom',
+        'prenom': 'prenom', 
+        'matricule': 'matricule',
+        'service': 'service__nom',
+        'email': 'email',
+        'droits': 'droits'
+    }
+    
+    # Vérifier que le champ de tri est autorisé
+    if sort_by in sort_fields:
+        sort_field = sort_fields[sort_by]
+        
+        # Appliquer l'ordre (croissant ou décroissant)
+        if order == 'desc':
+            sort_field = '-' + sort_field
+            
+        users = users.order_by(sort_field, 'nom', 'prenom')  # Tri secondaire par nom/prénom
+    else:
+        # Tri par défaut
+        users = users.order_by('nom', 'prenom')
+    
+    # Déterminer l'ordre inverse pour les liens de tri
+    next_order = 'desc' if order == 'asc' else 'asc'
+    
     context = {
         'users': users,
         'services': services,
         'selected_service': service_filter,
-        'page_title': 'Gestion des Utilisateurs'
+        'page_title': 'Gestion des Utilisateurs',
+        'current_sort': sort_by,
+        'current_order': order,
+        'next_order': next_order,
     }
     return render(request, 'core/users/list.html', context)
 

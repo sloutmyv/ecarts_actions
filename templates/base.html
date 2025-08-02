@@ -404,6 +404,17 @@
             // Recharger la page pour afficher le message de succès et la liste mise à jour
             window.location.reload();
         });
+        
+        // Global modal close function
+        function closeGlobalModal() {
+            const modalContainer = document.querySelector('#modal-container');
+            if (modalContainer) {
+                modalContainer.innerHTML = '';
+            }
+        }
+        
+        // Make function globally accessible
+        window.closeGlobalModal = closeGlobalModal;
     </script>
 </body>
 </html>

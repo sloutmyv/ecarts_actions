@@ -3,6 +3,19 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
+<style>
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+    }
+    .sortable-header:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    .sortable-header.active {
+        color: #2563eb;
+        font-weight: 600;
+    }
+</style>
 <div class="container mx-auto px-4 py-8">
     <!-- En-tête -->
     <div class="flex justify-between items-center mb-8">
@@ -57,11 +70,111 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisateur</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matricule</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Droits</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable-header {% if current_sort == 'nom' %}active{% endif %}">
+                                <a href="?{% if selected_service %}service={{ selected_service }}&{% endif %}sort=nom&order={% if current_sort == 'nom' %}{{ next_order }}{% else %}asc{% endif %}" 
+                                   class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                                    Utilisateur
+                                    {% if current_sort == 'nom' %}
+                                        {% if current_order == 'asc' %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"/>
+                                            </svg>
+                                        {% endif %}
+                                    {% else %}
+                                        <svg class="w-3 h-3 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                        </svg>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable-header {% if current_sort == 'matricule' %}active{% endif %}">
+                                <a href="?{% if selected_service %}service={{ selected_service }}&{% endif %}sort=matricule&order={% if current_sort == 'matricule' %}{{ next_order }}{% else %}asc{% endif %}" 
+                                   class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                                    Matricule
+                                    {% if current_sort == 'matricule' %}
+                                        {% if current_order == 'asc' %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"/>
+                                            </svg>
+                                        {% endif %}
+                                    {% else %}
+                                        <svg class="w-3 h-3 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                        </svg>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable-header {% if current_sort == 'droits' %}active{% endif %}">
+                                <a href="?{% if selected_service %}service={{ selected_service }}&{% endif %}sort=droits&order={% if current_sort == 'droits' %}{{ next_order }}{% else %}asc{% endif %}" 
+                                   class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                                    Droits
+                                    {% if current_sort == 'droits' %}
+                                        {% if current_order == 'asc' %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"/>
+                                            </svg>
+                                        {% endif %}
+                                    {% else %}
+                                        <svg class="w-3 h-3 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                        </svg>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable-header {% if current_sort == 'service' %}active{% endif %}">
+                                <a href="?{% if selected_service %}service={{ selected_service }}&{% endif %}sort=service&order={% if current_sort == 'service' %}{{ next_order }}{% else %}asc{% endif %}" 
+                                   class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                                    Service
+                                    {% if current_sort == 'service' %}
+                                        {% if current_order == 'asc' %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"/>
+                                            </svg>
+                                        {% endif %}
+                                    {% else %}
+                                        <svg class="w-3 h-3 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                        </svg>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable-header {% if current_sort == 'email' %}active{% endif %}">
+                                <a href="?{% if selected_service %}service={{ selected_service }}&{% endif %}sort=email&order={% if current_sort == 'email' %}{{ next_order }}{% else %}asc{% endif %}" 
+                                   class="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                                    Email
+                                    {% if current_sort == 'email' %}
+                                        {% if current_order == 'asc' %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"/>
+                                            </svg>
+                                        {% endif %}
+                                    {% else %}
+                                        <svg class="w-3 h-3 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                                        </svg>
+                                    {% endif %}
+                                </a>
+                            </th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
