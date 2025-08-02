@@ -299,7 +299,6 @@ def export_users_json(request):
     """
     Export tous les utilisateurs au format JSON.
     """
-    from django.contrib.admin.views.decorators import staff_member_required
     
     # Récupérer tous les utilisateurs avec leurs services
     users = User.objects.select_related('service').order_by('matricule')
@@ -356,7 +355,6 @@ def import_users_json(request):
     Import des utilisateurs depuis un fichier JSON.
     ⚠️ ATTENTION : Cette opération supprime TOUS les utilisateurs existants.
     """
-    from django.contrib.admin.views.decorators import staff_member_required
     
     if request.method == 'POST':
         if 'json_file' not in request.FILES:
@@ -448,7 +446,6 @@ def import_users_json(request):
                 )
                 
                 # Rediriger vers la page admin des utilisateurs après un import réussi
-                from django.urls import reverse
                 return redirect('admin:core_user_changelist')
                 
             except Exception as e:

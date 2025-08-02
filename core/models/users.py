@@ -3,7 +3,6 @@ Modèles liés à la gestion des utilisateurs et de l'authentification.
 """
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from .base import TimestampedModel
 from .services import Service

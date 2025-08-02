@@ -6,8 +6,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.db import transaction
-from django.utils import timezone
 from datetime import datetime
 
 from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, User

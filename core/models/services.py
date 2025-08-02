@@ -2,7 +2,6 @@
 Modèles liés à la gestion des services et de l'organisation hiérarchique.
 """
 from django.db import models
-from django.urls import reverse
 from django.core.exceptions import ValidationError
 from .base import TimestampedModel, CodedModel
 
