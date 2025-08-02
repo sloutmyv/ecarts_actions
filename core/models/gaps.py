@@ -141,8 +141,8 @@ class GapReport(TimestampedModel):
         blank=True,
         verbose_name="Lieu"
     )
-    observation_date = models.DateField(
-        verbose_name="Date d'observation"
+    observation_date = models.DateTimeField(
+        verbose_name="Date et heure d'observation"
     )
     declared_by = models.ForeignKey(
         User,
@@ -158,8 +158,8 @@ class GapReport(TimestampedModel):
     )
 
     class Meta:
-        verbose_name = "Déclaration d'écart"
-        verbose_name_plural = "Déclarations d'écart"
+        verbose_name = "3. Déclaration d'écart"
+        verbose_name_plural = "3. Déclarations d'écart"
         ordering = ['-observation_date', '-created_at']
 
     def clean(self):

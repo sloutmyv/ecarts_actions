@@ -98,18 +98,22 @@ class GapReportAdmin(admin.ModelAdmin):
     date_hierarchy = 'observation_date'
     
     fieldsets = (
-        ('Informations principales', {
-            'fields': ('audit_source', 'source_reference', 'service', 'process')
-        }),
-        ('Localisation et dates', {
-            'fields': ('location', 'observation_date')
-        }),
-        ('Personnes impliquées', {
+        ('Personnes impliquées (QUI?)', {
             'fields': ('declared_by', 'involved_users')
+        }),
+        ('Dates (QUAND?)', {
+            'fields': ('observation_date', 'created_at')
+        }),
+        ('Localisation (OÙ?)', {
+            'fields': ('service', 'location')
+        }),
+        ('Informations principales', {
+            'fields': ('audit_source', 'source_reference', 'process')
         }),
     )
     
     filter_horizontal = ('involved_users',)
+    readonly_fields = ('created_at',)
     inlines = [GapInline]
     
     def get_queryset(self, request):

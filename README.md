@@ -449,10 +449,15 @@ ecarts_actions/
 │       │   ├── notification_error.html   # ❌ Modale erreur suppression
 │       │   └── icons.html    # 🎨 Icônes utilisateurs
 │       ├── 📁 gaps/           # ⚠️ Templates gestion des écarts qualité
+│       │   ├── gap_list.html  # 📋 Liste des déclarations d'écart
+│       │   ├── gap_report_form_modal.html # 📝 Modal de déclaration structuré
+│       │   └── partials/      # 🧩 Composants HTMX (champs dynamiques)
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques
 │   ├── css/                  # 🎨 CSS personnalisés
 │   ├── js/                   # ⚡ JavaScript personnalisés
+│   │   ├── gaps.js          # ⚠️ Logique interactive pour les écarts
+│   │   └── common.js        # 🔧 Fonctions utilitaires communes
 │   └── images/               # 🖼️ Images
 ├── 📁 venv/                   # 🐍 Environnement virtuel Python 3.12.3
 ├── manage.py                 # 🛠️ CLI Django
