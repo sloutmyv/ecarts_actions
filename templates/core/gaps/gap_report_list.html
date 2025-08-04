@@ -13,7 +13,7 @@
                 </svg>
                 Déclarations d'écart
             </h1>
-            <p class="text-gray-600 mt-2">Gérez les déclarations d'écart groupées</p>
+            <p class="text-gray-600 mt-2">Gérez les déclarations d'écart</p>
         </div>
         <button 
             hx-get="{% url 'gaps:gap_report_create' %}"
@@ -84,14 +84,57 @@
                 <button type="submit" class="h-10 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
                     Filtrer
                 </button>
-                {% if selected_service or declared_by_search or declared_by_id or selected_audit_source %}
-                <a href="{% url 'gaps:gap_report_list' %}" class="h-10 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
-                    Effacer
-                </a>
+                {% if not show_all %}
+                    <a href="{% url 'gaps:gap_report_list' %}?show_all=1" class="h-10 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center" title="Voir toutes les déclarations de tous les utilisateurs">
+                        Tout voir
+                    </a>
+                {% else %}
+                    <a href="{% url 'gaps:gap_report_list' %}" class="h-10 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center" title="Retour à la vue personnalisée">
+                        Ma vue
+                    </a>
                 {% endif %}
             </div>
         </form>
     </div>
+
+    <!-- Indicateur de filtrage -->
+    {% if show_all %}
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-sm text-green-800">
+                <strong>Vue globale :</strong> Affichage de toutes les déclarations d'écart de tous les utilisateurs. 
+                <em>Cliquez sur "Ma vue" pour revenir à votre vue personnalisée.</em>
+            </span>
+        </div>
+    </div>
+    {% elif form_submitted %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"/>
+            </svg>
+            <span class="text-sm text-yellow-800">
+                <strong>Vue filtrée :</strong> Affichage selon les critères sélectionnés
+                {% if selected_service == "" %} (toutes les entités){% elif selected_service_name %} ({{ selected_service_name }}){% endif %}{% if declared_by_search %}, déclarant : "{{ declared_by_search }}"{% endif %}{% if selected_audit_source %}, source d'audit sélectionnée{% endif %}.
+            </span>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-sm text-blue-800">
+                <strong>Vue personnalisée :</strong> Affichage des écarts de votre service{% if user.service %} ({{ user.service.nom }}){% endif %}, que vous avez déclarés, ou auxquels vous êtes impliqué. 
+                <em>Cliquez sur "Tout voir" pour voir toutes les déclarations.</em>
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Liste des déclarations -->
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">

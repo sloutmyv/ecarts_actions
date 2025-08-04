@@ -28,6 +28,10 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Gestion des Écarts**: Système complet de déclaration et suivi des écarts qualité avec pièces jointes
 - **Modal de Déclaration**: Interface structurée QUI/QUAND/OÙ/COMMENT pour saisir les écarts
 - **Pièces Jointes**: Support des attachements pour déclarations et écarts individuels
+- **Filtrage Intelligent**: Vue personnalisée par défaut (écarts de son service + déclarés + impliqués) avec option "Tout voir"
+- **Permissions Administratives**: Super Administrateurs (SA) et Administrateurs (AD) peuvent modifier toutes les déclarations
+- **Interface Écarts Optimisée**: Affichage restructuré avec numéro/type en première ligne, description en dessous
+- **Formulaires Cohérents**: Styling uniforme entre formulaires de déclaration et d'écart avec badges colorés
 - **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
 
 ### Objectifs techniques
@@ -402,8 +406,8 @@ ecarts_actions/
 │   │   ├── base.py           # 🏗️ Modèles abstraits (TimestampedModel, CodedModel)
 │   │   ├── services.py       # 🏢 Modèle Service (organisation hiérarchique)
 │   │   ├── users.py          # 👤 Modèle User (authentification personnalisée)
-│   │   ├── gaps.py           # ⚠️ Modèles pour la gestion des écarts qualité
-│   │   ├── attachments.py    # 📎 Modèles pour les pièces jointes (déclarations/écarts)
+│   │   ├── gaps.py           # ⚠️ Modèles GapReport, Gap, GapType, AuditSource pour gestion complète des écarts
+│   │   ├── attachments.py    # 📎 Modèles GapReportAttachment, GapAttachment pour pièces jointes
 │   │   └── actions.py        # 📋 Modèles Action, PlanAction (à venir)
 │   ├── 📁 views/              # 👁️ Vues par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
@@ -411,7 +415,7 @@ ecarts_actions/
 │   │   ├── services.py       # 🏢 CRUD services + import/export
 │   │   ├── users.py          # 👤 CRUD utilisateurs + gestion droits + import/export
 │   │   ├── auth.py           # 🔐 Authentification personnalisée
-│   │   ├── gaps.py           # ⚠️ Gestion complète des écarts qualité
+│   │   ├── gaps.py           # ⚠️ Gestion complète des écarts qualité avec filtrage intelligent et permissions
 │   │   └── actions.py        # 📋 Gestion des plans d'actions (à venir)
 │   ├── 📁 admin/              # 🔧 Configuration admin par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
@@ -453,10 +457,11 @@ ecarts_actions/
 │       │   └── icons.html    # 🎨 Icônes utilisateurs
 │       ├── 📁 gaps/           # ⚠️ Templates gestion des écarts qualité
 │       │   ├── gap_list.html  # 📋 Liste des écarts individuels
-│       │   ├── gap_report_list.html # 📋 Liste des déclarations d'écart
-│       │   ├── gap_report_detail.html # 🔍 Détail d'une déclaration
+│       │   ├── gap_report_list.html # 📋 Liste des déclarations avec filtrage intelligent
+│       │   ├── gap_report_detail.html # 🔍 Détail déclaration avec écarts restructurés
 │       │   ├── gap_report_form.html # 📝 Formulaire modification déclaration
-│       │   ├── gap_report_form_modal.html # 📝 Modal de déclaration structuré QUI/QUAND/OÙ/COMMENT
+│       │   ├── gap_report_form_modal.html # 📝 Modal déclaration structuré QUI/QUAND/OÙ/COMMENT
+│       │   ├── gap_form.html  # 📝 Formulaire écart avec styling cohérent et badges colorés
 │       │   └── partials/      # 🧩 Composants HTMX (champs dynamiques, processus)
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques
@@ -844,6 +849,38 @@ python manage.py loaddata backup.json
 - [Django Best Practices](https://django-best-practices.readthedocs.io/)
 - [HTMX + Django Guide](https://htmx.org/essays/django-and-htmx/)
 - [Tailwind + Django Setup](https://django-tailwind.readthedocs.io/)
+
+---
+
+## 🆕 Changements récents
+
+### v2.1.0 - Améliorations majeures du système d'écarts (2025-08-04)
+
+#### 🎯 Filtrage intelligent des déclarations
+- **Vue personnalisée par défaut**: Affiche automatiquement les écarts du service de l'utilisateur + déclarés par lui + où il est impliqué
+- **Bouton "Tout voir"**: Permet de voir toutes les déclarations de l'organisation
+- **Bannières contextuelles**: Indication visuelle du mode de filtrage actif
+
+#### 🔐 Permissions administratives renforcées
+- **Super Administrateurs (SA)** et **Administrateurs (AD)** peuvent modifier toutes les déclarations
+- **Badge "Admin"** visible sur les boutons de modification pour indiquer les droits étendus
+- **Messages d'erreur explicites** pour les utilisateurs sans droits suffisants
+
+#### 🎨 Interface écarts repensée
+- **Affichage restructuré**: Numéro d'écart + type sur la première ligne, description en dessous
+- **Boutons icônes uniquement**: Cohérence avec la page des services
+- **Statut et actions alignés**: Meilleure lisibilité visuelle
+
+#### 📝 Formulaires cohérents
+- **Styling uniforme**: Formulaires d'écart alignés sur le style des déclarations
+- **Badges colorés**: Sections "QUOI ?" (violet) et "POURQUOI ?" (orange)
+- **Champs pleine largeur**: Description adaptée à la largeur de l'encart
+- **Nettoyage des redondances**: Suppression des informations dupliquées
+
+#### 🛠️ Améliorations techniques
+- **Logique de filtrage optimisée**: Détection précise des paramètres de recherche
+- **Gestion des erreurs de template**: Résolution des problèmes de syntaxe Django
+- **Classes CSS centralisées**: Définition dans les widgets de formulaire Django
 
 ---
 

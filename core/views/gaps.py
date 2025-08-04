@@ -71,26 +71,44 @@ def gap_report_list(request):
     selected_service = request.GET.get('service')
     declared_by_search = request.GET.get('declared_by_search', '').strip()
     selected_audit_source = request.GET.get('audit_source')
-    
+    show_all = request.GET.get('show_all', False)  # Paramètre pour afficher tout
     
     # Base queryset
     gap_reports = GapReport.objects.select_related(
         'audit_source', 'service', 'process', 'declared_by'
     ).prefetch_related('gaps')
     
-    # Filtrage par défaut selon l'utilisateur connecté (si aucun filtre n'est appliqué)
-    if not any([selected_service, declared_by_search, selected_audit_source]):
-        # Par défaut, filtrer par l'utilisateur déclarant
-        gap_reports = gap_reports.filter(declared_by=request.user)
-        declared_by_search = request.user.get_full_name() or request.user.matricule  # Pré-remplir le champ de recherche
+    # Vérifier si l'utilisateur a soumis le formulaire de filtrage
+    form_submitted = 'service' in request.GET or 'declared_by_search' in request.GET or 'audit_source' in request.GET
+    
+    # Vérifier si des filtres explicites sont appliqués via GET
+    has_explicit_filters = form_submitted or show_all
+    
+    # Filtrage par défaut selon l'utilisateur connecté (si aucun filtre explicite n'est appliqué)
+    if not has_explicit_filters:
+        # Par défaut, créer un filtre combiné pour l'utilisateur connecté :
+        # 1. Écarts de son service (si il en a un)
+        # 2. Écarts qu'il a déclarés
+        # 3. Écarts auxquels il est impliqué (involved_users)
         
-        # Si l'utilisateur a un service, le pré-sélectionner aussi (mais ne pas filtrer pour permettre de voir ses déclarations dans d'autres services)
+        user_filter = Q(declared_by=request.user)  # Écarts qu'il a déclarés
+        user_filter |= Q(involved_users=request.user)  # Écarts auxquels il est impliqué
+        
+        # Si l'utilisateur a un service, inclure aussi les écarts de ce service
         if request.user.service:
-            selected_service = str(request.user.service.id)
+            user_filter |= Q(service=request.user.service)
+            selected_service = str(request.user.service.id)  # Pré-sélectionner le service dans le filtre
+        
+        gap_reports = gap_reports.filter(user_filter)
+    elif show_all:
+        # Afficher toutes les déclarations sans aucun filtre
+        pass  # gap_reports reste non filtré
     else:
-        # Appliquer les filtres sélectionnés
+        # Appliquer les filtres sélectionnés explicitement
         if selected_service:
             gap_reports = gap_reports.filter(service_id=selected_service)
+        # Si selected_service est une chaîne vide (""), cela signifie "Toutes les entités"
+        # Dans ce cas, on ne filtre pas par service (on garde tous les services)
         
         if declared_by_search:
             # Si c'est un ID utilisateur (sélectionné via autocomplétion)
@@ -127,14 +145,27 @@ def gap_report_list(request):
     services = get_services_hierarchical_order()
     audit_sources = AuditSource.objects.all().order_by('name')
     
+    # Récupérer le nom du service sélectionné pour l'affichage
+    selected_service_name = None
+    if selected_service:
+        try:
+            from core.models import Service
+            service_obj = Service.objects.get(id=selected_service)
+            selected_service_name = service_obj.nom
+        except (Service.DoesNotExist, ValueError):
+            pass
+    
     context = {
         'gap_reports': gap_reports,
         'services': services,
         'audit_sources': audit_sources,
         'selected_service': selected_service,
+        'selected_service_name': selected_service_name,
         'declared_by_search': declared_by_search,
         'declared_by_id': request.GET.get('declared_by_id', ''),
         'selected_audit_source': selected_audit_source,
+        'show_all': show_all,
+        'form_submitted': form_submitted,
         'title': 'Déclarations d\'écart'
     }
     return render(request, 'core/gaps/gap_report_list.html', context)
@@ -315,8 +346,14 @@ def gap_report_create(request):
 def gap_report_edit(request, pk):
     """
     Modification d'une déclaration d'écart existante.
+    Seul le déclarant peut modifier une déclaration.
     """
     gap_report = get_object_or_404(GapReport, pk=pk)
+    
+    # Vérifier que l'utilisateur connecté est le déclarant ou un administrateur
+    if gap_report.declared_by != request.user and request.user.droits not in ['SA', 'AD']:
+        messages.error(request, 'Vous ne pouvez modifier que vos propres déclarations.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     
     if request.method == 'POST':
         form = GapReportForm(request.POST, request.FILES, instance=gap_report, user=request.user)
@@ -371,8 +408,14 @@ def gap_report_edit(request, pk):
 def gap_create(request, gap_report_pk):
     """
     Création d'un nouvel écart pour une déclaration existante.
+    Seul le déclarant peut ajouter des écarts à sa déclaration.
     """
     gap_report = get_object_or_404(GapReport, pk=gap_report_pk)
+    
+    # Vérifier que l'utilisateur connecté est le déclarant ou un administrateur
+    if gap_report.declared_by != request.user and request.user.droits not in ['SA', 'AD']:
+        messages.error(request, 'Vous ne pouvez ajouter des écarts qu\'à vos propres déclarations.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     
     if request.method == 'POST':
         form = GapForm(request.POST, gap_report=gap_report)
@@ -401,8 +444,14 @@ def gap_create(request, gap_report_pk):
 def gap_edit(request, pk):
     """
     Modification d'un écart existant.
+    Seul le déclarant de la déclaration peut modifier ses écarts.
     """
     gap = get_object_or_404(Gap.objects.select_related('gap_report'), pk=pk)
+    
+    # Vérifier que l'utilisateur connecté est le déclarant de la déclaration ou un administrateur
+    if gap.gap_report.declared_by != request.user and request.user.droits not in ['SA', 'AD']:
+        messages.error(request, 'Vous ne pouvez modifier que les écarts de vos propres déclarations.')
+        return redirect('gaps:gap_report_detail', pk=gap.gap_report.pk)
     
     if request.method == 'POST':
         form = GapForm(request.POST, instance=gap, gap_report=gap.gap_report)
@@ -522,8 +571,10 @@ def delete_attachment(request, attachment_id):
         attachment = get_object_or_404(GapReportAttachment, id=attachment_id)
         
         # Vérifier que l'utilisateur a le droit de supprimer cette pièce jointe
-        # (par exemple, s'il est le créateur de la déclaration ou l'uploader du fichier)
-        if attachment.gap_report.declared_by != request.user and attachment.uploaded_by != request.user:
+        # (déclarant, uploader du fichier, ou administrateur)
+        if (attachment.gap_report.declared_by != request.user and 
+            attachment.uploaded_by != request.user and 
+            request.user.droits not in ['SA', 'AD']):
             return JsonResponse({
                 'success': False,
                 'error': 'Vous n\'avez pas l\'autorisation de supprimer cette pièce jointe.'

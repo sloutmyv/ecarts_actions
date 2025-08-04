@@ -540,6 +540,12 @@
     setTimeout(() => {
         initUserSearch();
         updateCreationDateTime();
+        
+        // Si une source d'audit est pré-sélectionnée, charger les types d'écart
+        const auditSourceSelect = document.getElementById('audit_source');
+        if (auditSourceSelect && auditSourceSelect.value) {
+            loadGapTypes();
+        }
     }, 200);
     
     // Mettre à jour la date et heure de déclaration
@@ -622,7 +628,8 @@
         }
         
         // Faire une requête AJAX pour récupérer les types d'écart
-        fetch(`{% url 'gaps:get_gap_types' %}?audit_source_id=${auditSourceSelect.value}`)
+        const url = '{% url "gaps:get_gap_types" %}' + '?audit_source_id=' + auditSourceSelect.value;
+        fetch(url)
             .then(response => response.text())
             .then(html => {
                 gapTypesOptions = html;
