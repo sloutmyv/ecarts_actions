@@ -5,7 +5,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from datetime import datetime
 
-from core.models import GapReport, Gap, AuditSource, Service, Process, GapType
+from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, GapAttachment
 
 
 class GapReportForm(forms.ModelForm):
@@ -168,6 +168,7 @@ class GapForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.gap_report = kwargs.pop('gap_report', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         # Filtrer les types d'écart selon la source d'audit
@@ -177,6 +178,16 @@ class GapForm(forms.ModelForm):
             )
         else:
             self.fields['gap_type'].queryset = GapType.objects.none()
+        
+        # Filtrer les statuts disponibles selon les droits de l'utilisateur
+        if self.instance.pk and self.user:
+            # Pour la modification d'un écart existant
+            available_statuses = self.instance.get_available_statuses_for_user(self.user)
+            self.fields['status'].choices = available_statuses
+        elif not self.instance.pk:
+            # Pour la création d'un nouvel écart, seul "Déclaré" est disponible
+            self.fields['status'].choices = [('declared', 'Déclaré')]
+            self.fields['status'].initial = 'declared'
 
     def clean_gap_type(self):
         gap_type = self.cleaned_data.get('gap_type')
@@ -188,3 +199,35 @@ class GapForm(forms.ModelForm):
                 )
         
         return gap_type
+
+
+class GapAttachmentForm(forms.ModelForm):
+    """
+    Formulaire pour ajouter une pièce jointe à un écart.
+    """
+    
+    class Meta:
+        model = GapAttachment
+        fields = ['name', 'file']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
+                'placeholder': 'Nom descriptif de la pièce jointe'
+            }),
+            'file': forms.FileInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
+                'accept': '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv'
+            })
+        }
+        labels = {
+            'name': 'Nom de la pièce jointe *',
+            'file': 'Fichier *'
+        }
+
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if file:
+            # Vérifier la taille du fichier (5MB max)
+            if file.size > 5 * 1024 * 1024:
+                raise ValidationError('La taille du fichier ne peut pas dépasser 5 Mo.')
+        return file

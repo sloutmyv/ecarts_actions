@@ -854,6 +854,38 @@ python manage.py loaddata backup.json
 
 ## 🆕 Changements récents
 
+### v2.2.0 - Système de suppression d'écarts avec popup et gestion déclarations (2025-08-04)
+
+#### 🗑️ Suppression d'écarts avec confirmation élégante
+- **Popup de confirmation**: Même style que les services/agents avec HTMX + Alpine.js
+- **Messages contextuels**: Avertissement spécial si c'est le dernier écart d'une déclaration
+- **Permissions strictes**: Seuls SA/AD peuvent supprimer des écarts
+- **Suppression complète**: Écart + pièces jointes supprimés proprement
+
+#### 🔗 Suppression automatique des déclarations vides
+- **Détection du dernier écart**: Système intelligent qui détecte quand c'est le dernier écart
+- **Suppression en cascade**: Déclaration + pièces jointes automatiquement supprimées
+- **Message d'avertissement clair**: "⚠️ ATTENTION" avec détail de ce qui sera supprimé
+- **Redirection intelligente**: Vers la liste des déclarations si déclaration supprimée
+
+#### 🔢 Correction de la numérotation des écarts
+- **Gestion des "trous"**: Réutilise les numéros disponibles après suppression
+- **Algorithme optimisé**: Trouve le premier numéro libre dans la séquence
+- **Résolution des conflits**: Correction de l'erreur UNIQUE constraint failed
+- **Numérotation cohérente**: Maintient l'ordre logique des écarts
+
+#### 🎨 Interface de suppression unifiée
+- **Bouton croix**: Cohérent avec le design existant des services/agents
+- **Modal Alpine.js**: Animations fluides et fermeture intuitive
+- **JavaScript robuste**: Fallback automatique si HTMX non disponible
+- **Gestion d'erreurs**: Messages explicites et redirection appropriée
+
+#### 🛠️ Améliorations techniques
+- **HTMX programmatique**: Utilisation de `htmx.ajax()` pour plus de contrôle
+- **Transactions atomiques**: Suppression sécurisée avec rollback en cas d'erreur
+- **Cleanup des fichiers**: Suppression physique des pièces jointes du disque
+- **URLs cohérentes**: API endpoints suivant les conventions du projet
+
 ### v2.1.0 - Améliorations majeures du système d'écarts (2025-08-04)
 
 #### 🎯 Filtrage intelligent des déclarations

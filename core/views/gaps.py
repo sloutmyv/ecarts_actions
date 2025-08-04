@@ -10,7 +10,7 @@ from django.db.models import Q
 from datetime import datetime
 
 from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, User, GapReportAttachment, GapAttachment
-from core.forms import GapReportForm, GapForm
+from core.forms import GapReportForm, GapForm, GapAttachmentForm
 
 
 def get_services_hierarchical_order():
@@ -49,11 +49,17 @@ def gap_list(request):
     if selected_service:
         gaps = gaps.filter(gap_report__service_id=selected_service)
     
+    # Filtrer les écarts selon la visibilité pour l'utilisateur connecté
+    visible_gaps = []
+    for gap in gaps:
+        if gap.is_visible_to_user(request.user):
+            visible_gaps.append(gap)
+    
     # Récupérer tous les services pour le filtre
     services = get_services_hierarchical_order()
     
     context = {
-        'gaps': gaps,
+        'gaps': visible_gaps,
         'services': services,
         'selected_service': selected_service,
         'page_title': 'Liste des Écarts'
@@ -183,8 +189,15 @@ def gap_report_detail(request, pk):
         pk=pk
     )
     
+    # Filtrer les écarts selon la visibilité pour l'utilisateur connecté
+    visible_gaps = []
+    for gap in gap_report.gaps.all():
+        if gap.is_visible_to_user(request.user):
+            visible_gaps.append(gap)
+    
     context = {
         'gap_report': gap_report,
+        'visible_gaps': visible_gaps,
         'title': f'Détail de la déclaration #{gap_report.id}'
     }
     return render(request, 'core/gaps/gap_report_detail.html', context)
@@ -418,7 +431,7 @@ def gap_create(request, gap_report_pk):
         return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     
     if request.method == 'POST':
-        form = GapForm(request.POST, gap_report=gap_report)
+        form = GapForm(request.POST, gap_report=gap_report, user=request.user)
         if form.is_valid():
             gap = form.save(commit=False)
             gap.gap_report = gap_report
@@ -428,7 +441,7 @@ def gap_create(request, gap_report_pk):
             messages.success(request, f'Écart {gap.gap_number} créé avec succès.')
             return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     else:
-        form = GapForm(gap_report=gap_report)
+        form = GapForm(gap_report=gap_report, user=request.user)
     
     context = {
         'form': form,
@@ -454,13 +467,34 @@ def gap_edit(request, pk):
         return redirect('gaps:gap_report_detail', pk=gap.gap_report.pk)
     
     if request.method == 'POST':
-        form = GapForm(request.POST, instance=gap, gap_report=gap.gap_report)
+        form = GapForm(request.POST, instance=gap, gap_report=gap.gap_report, user=request.user)
         if form.is_valid():
             form.save()
+            
+            # Gérer l'ajout de pièces jointes multiples
+            attachment_names = request.POST.getlist('attachment_name')
+            attachment_files = request.FILES.getlist('attachment_file')
+            
+            # Traiter chaque pièce jointe
+            for i, (name, file) in enumerate(zip(attachment_names, attachment_files)):
+                if name and file:  # S'assurer que les deux champs sont fournis
+                    try:
+                        attachment = GapAttachment(
+                            gap=gap,
+                            name=name,
+                            file=file,
+                            uploaded_by=request.user
+                        )
+                        attachment.full_clean()  # Validation
+                        attachment.save()
+                        messages.success(request, f'Pièce jointe "{name}" ajoutée avec succès.')
+                    except Exception as e:
+                        messages.error(request, f'Erreur lors de l\'ajout de la pièce jointe "{name}" : {str(e)}')
+            
             messages.success(request, f'Écart {gap.gap_number} modifié avec succès.')
             return redirect('gaps:gap_report_detail', pk=gap.gap_report.pk)
     else:
-        form = GapForm(instance=gap, gap_report=gap.gap_report)
+        form = GapForm(instance=gap, gap_report=gap.gap_report, user=request.user)
     
     context = {
         'form': form,
@@ -470,6 +504,172 @@ def gap_edit(request, pk):
         'submit_text': 'Sauvegarder les modifications'
     }
     return render(request, 'core/gaps/gap_form.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_gap_attachment(request, pk):
+    """
+    Supprime une pièce jointe d'écart.
+    Seuls le déclarant de la déclaration ou un administrateur peuvent supprimer des pièces jointes.
+    """
+    attachment = get_object_or_404(GapAttachment.objects.select_related('gap__gap_report'), pk=pk)
+    gap_report = attachment.gap.gap_report
+    
+    # Vérifier que l'utilisateur connecté est le déclarant de la déclaration ou un administrateur
+    if gap_report.declared_by != request.user and request.user.droits not in ['SA', 'AD']:
+        messages.error(request, 'Vous ne pouvez supprimer que les pièces jointes de vos propres déclarations.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+    
+    # Sauvegarder le nom et l'écart pour le message
+    attachment_name = attachment.name
+    gap = attachment.gap
+    
+    # Supprimer le fichier physique
+    if attachment.file:
+        try:
+            attachment.file.delete(save=False)
+        except Exception:
+            pass  # Ignorer les erreurs de suppression de fichier
+    
+    # Supprimer l'enregistrement
+    attachment.delete()
+    
+    messages.success(request, f'Pièce jointe "{attachment_name}" supprimée avec succès.')
+    return redirect('gaps:gap_edit', pk=gap.pk)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_gap(request, pk):
+    """
+    Affiche la popup de confirmation pour supprimer un écart.
+    Seuls les Super Administrateurs (SA) et Administrateurs (AD) peuvent supprimer des écarts.
+    """
+    gap = get_object_or_404(Gap.objects.select_related('gap_report'), pk=pk)
+    gap_report = gap.gap_report
+    
+    # Vérifier que l'utilisateur connecté est un administrateur
+    if request.user.droits not in ['SA', 'AD']:
+        messages.error(request, 'Vous n\'avez pas les droits nécessaires pour supprimer un écart.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+    
+    # Vérifier si c'est le dernier écart de la déclaration
+    total_gaps = gap_report.gaps.count()
+    is_last_gap = total_gaps == 1
+    
+    # Préparer le message de confirmation
+    attachment_count = gap.attachments.count()
+    
+    if is_last_gap:
+        # Message spécial pour le dernier écart
+        if attachment_count > 0:
+            message = f'⚠️ ATTENTION : Vous êtes sur le point de supprimer le dernier écart de cette déclaration.\n\nCette action supprimera :\n• L\'écart "{gap.gap_number}"\n• Ses {attachment_count} pièce(s) jointe(s)\n• La déclaration d\'écart #{gap_report.id} dans son intégralité\n\nCette action est IRRÉVERSIBLE et effacera complètement la déclaration.'
+        else:
+            message = f'⚠️ ATTENTION : Vous êtes sur le point de supprimer le dernier écart de cette déclaration.\n\nCette action supprimera :\n• L\'écart "{gap.gap_number}"\n• La déclaration d\'écart #{gap_report.id} dans son intégralité\n\nCette action est IRRÉVERSIBLE et effacera complètement la déclaration.'
+    else:
+        # Message normal pour un écart parmi d'autres
+        if attachment_count > 0:
+            message = f'Êtes-vous sûr de vouloir supprimer définitivement l\'écart "{gap.gap_number}" ?\n\nCette action supprimera également {attachment_count} pièce(s) jointe(s) associée(s) et est irréversible.'
+        else:
+            message = f'Êtes-vous sûr de vouloir supprimer définitivement l\'écart "{gap.gap_number}" ?\n\nCette action est irréversible.'
+    
+    # Si c'est une requête HTMX, retourner la popup de confirmation
+    if request.headers.get('HX-Request'):
+        from django.template.loader import render_to_string
+        from django.middleware.csrf import get_token
+        
+        notification_html = render_to_string('core/gaps/notification_confirm.html', {
+            'message': message,
+            'gap': gap,
+            'csrf_token': get_token(request)
+        })
+        
+        from django.http import HttpResponse
+        response = HttpResponse(notification_html)
+        response['HX-Retarget'] = '#modal-container'
+        response['HX-Reswap'] = 'innerHTML'
+        return response
+    
+    # Si ce n'est pas HTMX, rediriger vers la page de détail
+    return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_gap_confirm(request, pk):
+    """
+    Suppression définitive d'un écart après confirmation.
+    Seuls les Super Administrateurs (SA) et Administrateurs (AD) peuvent supprimer des écarts.
+    """
+    gap = get_object_or_404(Gap.objects.select_related('gap_report'), pk=pk)
+    gap_report = gap.gap_report
+    
+    # Vérifier que l'utilisateur connecté est un administrateur
+    if request.user.droits not in ['SA', 'AD']:
+        messages.error(request, 'Vous n\'avez pas les droits nécessaires pour supprimer un écart.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+    
+    # Vérifier si c'est le dernier écart de la déclaration
+    total_gaps = gap_report.gaps.count()
+    is_last_gap = total_gaps == 1
+    
+    # Sauvegarder les informations pour le message
+    gap_number = gap.gap_number
+    gap_report_id = gap_report.id
+    
+    # Supprimer les pièces jointes de l'écart
+    for attachment in gap.attachments.all():
+        if attachment.file:
+            try:
+                attachment.file.delete(save=False)
+            except Exception:
+                pass  # Ignorer les erreurs de suppression de fichier
+        attachment.delete()
+    
+    # Supprimer l'écart
+    gap.delete()
+    
+    if is_last_gap:
+        # Si c'était le dernier écart, supprimer aussi la déclaration
+        
+        # Supprimer les pièces jointes de la déclaration
+        for attachment in gap_report.attachments.all():
+            if attachment.file:
+                try:
+                    attachment.file.delete(save=False)
+                except Exception:
+                    pass
+            attachment.delete()
+        
+        # Supprimer la déclaration
+        gap_report.delete()
+        
+        # Message de succès pour suppression complète
+        messages.success(request, f'Écart "{gap_number}" et déclaration #{gap_report_id} supprimés définitivement avec succès.')
+        
+        # Rediriger vers la liste des déclarations
+        if request.headers.get('HX-Request'):
+            from django.http import HttpResponse
+            response = HttpResponse('')
+            response['HX-Trigger'] = 'gapReportDeleted'
+            response['HX-Redirect'] = '/gaps/declarations/'
+            return response
+        
+        return redirect('gaps:gap_report_list')
+    else:
+        # Supprimer seulement l'écart
+        messages.success(request, f'Écart "{gap_number}" supprimé définitivement avec succès.')
+        
+        # Rediriger vers la déclaration
+        if request.headers.get('HX-Request'):
+            from django.http import HttpResponse
+            response = HttpResponse('')
+            response['HX-Trigger'] = 'gapDeleted'
+            response['HX-Redirect'] = f'/gaps/declaration/{gap_report.pk}/'
+            return response
+        
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
 
 
 @login_required

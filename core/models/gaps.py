@@ -178,6 +178,8 @@ class Gap(TimestampedModel):
     
     STATUS_CHOICES = [
         ('declared', 'Déclaré'),
+        ('cancelled', 'Annulé'),
+        ('retained', 'Retenu'),
         ('rejected', 'Non retenu'),
         ('closed', 'Clos'),
     ]
@@ -242,13 +244,70 @@ class Gap(TimestampedModel):
                 # Verrouiller la table pour éviter les conditions de course
                 existing_gaps = Gap.objects.select_for_update().filter(
                     gap_report_id=self.gap_report_id
-                ).count()
-                next_gap_number = existing_gaps + 1
+                ).order_by('gap_number')
+                
+                # Trouver le prochain numéro disponible
+                next_gap_number = 1
+                for gap in existing_gaps:
+                    # Extraire le numéro d'écart à partir du gap_number (format: "ID.NUMERO")
+                    try:
+                        gap_num = int(gap.gap_number.split('.')[-1])
+                        if gap_num == next_gap_number:
+                            next_gap_number += 1
+                        elif gap_num > next_gap_number:
+                            # On a trouvé un "trou" dans la numérotation
+                            break
+                    except (ValueError, IndexError):
+                        # Si le format n'est pas standard, ignorer
+                        continue
                 
                 # Format: ID_DECLARATION.NUMERO_ECART
                 self.gap_number = f'{self.gap_report_id}.{next_gap_number}'
         
         super().save(*args, **kwargs)
+
+    def is_visible_to_user(self, user):
+        """
+        Détermine si un écart est visible pour un utilisateur donné.
+        
+        Règles de visibilité :
+        - Écarts annulés : visibles seulement par le déclarant et les administrateurs (SA/AD)
+        - Autres statuts : visibles par tous les utilisateurs
+        """
+        if self.status == 'cancelled':
+            # Écart annulé : visible seulement par le déclarant et les administrateurs
+            return (
+                self.gap_report.declared_by == user or 
+                user.droits in ['SA', 'AD']
+            )
+        # Autres statuts : visibles par tous
+        return True
+    
+    def get_available_statuses_for_user(self, user):
+        """
+        Retourne les statuts disponibles pour un utilisateur donné.
+        
+        Règles d'accès aux statuts :
+        - Déclarant : peut passer de 'déclaré' à 'annulé' uniquement
+        - SA/AD : accès à tous les statuts
+        - Valideur (à définir plus tard) : accès aux statuts administratifs
+        """
+        if user.droits in ['SA', 'AD']:
+            # Administrateurs : tous les statuts
+            return self.STATUS_CHOICES
+        elif self.gap_report.declared_by == user:
+            # Déclarant : peut seulement annuler son écart
+            if self.status == 'declared':
+                return [
+                    ('declared', 'Déclaré'),
+                    ('cancelled', 'Annulé'),
+                ]
+            else:
+                # Si l'écart n'est plus à l'état "déclaré", le déclarant ne peut plus le modifier
+                return [(self.status, dict(self.STATUS_CHOICES)[self.status])]
+        else:
+            # Autres utilisateurs : lecture seule
+            return [(self.status, dict(self.STATUS_CHOICES)[self.status])]
 
     def __str__(self):
         return f"{self.gap_number} - {self.gap_type.name}"

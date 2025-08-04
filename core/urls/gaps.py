@@ -25,4 +25,7 @@ urlpatterns = [
     path('api/process-field/', gaps.get_process_field, name='get_process_field'),
     path('api/search-users/', gaps.search_users, name='search_users'),
     path('api/delete-attachment/<int:attachment_id>/', gaps.delete_attachment, name='delete_attachment'),
+    path('api/delete-gap-attachment/<int:pk>/', gaps.delete_gap_attachment, name='delete_gap_attachment'),
+    path('api/delete-gap/<int:pk>/', gaps.delete_gap, name='delete_gap'),
+    path('api/delete-gap-confirm/<int:pk>/', gaps.delete_gap_confirm, name='delete_gap_confirm'),
 ]
