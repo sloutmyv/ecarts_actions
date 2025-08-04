@@ -1,7 +1,7 @@
 {% if requires_process %}
 <div>
     <label for="process" class="block text-sm font-medium text-gray-700 mb-2">
-        Processus associé <span class="text-red-500">*</span>
+        Processus SMI associé <span class="text-red-500">*</span>
     </label>
     <select 
         id="process" 
@@ -11,7 +11,7 @@
         <option value="">Sélectionner un processus</option>
         {% for process in processes %}
         <option value="{{ process.id }}"{% if selected_process == process.id|stringformat:"s" %} selected{% endif %}>
-            {{ process.name }}
+            {{ process.code }} - {{ process.name }}
         </option>
         {% endfor %}
     </select>

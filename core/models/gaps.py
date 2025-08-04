@@ -10,7 +10,7 @@ from .services import Service
 User = get_user_model()
 
 
-class AuditSource(CodedModel, TimestampedModel):
+class AuditSource(TimestampedModel):
     """
     Source d'audit - entité administrable.
     Exemples: Audit interne, Audit client, Inspection visuelle, Retour client
@@ -28,14 +28,10 @@ class AuditSource(CodedModel, TimestampedModel):
         verbose_name="Nécessite un processus",
         help_text="Si coché, un processus sera obligatoire pour cette source"
     )
-    is_active = models.BooleanField(
-        default=True,
-        verbose_name="Actif"
-    )
 
     class Meta:
-        verbose_name = "Source d'audit"
-        verbose_name_plural = "Sources d'audit"
+        verbose_name = "3.1 Source d'audit"
+        verbose_name_plural = "3.1 Sources d'audit"
         ordering = ['name']
 
     def __str__(self):
@@ -64,15 +60,15 @@ class Process(CodedModel, TimestampedModel):
     )
 
     class Meta:
-        verbose_name = "Processus"
-        verbose_name_plural = "Processus"
+        verbose_name = "3.2 Processus SMI"
+        verbose_name_plural = "3.2 Processus SMI"
         ordering = ['name']
 
     def __str__(self):
         return self.name
 
 
-class GapType(CodedModel, TimestampedModel):
+class GapType(TimestampedModel):
     """
     Type d'écart (Quoi) - entité administrable.
     Chaque type est associé à une source d'audit spécifique.
@@ -91,16 +87,11 @@ class GapType(CodedModel, TimestampedModel):
         related_name='gap_types',
         verbose_name="Source d'audit"
     )
-    is_active = models.BooleanField(
-        default=True,
-        verbose_name="Actif"
-    )
 
     class Meta:
-        verbose_name = "Type d'écart"
-        verbose_name_plural = "Types d'écart"
+        verbose_name = "3.3 Type d'écart"
+        verbose_name_plural = "3.3 Types d'écart"
         ordering = ['audit_source__name', 'name']
-        unique_together = ['code', 'audit_source']
 
     def __str__(self):
         return f"{self.audit_source.name} - {self.name}"
@@ -133,7 +124,7 @@ class GapReport(TimestampedModel):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        verbose_name="Processus associé",
+        verbose_name="Processus SMI associé",
         help_text="Obligatoire uniquement pour les audits internes"
     )
     location = models.CharField(
@@ -227,31 +218,35 @@ class Gap(TimestampedModel):
         """
         Validation pour s'assurer que le type d'écart correspond à la source d'audit.
         """
-        if (self.gap_type and self.gap_report and 
-            self.gap_type.audit_source != self.gap_report.audit_source):
-            raise ValidationError({
-                'gap_type': 'Le type d\'écart doit correspondre à la source d\'audit de la déclaration.'
-            })
+        # Éviter la validation si gap_report n'est pas encore assigné
+        if (self.gap_type and self.gap_report_id and hasattr(self, 'gap_report')):
+            try:
+                gap_report = self.gap_report
+                if self.gap_type.audit_source != gap_report.audit_source:
+                    raise ValidationError({
+                        'gap_type': 'Le type d\'écart doit correspondre à la source d\'audit de la déclaration.'
+                    })
+            except GapReport.DoesNotExist:
+                # Si gap_report n'existe pas encore, ignorer la validation
+                pass
 
     def save(self, *args, **kwargs):
         """
         Génère automatiquement un numéro d'écart si non fourni.
+        Format: [ID_DECLARATION].[NUMERO_ECART]
         """
-        if not self.gap_number:
-            # Format: EC-YYYY-XXXX
-            from datetime import datetime
-            year = datetime.now().year
-            last_gap = Gap.objects.filter(
-                gap_number__startswith=f'EC-{year}-'
-            ).order_by('gap_number').last()
-            
-            if last_gap:
-                last_number = int(last_gap.gap_number.split('-')[-1])
-                next_number = last_number + 1
-            else:
-                next_number = 1
-            
-            self.gap_number = f'EC-{year}-{next_number:04d}'
+        if not self.gap_number and self.gap_report_id:
+            # Utiliser une transaction pour éviter les conflits de concurrence
+            from django.db import transaction
+            with transaction.atomic():
+                # Verrouiller la table pour éviter les conditions de course
+                existing_gaps = Gap.objects.select_for_update().filter(
+                    gap_report_id=self.gap_report_id
+                ).count()
+                next_gap_number = existing_gaps + 1
+                
+                # Format: ID_DECLARATION.NUMERO_ECART
+                self.gap_number = f'{self.gap_report_id}.{next_gap_number}'
         
         super().save(*args, **kwargs)
 

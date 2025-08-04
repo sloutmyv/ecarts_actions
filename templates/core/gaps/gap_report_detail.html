@@ -59,7 +59,7 @@
         <div class="lg:col-span-2">
             <div class="bg-white shadow-lg rounded-lg overflow-hidden">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Informations de la déclaration</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Entête de la déclaration</h3>
                     <p class="mt-1 max-w-2xl text-sm text-gray-500">Détails de la déclaration d'écart #{{ gap_report.id }}</p>
                 </div>
                 <div class="border-t border-gray-200">
@@ -80,8 +80,8 @@
                         </div>
                         {% if gap_report.process %}
                         <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Processus associé</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.process.name }}</dd>
+                            <dt class="text-sm font-medium text-gray-500">Processus SMI associé</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.process.code }} - {{ gap_report.process.name }}</dd>
                         </div>
                         {% endif %}
                         {% if gap_report.location %}
@@ -96,7 +96,7 @@
                         </div>
                         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <dt class="text-sm font-medium text-gray-500">Déclaré par</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.username }}</dd>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.matricule }}</dd>
                         </div>
                         {% if gap_report.involved_users.exists %}
                         <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -104,7 +104,7 @@
                             <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">
                                 <ul class="list-disc list-inside">
                                     {% for user in gap_report.involved_users.all %}
-                                    <li>{{ user.get_full_name|default:user.username }}</li>
+                                    <li>{{ user.get_full_name|default:user.matricule }}</li>
                                     {% endfor %}
                                 </ul>
                             </dd>

@@ -21,24 +21,24 @@ class GapReportForm(forms.ModelForm):
         ]
         widgets = {
             'audit_source': forms.Select(attrs={
-                'class': 'form-select',
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
                 'hx-get': '/gaps/api/process-field/',
                 'hx-target': '#process-field',
                 'hx-include': '[name="audit_source"]'
             }),
             'source_reference': forms.TextInput(attrs={
-                'class': 'form-input',
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
                 'placeholder': 'Référence optionnelle'
             }),
-            'service': forms.Select(attrs={'class': 'form-select'}),
-            'process': forms.Select(attrs={'class': 'form-select'}),
+            'service': forms.Select(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors'}),
+            'process': forms.Select(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors'}),
             'location': forms.TextInput(attrs={
-                'class': 'form-input',
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
                 'placeholder': 'Lieu de l\'observation'
             }),
-            'observation_date': forms.DateInput(attrs={
-                'class': 'form-input',
-                'type': 'date'
+            'observation_date': forms.DateTimeInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
+                'type': 'datetime-local'
             }),
             'involved_users': forms.SelectMultiple(attrs={
                 'class': 'form-select',
@@ -46,12 +46,12 @@ class GapReportForm(forms.ModelForm):
             })
         }
         labels = {
-            'audit_source': 'Source de l\'audit *',
+            'audit_source': 'Source de l\'audit',
             'source_reference': 'Référence source',
-            'service': 'Service concerné *',
-            'process': 'Processus associé',
+            'service': 'Service concerné',
+            'process': 'Processus SMI associé',
             'location': 'Lieu',
-            'observation_date': 'Date d\'observation *',
+            'observation_date': 'Date d\'observation',
             'involved_users': 'Autres utilisateurs impliqués'
         }
 
@@ -59,14 +59,24 @@ class GapReportForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)  # Récupérer l'utilisateur connecté
         super().__init__(*args, **kwargs)
         
-        # Filtrer les choix actifs uniquement
-        self.fields['audit_source'].queryset = AuditSource.objects.filter(is_active=True)
-        self.fields['service'].queryset = Service.objects.all().order_by('nom')
+        # Définir les choix disponibles
+        self.fields['audit_source'].queryset = AuditSource.objects.all().order_by('name')
+        
+        # Utiliser le tri hiérarchique pour les services
+        from core.views.gaps import get_services_hierarchical_order
+        services_ordered = get_services_hierarchical_order()
+        self.fields['service'].queryset = Service.objects.filter(
+            id__in=[s.id for s in services_ordered]
+        ).order_by('nom')
+        # Réorganiser selon l'ordre hiérarchique
+        service_choices = [(s.id, s.get_chemin_hierarchique()) for s in services_ordered]
+        self.fields['service'].choices = [('', '---------')] + service_choices
+        
         self.fields['process'].queryset = Process.objects.filter(is_active=True)
         
         # Définir la date par défaut
         if not self.instance.pk and 'observation_date' not in self.initial:
-            self.fields['observation_date'].initial = datetime.now().date()
+            self.fields['observation_date'].initial = datetime.now().strftime('%Y-%m-%dT%H:%M')
         
         # Pré-sélectionner le service de l'utilisateur connecté
         if not self.instance.pk and self.user and self.user.service and 'service' not in self.initial:
@@ -121,10 +131,9 @@ class GapForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Filtrer les types d'écart selon la source d'audit
-        if self.gap_report:
+        if self.gap_report and hasattr(self.gap_report, 'audit_source'):
             self.fields['gap_type'].queryset = GapType.objects.filter(
-                audit_source=self.gap_report.audit_source,
-                is_active=True
+                audit_source=self.gap_report.audit_source
             )
         else:
             self.fields['gap_type'].queryset = GapType.objects.none()
@@ -132,7 +141,7 @@ class GapForm(forms.ModelForm):
     def clean_gap_type(self):
         gap_type = self.cleaned_data.get('gap_type')
         
-        if gap_type and self.gap_report:
+        if gap_type and self.gap_report and hasattr(self.gap_report, 'audit_source'):
             if gap_type.audit_source != self.gap_report.audit_source:
                 raise ValidationError(
                     'Le type d\'écart doit correspondre à la source d\'audit de la déclaration.'

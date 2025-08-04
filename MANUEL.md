@@ -459,9 +459,9 @@ La gestion des écarts permet de déclarer, suivre et traiter les non-conformit�
 
 #### Étape 1 : Accès à la déclaration
 - Cliquez sur **"Déclarer un écart"** dans le menu ou sur la page de liste
-- Une modale moderne s'ouvre avec le formulaire de déclaration
+- Une modale moderne s'ouvre avec le formulaire de déclaration structuré en sections
 
-#### Étape 2 : Section "QUI ?" - Personnes impliquées
+#### Étape 2 : Section 🔵 "QUI ?" - Personnes impliquées
 La déclaration commence par identifier les personnes présentes lors de l'observation :
 
 **Déclarant (vous)**
@@ -470,7 +470,8 @@ La déclaration commence par identifier les personnes présentes lors de l'obser
 - Non modifiable (vous êtes toujours le déclarant)
 
 **Autres personnes présentes** (optionnel)
-- Champ de recherche intelligent à gauche
+- Bouton ➕ vert pour ajouter des personnes
+- Interface de recherche dynamique
 - Tapez au moins 2 caractères pour rechercher par :
   - Matricule
   - Nom
@@ -478,45 +479,73 @@ La déclaration commence par identifier les personnes présentes lors de l'obser
 - Sélectionnez les personnes en cliquant sur les résultats
 - Supprimez une personne avec le bouton "✕"
 
-#### Étape 3 : Informations sur l'audit
+#### Étape 3 : Section 🟠 "QUAND ?" - Temporalité
+
+**Date d'observation** (obligatoire)
+- Date et heure par défaut : maintenant
+- Modifiable selon la date réelle d'observation
+- Format : JJ/MM/AAAA HH:MM
+
+**Date de déclaration**
+- Affichée automatiquement (non modifiable)
+- Horodatage de création de la déclaration
+
+#### Étape 4 : Section 🟢 "OÙ ?" - Localisation
+
+**Service concerné** (obligatoire)
+- Liste hiérarchique triée alphabétiquement
+- Votre service est automatiquement pré-sélectionné
+- Navigation facilitée : services parents puis sous-services
+- Format d'affichage : "Service Parent > Sous-Service"
+
+**Lieu** (optionnel)
+- Localisation précise où l'écart a été observé
+- Champ de texte libre
+
+#### Étape 5 : Section 🟣 "COMMENT ?" - Source et contexte
 **Source de l'audit** (obligatoire)
 - Sélectionnez la source de l'audit dans la liste déroulante
 - Les options sont configurées par les administrateurs
 
-**Processus associé** (conditionnel)
+**Processus SMI associé** (conditionnel)
 - Ce champ apparaît automatiquement si la source d'audit l'exige
 - Sélectionnez le processus concerné dans la liste
 
 **Référence source** (optionnel)
 - Référence externe de l'audit si applicable
 
-#### Étape 4 : Détails de l'observation
-**Service concerné** (obligatoire)
-- Votre service est automatiquement pré-sélectionné
-- Vous pouvez le modifier si l'écart concerne un autre service
-- Indication visuelle : "Votre service est pré-sélectionné"
+#### Étape 6 : Ajouter des écarts individuels
 
-**Lieu** (optionnel)
-- Localisation précise où l'écart a été observé
+**Écarts multiples**
+- Utilisez le bouton ➕ "Ajouter un écart" pour créer plusieurs écarts dans la même déclaration
+- Chaque écart nécessite :
+  - **Type d'écart** : Sélection selon la source d'audit choisie
+  - **Description** : Explication détaillée de l'écart observé
 
-**Date d'observation** (obligatoire)
-- Date par défaut : aujourd'hui
-- Modifiable selon la date réelle d'observation
+**Pièces jointes** (optionnel)
+- Ajoutez des fichiers pour chaque écart ou pour la déclaration globale
+- Formats supportés : PDF, images, documents
+- Bouton 📎 "Ajouter une pièce jointe"
 
-#### Étape 5 : Validation
+#### Étape 7 : Validation
 - Cliquez sur **"Créer la déclaration"**
 - Un message de succès confirme la création
 - Redirection automatique vers la liste des écarts
 
-### Consulter la liste des écarts
+### Consulter les déclarations et écarts
 
-#### Interface de la liste
-La liste des écarts offre une vue d'ensemble complète :
+#### Deux vues disponibles
+- **📋 Déclarations d'écart** : Vue des déclarations complètes avec filtres
+- **📋 Liste des écarts** : Vue des écarts individuels
 
-**Filtrage**
-- **Filtre par service** : Dropdown pour filtrer par service spécifique
-- **Bouton "Filtrer"** : Applique le filtre sélectionné
-- **Bouton "Effacer"** : Supprime le filtre actuel
+#### Interface de la liste des déclarations
+La liste des déclarations offre une vue d'ensemble avec filtres intelligents :
+
+**Filtrage avancé**
+- **Filtre par service** : Services triés hiérarchiquement
+- **Filtre par déclarant** : Recherche par nom, prénom ou matricule
+- **Filtre par source d'audit** : Filtrer selon la source
+- **Filtres par défaut** : Vos propres déclarations sont affichées automatiquement
 
 **Colonnes affichées**
 - **Écart** : Numéro d'écart (format EC-YYYY-XXXX) et description tronquée

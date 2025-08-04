@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                 ('declared_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='declared_gap_reports', to=settings.AUTH_USER_MODEL, verbose_name='Déclaré par')),
                 ('department', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.department', verbose_name='Service concerné')),
                 ('involved_users', models.ManyToManyField(blank=True, related_name='involved_gap_reports', to=settings.AUTH_USER_MODEL, verbose_name='Autres utilisateurs impliqués')),
-                ('process', models.ForeignKey(blank=True, help_text='Obligatoire uniquement pour les audits internes', null=True, on_delete=django.db.models.deletion.PROTECT, to='core.process', verbose_name='Processus associé')),
+                ('process', models.ForeignKey(blank=True, help_text='Obligatoire uniquement pour les audits internes', null=True, on_delete=django.db.models.deletion.PROTECT, to='core.process', verbose_name='Processus SMI associé')),
             ],
             options={
                 'verbose_name': "Déclaration d'écart",

@@ -5,10 +5,17 @@
         <!-- En-tête de la modale -->
         <div class="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                Déclarer un écart
+                {% if edit_mode %}
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Modification de la déclaration #{{ gap_report.id }}
+                {% else %}
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Déclarer un écart
+                {% endif %}
             </h2>
             <button onclick="closeGlobalModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,8 +26,13 @@
 
         <!-- Formulaire -->
         <form 
-            hx-post="{% url 'gaps:gap_report_create' %}"
+            {% if edit_mode %}
+                hx-post="{% url 'gaps:gap_report_edit' gap_report.pk %}"
+            {% else %}
+                hx-post="{% url 'gaps:gap_report_create' %}"
+            {% endif %}
             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            enctype="multipart/form-data"
             class="p-6">
             
             <!-- Section QUI ? -->
@@ -99,7 +111,12 @@
                         </div>
                         
                         <!-- Champ caché pour les IDs sélectionnés -->
-                        <input type="hidden" name="involved_users" id="involved_users_ids" value="">
+                        <input type="hidden" name="involved_users" id="involved_users_ids" 
+                            {% if edit_mode and gap_report.involved_users.exists %}
+                                value="{% for user in gap_report.involved_users.all %}{{ user.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                            {% else %}
+                                value=""
+                            {% endif %}>
                     </div>
                 </div>
             </div>
@@ -120,7 +137,11 @@
                             type="datetime-local" 
                             id="observation_datetime" 
                             name="observation_datetime" 
-                            value="{{ 'now'|date:'Y-m-d\TH:i' }}"
+                            {% if edit_mode and gap_report.observation_date %}
+                                value="{{ gap_report.observation_date|date:'Y-m-d\TH:i' }}"
+                            {% else %}
+                                value="{{ 'now'|date:'Y-m-d\TH:i' }}"
+                            {% endif %}
                             max="{{ 'now'|date:'Y-m-d\TH:i' }}"
                             required
                             onchange="validateObservationDate()"
@@ -142,7 +163,11 @@
                                 </svg>
                                 <div class="min-w-0 flex-1">
                                     <div class="text-sm font-medium text-blue-900 truncate" id="creation-datetime">
-                                        <!-- Sera rempli par JavaScript -->
+                                        {% if edit_mode and gap_report.created_at %}
+                                            {{ gap_report.created_at|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            <!-- Sera rempli par JavaScript -->
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -170,8 +195,13 @@
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             <option value="">Sélectionner un service</option>
                             {% for service in services %}
-                                <option value="{{ service.id }}" {% if user.service and service.id == user.service.id %}selected{% endif %}>
-                                    {{ service.nom }}
+                                <option value="{{ service.id }}" 
+                                    {% if edit_mode and gap_report.service and service.id == gap_report.service.id %}
+                                        selected
+                                    {% elif not edit_mode and user.service and service.id == user.service.id %}
+                                        selected
+                                    {% endif %}>
+                                    {{ service.get_chemin_hierarchique }}
                                 </option>
                             {% endfor %}
                         </select>
@@ -186,14 +216,20 @@
                             type="text" 
                             id="location" 
                             name="location" 
+                            {% if edit_mode and gap_report.location %}
+                                value="{{ gap_report.location }}"
+                            {% endif %}
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Lieu de l'observation">
                     </div>
                 </div>
             </div>
             
-            <!-- Séparateur discret -->
-            <div class="border-t border-gray-200 mb-6"></div>
+            <!-- Section COMMENT ? -->
+            <div class="mt-8 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-sm font-bold">COMMENT ?</span>
+                </h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Source d'audit -->
@@ -208,10 +244,15 @@
                         hx-get="{% url 'gaps:get_process_field' %}"
                         hx-target="#process-field"
                         hx-include="[name='audit_source']"
+                        hx-trigger="change"
+                        onchange="loadGapTypes()"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Sélectionner une source</option>
                         {% for source in audit_sources %}
-                            <option value="{{ source.id }}">{{ source.name }}</option>
+                            <option value="{{ source.id }}" 
+                                {% if edit_mode and gap_report.audit_source and source.id == gap_report.audit_source.id %}selected{% endif %}>
+                                {{ source.name }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -225,17 +266,129 @@
                         type="text" 
                         id="source_reference" 
                         name="source_reference" 
+                        {% if edit_mode and gap_report.source_reference %}
+                            value="{{ gap_report.source_reference }}"
+                        {% endif %}
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Référence optionnelle">
                 </div>
-
 
                 <!-- Processus (champ dynamique) -->
                 <div id="process-field">
                     <!-- Sera rempli dynamiquement via HTMX -->
                 </div>
+            </div>
+            </div>
+            
+            <!-- Section Pièces jointes pour la déclaration -->
+            <div class="mt-6 mb-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <button 
+                        type="button" 
+                        id="add-declaration-attachment-btn"
+                        onclick="addDeclarationAttachment()"
+                        class="inline-flex items-center justify-center w-6 h-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </button>
+                    <label class="text-sm font-medium text-gray-700">
+                        Pièces jointes <span class="text-xs text-gray-500 font-normal">(optionnel, max 5Mo par fichier)</span>
+                    </label>
+                </div>
+                
+                <!-- Container pour les pièces jointes de déclaration -->
+                <div id="declaration-attachments-container" class="space-y-3">
+                    <!-- Les pièces jointes apparaîtront ici -->
+                </div>
+            </div>
+            
+            <!-- Séparateur discret -->
+            <div class="border-t border-gray-200 mb-6"></div>
+            
+            <!-- Section Écarts -->
+            <div class="mt-8">
+                <!-- Container pour les écarts -->
+                <div id="gaps-container">
+                    <!-- Premier écart (template) -->
+                    <div class="gap-row border border-gray-200 rounded-lg p-4 mb-4" data-gap-index="0">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-lg font-semibold text-gray-900">Écart #<span class="gap-number">1</span></h4>
+                            <button 
+                                type="button" 
+                                class="remove-gap-btn text-red-500 hover:text-red-700 text-sm hidden"
+                                onclick="removeGapRow(this)">
+                                ✕ Supprimer
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 gap-4">
+                            <!-- Type d'écart avec QUOI ? -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">QUOI ?</span>
+                                    Type d'écart <span class="text-red-500">*</span>
+                                </label>
+                                <select 
+                                    name="gap_type_0" 
+                                    required
+                                    class="gap-type-select w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Sélectionner d'abord une source d'audit</option>
+                                </select>
+                            </div>
 
-
+                            <!-- Description de l'écart avec POURQUOI ? -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">POURQUOI ?</span>
+                                    Description de l'écart <span class="text-red-500">*</span>
+                                </label>
+                                <textarea 
+                                    name="gap_description_0"
+                                    required
+                                    rows="3"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Décrivez l'écart observé..."></textarea>
+                            </div>
+                            
+                            <!-- Pièces jointes pour l'écart -->
+                            <div class="mt-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <button 
+                                        type="button" 
+                                        class="add-gap-attachment-btn inline-flex items-center justify-center w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
+                                        onclick="addGapAttachment(this, 0)">
+                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                        </svg>
+                                    </button>
+                                    <label class="text-sm font-medium text-gray-700">
+                                        Pièces jointes <span class="text-xs text-gray-500 font-normal">(optionnel)</span>
+                                    </label>
+                                </div>
+                                
+                                <!-- Container pour les pièces jointes de cet écart -->
+                                <div class="gap-attachments-container space-y-2" data-gap-index="0">
+                                    <!-- Les pièces jointes de l'écart apparaîtront ici -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bouton Ajouter un écart -->
+                <div class="flex items-center justify-center mt-4">
+                    <button 
+                        type="button" 
+                        id="add-gap-btn"
+                        onclick="addGapRow()"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Ajouter un écart
+                    </button>
+                </div>
             </div>
 
 
@@ -250,7 +403,7 @@
                 <button 
                     type="submit"
                     class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                    Créer la déclaration
+                    <span id="submit-btn-text">Créer l'écart</span>
                 </button>
             </div>
         </form>
@@ -453,4 +606,417 @@
             }
         }
     });
+    
+    // Variables pour la gestion des écarts multiples
+    let gapIndex = 0;
+    let gapTypesOptions = '<option value="">Sélectionner d\'abord une source d\'audit</option>';
+    
+    // Charger les types d'écart selon la source d'audit
+    function loadGapTypes() {
+        const auditSourceSelect = document.getElementById('audit_source');
+        
+        if (!auditSourceSelect.value) {
+            gapTypesOptions = '<option value="">Sélectionner d\'abord une source d\'audit</option>';
+            updateAllGapTypeSelects();
+            return;
+        }
+        
+        // Faire une requête AJAX pour récupérer les types d'écart
+        fetch(`{% url 'gaps:get_gap_types' %}?audit_source_id=${auditSourceSelect.value}`)
+            .then(response => response.text())
+            .then(html => {
+                gapTypesOptions = html;
+                updateAllGapTypeSelects();
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des types d\'écart:', error);
+                gapTypesOptions = '<option value="">Erreur de chargement</option>';
+                updateAllGapTypeSelects();
+            });
+    }
+    
+    // Mettre à jour tous les selects de types d'écart
+    function updateAllGapTypeSelects() {
+        const selects = document.querySelectorAll('.gap-type-select');
+        selects.forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = gapTypesOptions;
+            if (currentValue) select.value = currentValue;
+        });
+    }
+    
+    // Ajouter une nouvelle ligne d'écart
+    function addGapRow() {
+        gapIndex++;
+        const container = document.getElementById('gaps-container');
+        
+        const newRow = document.createElement('div');
+        newRow.className = 'gap-row border border-gray-200 rounded-lg p-4 mb-4';
+        newRow.setAttribute('data-gap-index', gapIndex);
+        
+        newRow.innerHTML = `
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-lg font-semibold text-gray-900">Écart #<span class="gap-number">${gapIndex + 1}</span></h4>
+                <button 
+                    type="button" 
+                    class="remove-gap-btn text-red-500 hover:text-red-700 text-sm"
+                    onclick="removeGapRow(this)">
+                    ✕ Supprimer
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <!-- Type d'écart avec QUOI ? -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">QUOI ?</span>
+                        Type d'écart <span class="text-red-500">*</span>
+                    </label>
+                    <select 
+                        name="gap_type_${gapIndex}" 
+                        required
+                        class="gap-type-select w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        ${gapTypesOptions}
+                    </select>
+                </div>
+
+                <!-- Description de l'écart avec POURQUOI ? -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">POURQUOI ?</span>
+                        Description de l'écart <span class="text-red-500">*</span>
+                    </label>
+                    <textarea 
+                        name="gap_description_${gapIndex}"
+                        required
+                        rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Décrivez l'écart observé..."></textarea>
+                </div>
+                
+                <!-- Pièces jointes pour l'écart -->
+                <div class="mt-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <button 
+                            type="button" 
+                            class="add-gap-attachment-btn inline-flex items-center justify-center w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors"
+                            onclick="addGapAttachment(this, ${gapIndex})">
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                        </button>
+                        <label class="text-sm font-medium text-gray-700">
+                            Pièces jointes <span class="text-xs text-gray-500 font-normal">(optionnel)</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Container pour les pièces jointes de cet écart -->
+                    <div class="gap-attachments-container space-y-2" data-gap-index="${gapIndex}">
+                        <!-- Les pièces jointes de l'écart apparaîtront ici -->
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(newRow);
+        updateGapNumbers();
+        updateRemoveButtons();
+        updateSubmitButtonText();
+    }
+    
+    // Supprimer une ligne d'écart
+    function removeGapRow(button) {
+        const row = button.closest('.gap-row');
+        row.remove();
+        updateGapNumbers();
+        updateRemoveButtons();
+        updateSubmitButtonText();
+    }
+    
+    // Mettre à jour la numérotation des écarts
+    function updateGapNumbers() {
+        const rows = document.querySelectorAll('.gap-row');
+        rows.forEach((row, index) => {
+            const numberSpan = row.querySelector('.gap-number');
+            if (numberSpan) {
+                numberSpan.textContent = index + 1;
+            }
+        });
+    }
+    
+    // Afficher/masquer les boutons de suppression
+    function updateRemoveButtons() {
+        const rows = document.querySelectorAll('.gap-row');
+        const removeButtons = document.querySelectorAll('.remove-gap-btn');
+        
+        if (rows.length <= 1) {
+            // Masquer le bouton de suppression s'il n'y a qu'un seul écart
+            removeButtons.forEach(btn => btn.classList.add('hidden'));
+        } else {
+            // Afficher tous les boutons de suppression s'il y a plusieurs écarts
+            removeButtons.forEach(btn => btn.classList.remove('hidden'));
+        }
+    }
+    
+    // Mettre à jour le texte du bouton de soumission
+    function updateSubmitButtonText() {
+        const rows = document.querySelectorAll('.gap-row');
+        const submitBtn = document.getElementById('submit-btn-text');
+        
+        if (rows.length === 1) {
+            submitBtn.textContent = 'Créer l\'écart';
+        } else {
+            submitBtn.textContent = `Créer les ${rows.length} écarts`;
+        }
+    }
+    
+    // Variables pour les pièces jointes
+    let declarationAttachmentIndex = 0;
+    let gapAttachmentIndexes = {};
+    
+    // Ajouter une pièce jointe à la déclaration
+    function addDeclarationAttachment() {
+        const container = document.getElementById('declaration-attachments-container');
+        
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'declaration-attachment-item bg-gray-50 border border-gray-200 rounded-lg p-3';
+        attachmentDiv.setAttribute('data-attachment-index', declarationAttachmentIndex);
+        
+        attachmentDiv.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                            Nom de la pièce jointe <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            name="declaration_attachment_name_${declarationAttachmentIndex}"
+                            placeholder="Nom descriptif..."
+                            required
+                            class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                            Fichier <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="file" 
+                            name="declaration_attachment_file_${declarationAttachmentIndex}"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                            required
+                            class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            onchange="validateFileSize(this)">
+                    </div>
+                </div>
+                <button 
+                    type="button" 
+                    onclick="removeDeclarationAttachment(this)"
+                    class="text-red-500 hover:text-red-700 text-sm mt-6">
+                    ✕
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(attachmentDiv);
+        declarationAttachmentIndex++;
+    }
+    
+    // Supprimer une pièce jointe de déclaration
+    function removeDeclarationAttachment(button) {
+        const attachmentDiv = button.closest('.declaration-attachment-item');
+        attachmentDiv.remove();
+    }
+    
+    // Ajouter une pièce jointe à un écart
+    function addGapAttachment(button, gapIndex) {
+        if (!gapAttachmentIndexes[gapIndex]) {
+            gapAttachmentIndexes[gapIndex] = 0;
+        }
+        
+        const container = button.closest('.gap-row').querySelector('.gap-attachments-container');
+        
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'gap-attachment-item bg-purple-50 border border-purple-200 rounded-lg p-2';
+        attachmentDiv.setAttribute('data-attachment-index', gapAttachmentIndexes[gapIndex]);
+        
+        attachmentDiv.innerHTML = `
+            <div class="flex items-start gap-2">
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                            Nom <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            name="gap_${gapIndex}_attachment_name_${gapAttachmentIndexes[gapIndex]}"
+                            placeholder="Nom descriptif..."
+                            required
+                            class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                            Fichier <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="file" 
+                            name="gap_${gapIndex}_attachment_file_${gapAttachmentIndexes[gapIndex]}"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                            required
+                            class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                            onchange="validateFileSize(this)">
+                    </div>
+                </div>
+                <button 
+                    type="button" 
+                    onclick="removeGapAttachment(this, ${gapIndex})"
+                    class="text-red-500 hover:text-red-700 text-xs mt-5">
+                    ✕
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(attachmentDiv);
+        gapAttachmentIndexes[gapIndex]++;
+    }
+    
+    // Supprimer une pièce jointe d'écart
+    function removeGapAttachment(button, gapIndex) {
+        const attachmentDiv = button.closest('.gap-attachment-item');
+        attachmentDiv.remove();
+    }
+    
+    // Valider la taille du fichier (max 5Mo)
+    function validateFileSize(input) {
+        const file = input.files[0];
+        if (file && file.size > 5 * 1024 * 1024) { // 5MB
+            alert('La taille du fichier ne peut pas dépasser 5 Mo.');
+            input.value = '';
+            return false;
+        }
+        return true;
+    }
+
+    {% if edit_mode %}
+    // Initialiser les données en mode édition
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Mode édition activé');
+        console.log('Données de la déclaration:', {
+            id: '{{ gap_report.id }}',
+            audit_source: '{% if gap_report.audit_source %}{{ gap_report.audit_source.name }}{% endif %}',
+            existing_gaps_count: {{ existing_gaps|length|default:0 }}
+        });
+        
+        {% if existing_gaps %}
+            console.log('Écarts existants à charger:');
+            {% for gap_data in existing_gaps %}
+                console.log('- Écart {{ forloop.counter }}:', {
+                    id: '{{ gap_data.id }}',
+                    gap_type_id: '{{ gap_data.gap_type_id }}',
+                    description: '{{ gap_data.description|escapejs }}'
+                });
+            {% endfor %}
+        {% endif %}
+
+        {% if gap_report.observation_date %}
+            console.log('Date d\'observation:', '{{ gap_report.observation_date|date:"Y-m-d\TH:i" }}');
+            // S'assurer que la date est bien définie
+            const observationDateInput = document.getElementById('observation_datetime');
+            if (observationDateInput) {
+                observationDateInput.value = '{{ gap_report.observation_date|date:"Y-m-d\TH:i" }}';
+                console.log('Date d\'observation définie:', observationDateInput.value);
+            }
+        {% endif %}
+        // Pré-remplir les utilisateurs impliqués
+        {% if gap_report.involved_users.exists %}
+            console.log('Pré-remplissage des utilisateurs impliqués...');
+            {% for user in gap_report.involved_users.all %}
+                // Ajouter l'utilisateur à la liste des sélectionnés
+                if (!selectedUsers.includes({{ user.id }})) {
+                    selectedUsers.push({{ user.id }});
+                    console.log('Utilisateur ajouté:', '{{ user.get_full_name|default:user.matricule }}');
+                }
+            {% endfor %}
+            updateSelectedUsersDisplay();
+            updateHiddenField();
+        {% endif %}
+
+        // Déclencher le chargement des types d'écart si une source d'audit est sélectionnée
+        {% if gap_report.audit_source %}
+            console.log('Chargement des données pour la source d\'audit...');
+            // Attendre un peu puis charger les types d'écart
+            setTimeout(function() {
+                console.log('Déclenchement du chargement des types d\'écart...');
+                loadGapTypes();
+                
+                // Déclencher le chargement du champ processus
+                const auditSourceSelect = document.getElementById('audit_source');
+                if (auditSourceSelect) {
+                    // Simuler un changement pour charger le champ processus
+                    const event = new Event('change');
+                    auditSourceSelect.dispatchEvent(event);
+                }
+                
+                // Pré-charger les écarts existants après le chargement des types
+                {% if existing_gaps %}
+                    console.log('Programmation du chargement des écarts dans 1 seconde...');
+                    setTimeout(function() {
+                        console.log('Début du chargement des écarts existants...');
+                        preloadExistingGaps();
+                    }, 1000);
+                {% endif %}
+            }, 200);
+        {% else %}
+            // Si pas de source d'audit, charger les écarts quand même mais plus tard
+            {% if existing_gaps %}
+                console.log('Pas de source d\'audit, chargement direct des écarts...');
+                setTimeout(function() {
+                    preloadExistingGaps();
+                }, 500);
+            {% endif %}
+        {% endif %}
+
+        // Fonction pour pré-charger les écarts existants
+        function preloadExistingGaps() {
+            console.log('Chargement des écarts existants...');
+            {% for gap_data in existing_gaps %}
+                (function(gapData, index) {
+                    setTimeout(function() {
+                        console.log('Ajout de l\'écart', index + 1, ':', gapData);
+                        addGapRow();
+                        
+                        // Attendre que les éléments soient créés puis les remplir
+                        setTimeout(function() {
+                            const currentGapIndex = gapIndex;
+                            const gapTypeSelect = document.querySelector('select[name="gap_type_' + currentGapIndex + '"]');
+                            const gapDescriptionTextarea = document.querySelector('textarea[name="gap_description_' + currentGapIndex + '"]');
+                            
+                            console.log('Recherche des éléments pour l\'index', currentGapIndex);
+                            console.log('Gap type select trouvé:', !!gapTypeSelect);
+                            console.log('Gap description textarea trouvé:', !!gapDescriptionTextarea);
+                            
+                            if (gapTypeSelect) {
+                                gapTypeSelect.value = gapData.gap_type_id;
+                                console.log('Gap type défini pour l\'index ' + currentGapIndex + ':', gapData.gap_type_id);
+                            } else {
+                                console.error('Select gap_type non trouvé pour l\'index:', currentGapIndex);
+                            }
+                            
+                            if (gapDescriptionTextarea) {
+                                gapDescriptionTextarea.value = gapData.description;
+                                console.log('Gap description définie pour l\'index ' + currentGapIndex + ':', gapData.description);
+                            } else {
+                                console.error('Textarea gap_description non trouvé pour l\'index:', currentGapIndex);
+                            }
+                        }, 200);
+                    }, index * 200);
+                })({
+                    gap_type_id: '{{ gap_data.gap_type_id }}',
+                    description: '{{ gap_data.description|escapejs }}'
+                }, {{ forloop.counter0 }});
+            {% endfor %}
+        }
+
+    });
+    {% endif %}
 </script>

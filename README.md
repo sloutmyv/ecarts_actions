@@ -25,7 +25,9 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
 - **Import/Export JSON**: Sauvegarde et restauration des données (services et utilisateurs)
 - **Modales de confirmation**: Système uniforme de confirmation pour les suppressions
-- **Gestion des Écarts**: Système complet de déclaration et suivi des écarts qualité
+- **Gestion des Écarts**: Système complet de déclaration et suivi des écarts qualité avec pièces jointes
+- **Modal de Déclaration**: Interface structurée QUI/QUAND/OÙ/COMMENT pour saisir les écarts
+- **Pièces Jointes**: Support des attachements pour déclarations et écarts individuels
 - **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
 
 ### Objectifs techniques
@@ -401,6 +403,7 @@ ecarts_actions/
 │   │   ├── services.py       # 🏢 Modèle Service (organisation hiérarchique)
 │   │   ├── users.py          # 👤 Modèle User (authentification personnalisée)
 │   │   ├── gaps.py           # ⚠️ Modèles pour la gestion des écarts qualité
+│   │   ├── attachments.py    # 📎 Modèles pour les pièces jointes (déclarations/écarts)
 │   │   └── actions.py        # 📋 Modèles Action, PlanAction (à venir)
 │   ├── 📁 views/              # 👁️ Vues par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
@@ -449,9 +452,12 @@ ecarts_actions/
 │       │   ├── notification_error.html   # ❌ Modale erreur suppression
 │       │   └── icons.html    # 🎨 Icônes utilisateurs
 │       ├── 📁 gaps/           # ⚠️ Templates gestion des écarts qualité
-│       │   ├── gap_list.html  # 📋 Liste des déclarations d'écart
-│       │   ├── gap_report_form_modal.html # 📝 Modal de déclaration structuré
-│       │   └── partials/      # 🧩 Composants HTMX (champs dynamiques)
+│       │   ├── gap_list.html  # 📋 Liste des écarts individuels
+│       │   ├── gap_report_list.html # 📋 Liste des déclarations d'écart
+│       │   ├── gap_report_detail.html # 🔍 Détail d'une déclaration
+│       │   ├── gap_report_form.html # 📝 Formulaire modification déclaration
+│       │   ├── gap_report_form_modal.html # 📝 Modal de déclaration structuré QUI/QUAND/OÙ/COMMENT
+│       │   └── partials/      # 🧩 Composants HTMX (champs dynamiques, processus)
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques
 │   ├── css/                  # 🎨 CSS personnalisés
@@ -459,6 +465,7 @@ ecarts_actions/
 │   │   ├── gaps.js          # ⚠️ Logique interactive pour les écarts
 │   │   └── common.js        # 🔧 Fonctions utilitaires communes
 │   └── images/               # 🖼️ Images
+├── 📁 media/                  # 📎 Fichiers téléchargés (pièces jointes)
 ├── 📁 venv/                   # 🐍 Environnement virtuel Python 3.12.3
 ├── manage.py                 # 🛠️ CLI Django
 ├── requirements.txt          # 📦 Dépendances Python

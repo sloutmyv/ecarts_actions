@@ -16,13 +16,81 @@
             <p class="text-gray-600 mt-2">Gérez les déclarations d'écart groupées</p>
         </div>
         <button 
-            onclick="window.location.href='{% url 'gaps:gap_report_create' %}'"
+            hx-get="{% url 'gaps:gap_report_create' %}"
+            hx-target="#modal-container"
+            hx-trigger="click"
             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
-            Nouvelle déclaration
+            Déclarer un écart
         </button>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <!-- Filtre par service/entité -->
+            <div>
+                <label for="service" class="block text-sm font-medium text-gray-700 mb-2">Entité</label>
+                <select name="service" id="service" 
+                        class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Toutes les entités</option>
+                    {% for service in services %}
+                        <option value="{{ service.id }}" {% if service.id|stringformat:"s" == selected_service %}selected{% endif %}>
+                            {{ service.get_chemin_hierarchique }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Recherche par déclarant -->
+            <div class="relative">
+                <label for="declared_by_search" class="block text-sm font-medium text-gray-700 mb-2">Déclarant</label>
+                <input 
+                    type="text" 
+                    name="declared_by_search" 
+                    id="declared_by_search" 
+                    value="{{ declared_by_search }}"
+                    placeholder="Nom, prénom ou matricule..."
+                    autocomplete="off"
+                    class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                
+                <!-- Suggestions dropdown -->
+                <div id="user-suggestions" class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
+                    <!-- Les suggestions apparaîtront ici -->
+                </div>
+                
+                <!-- Champ caché pour stocker l'ID utilisateur sélectionné -->
+                <input type="hidden" name="declared_by_id" id="declared_by_id" value="{{ declared_by_id }}">
+            </div>
+            
+            <!-- Filtre par source d'audit -->
+            <div>
+                <label for="audit_source" class="block text-sm font-medium text-gray-700 mb-2">Source d'audit</label>
+                <select name="audit_source" id="audit_source" 
+                        class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Toutes les sources</option>
+                    {% for source in audit_sources %}
+                        <option value="{{ source.id }}" {% if source.id|stringformat:"s" == selected_audit_source %}selected{% endif %}>
+                            {{ source.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Boutons d'action -->
+            <div class="flex gap-2">
+                <button type="submit" class="h-10 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    Filtrer
+                </button>
+                {% if selected_service or declared_by_search or declared_by_id or selected_audit_source %}
+                <a href="{% url 'gaps:gap_report_list' %}" class="h-10 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                    Effacer
+                </a>
+                {% endif %}
+            </div>
+        </form>
     </div>
 
     <!-- Liste des déclarations -->
@@ -61,7 +129,7 @@
                                         {{ gap_report.observation_date|date:"d/m/Y" }}
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        par {{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.username }}
+                                        par {{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.matricule }}
                                     </div>
                                     <div class="mt-1">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -83,14 +151,147 @@
                     </svg>
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune déclaration d'écart</h3>
-                <p class="text-gray-500 mb-4">Commencez par créer votre première déclaration d'écart.</p>
+                <p class="text-gray-500 mb-4">Commencez par déclarer votre premier écart.</p>
                 <button 
-                    onclick="window.location.href='{% url 'gaps:gap_report_create' %}'"
+                    hx-get="{% url 'gaps:gap_report_create' %}"
+                    hx-target="#modal-container"
+                    hx-trigger="click"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Nouvelle déclaration
+                    Déclarer un écart
                 </button>
             </div>
         {% endif %}
     </div>
 </div>
+
+<!-- Container pour les modales HTMX -->
+<div id="modal-container"></div>
+
+<!-- Script pour les écarts -->
+{% load static %}
+<script src="{% static 'js/gaps.js' %}"></script>
+
+<!-- Script pour l'autocomplétion des utilisateurs -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('declared_by_search');
+    const suggestionsDiv = document.getElementById('user-suggestions');
+    const hiddenIdInput = document.getElementById('declared_by_id');
+    let currentFocus = -1;
+    
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            hideSuggestions();
+            return;
+        }
+        
+        // Faire une requête AJAX pour récupérer les suggestions
+        fetch(`{% url 'gaps:search_users' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                showSuggestions(data.users);
+            })
+            .catch(error => {
+                console.error('Erreur lors de la recherche:', error);
+                hideSuggestions();
+            });
+    });
+    
+    function showSuggestions(users) {
+        if (users.length === 0) {
+            hideSuggestions();
+            return;
+        }
+        
+        let html = '';
+        users.forEach((user, index) => {
+            html += `
+                <div class="suggestion-item px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0" 
+                     data-user-id="${user.id}" 
+                     data-user-name="${user.name}"
+                     data-index="${index}">
+                    <div class="font-medium text-gray-900">${user.name}</div>
+                    <div class="text-sm text-gray-500">${user.matricule}</div>
+                </div>
+            `;
+        });
+        
+        suggestionsDiv.innerHTML = html;
+        suggestionsDiv.classList.remove('hidden');
+        currentFocus = -1;
+        
+        // Ajouter les événements click sur les suggestions
+        document.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function() {
+                selectUser(this.dataset.userId, this.dataset.userName);
+            });
+        });
+    }
+    
+    function hideSuggestions() {
+        suggestionsDiv.classList.add('hidden');
+        currentFocus = -1;
+    }
+    
+    function selectUser(userId, userName) {
+        searchInput.value = userName;
+        hiddenIdInput.value = userId;
+        hideSuggestions();
+    }
+    
+    // Navigation au clavier
+    searchInput.addEventListener('keydown', function(e) {
+        const suggestions = document.querySelectorAll('.suggestion-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocus++;
+            if (currentFocus >= suggestions.length) currentFocus = 0;
+            addActive(suggestions);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocus--;
+            if (currentFocus < 0) currentFocus = suggestions.length - 1;
+            addActive(suggestions);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentFocus > -1 && suggestions[currentFocus]) {
+                const item = suggestions[currentFocus];
+                selectUser(item.dataset.userId, item.dataset.userName);
+            }
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+        }
+    });
+    
+    function addActive(suggestions) {
+        removeActive(suggestions);
+        if (currentFocus >= 0 && suggestions[currentFocus]) {
+            suggestions[currentFocus].classList.add('bg-blue-100');
+        }
+    }
+    
+    function removeActive(suggestions) {
+        suggestions.forEach(item => {
+            item.classList.remove('bg-blue-100');
+        });
+    }
+    
+    // Fermer les suggestions en cliquant ailleurs
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#declared_by_search') && !e.target.closest('#user-suggestions')) {
+            hideSuggestions();
+        }
+    });
+    
+    // Effacer l'ID caché si l'utilisateur modifie manuellement le texte
+    searchInput.addEventListener('keyup', function() {
+        if (this.value !== this.dataset.lastSelected) {
+            hiddenIdInput.value = '';
+        }
+    });
+});
+</script>
 {% endblock %}

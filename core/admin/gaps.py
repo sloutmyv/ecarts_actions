@@ -4,22 +4,22 @@ Configuration de l'interface d'administration pour les modèles de gestion des �
 from django.contrib import admin
 from django.db import models
 from django.forms import TextInput, Textarea
-from core.models import AuditSource, Process, GapType, GapReport, Gap
+from core.models import AuditSource, Process, GapType, GapReport, Gap, GapReportAttachment, GapAttachment
 
 
 @admin.register(AuditSource)
 class AuditSourceAdmin(admin.ModelAdmin):
-    list_display = ['code', 'name', 'requires_process', 'is_active', 'created_at']
-    list_filter = ['requires_process', 'is_active', 'created_at']
-    search_fields = ['code', 'name', 'description']
+    list_display = ['name', 'requires_process', 'created_at']
+    list_filter = ['requires_process', 'created_at']
+    search_fields = ['name', 'description']
     ordering = ['name']
     
     fieldsets = (
         (None, {
-            'fields': ('code', 'name', 'description')
+            'fields': ('name', 'description')
         }),
         ('Configuration', {
-            'fields': ('requires_process', 'is_active')
+            'fields': ('requires_process',)
         }),
     )
     
@@ -56,17 +56,14 @@ class ProcessAdmin(admin.ModelAdmin):
 
 @admin.register(GapType)
 class GapTypeAdmin(admin.ModelAdmin):
-    list_display = ['code', 'name', 'audit_source', 'is_active', 'created_at']
-    list_filter = ['audit_source', 'is_active', 'created_at']
-    search_fields = ['code', 'name', 'description', 'audit_source__name']
+    list_display = ['name', 'audit_source', 'created_at']
+    list_filter = ['audit_source', 'created_at']
+    search_fields = ['name', 'description', 'audit_source__name']
     ordering = ['audit_source__name', 'name']
     
     fieldsets = (
         (None, {
-            'fields': ('code', 'name', 'audit_source', 'description')
-        }),
-        ('Configuration', {
-            'fields': ('is_active',)
+            'fields': ('name', 'audit_source', 'description')
         }),
     )
     
@@ -74,6 +71,36 @@ class GapTypeAdmin(admin.ModelAdmin):
         models.CharField: {'widget': TextInput(attrs={'size': '50'})},
         models.TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 50})},
     }
+
+
+class GapReportAttachmentInline(admin.TabularInline):
+    """
+    Inline pour afficher les pièces jointes dans l'admin des déclarations.
+    """
+    model = GapReportAttachment
+    extra = 0
+    fields = ['name', 'file', 'uploaded_by', 'created_at']
+    readonly_fields = ['uploaded_by', 'created_at']
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.uploaded_by:
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+class GapAttachmentInline(admin.TabularInline):
+    """
+    Inline pour afficher les pièces jointes dans l'admin des écarts.
+    """
+    model = GapAttachment
+    extra = 0
+    fields = ['name', 'file', 'uploaded_by', 'created_at']
+    readonly_fields = ['uploaded_by', 'created_at']
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.uploaded_by:
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 class GapInline(admin.TabularInline):
@@ -93,7 +120,7 @@ class GapInline(admin.TabularInline):
 class GapReportAdmin(admin.ModelAdmin):
     list_display = ['id', 'audit_source', 'service', 'observation_date', 'declared_by', 'created_at']
     list_filter = ['audit_source', 'service', 'observation_date', 'created_at']
-    search_fields = ['source_reference', 'location', 'declared_by__username', 'declared_by__first_name', 'declared_by__last_name']
+    search_fields = ['source_reference', 'location', 'declared_by__matricule', 'declared_by__nom', 'declared_by__prenom']
     ordering = ['-observation_date', '-created_at']
     date_hierarchy = 'observation_date'
     
@@ -114,7 +141,7 @@ class GapReportAdmin(admin.ModelAdmin):
     
     filter_horizontal = ('involved_users',)
     readonly_fields = ('created_at',)
-    inlines = [GapInline]
+    inlines = [GapReportAttachmentInline, GapInline]
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
@@ -147,6 +174,8 @@ class GapAdmin(admin.ModelAdmin):
         }),
     )
     
+    inlines = [GapAttachmentInline]
+    
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
             'gap_report', 'gap_type', 'gap_type__audit_source'
@@ -155,3 +184,55 @@ class GapAdmin(admin.ModelAdmin):
     formfield_overrides = {
         models.TextField: {'widget': Textarea(attrs={'rows': 4, 'cols': 50})},
     }
+
+
+@admin.register(GapReportAttachment)
+class GapReportAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['name', 'gap_report', 'file_size_mb', 'uploaded_by', 'created_at']
+    list_filter = ['created_at', 'uploaded_by']
+    search_fields = ['name', 'gap_report__id', 'uploaded_by__matricule']
+    ordering = ['-created_at']
+    readonly_fields = ('file_size_mb', 'file_extension', 'uploaded_by', 'created_at')
+    
+    fieldsets = (
+        ('Informations générales', {
+            'fields': ('name', 'gap_report', 'file')
+        }),
+        ('Métadonnées', {
+            'fields': ('file_size_mb', 'file_extension', 'uploaded_by', 'created_at')
+        }),
+    )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('gap_report', 'uploaded_by')
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.uploaded_by:
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(GapAttachment)
+class GapAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['name', 'gap', 'file_size_mb', 'uploaded_by', 'created_at']
+    list_filter = ['created_at', 'uploaded_by']
+    search_fields = ['name', 'gap__gap_number', 'uploaded_by__matricule']
+    ordering = ['-created_at']
+    readonly_fields = ('file_size_mb', 'file_extension', 'uploaded_by', 'created_at')
+    
+    fieldsets = (
+        ('Informations générales', {
+            'fields': ('name', 'gap', 'file')
+        }),
+        ('Métadonnées', {
+            'fields': ('file_size_mb', 'file_extension', 'uploaded_by', 'created_at')
+        }),
+    )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('gap', 'uploaded_by')
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.uploaded_by:
+            obj.uploaded_by = request.user
+        super().save_model(request, obj, form, change)
