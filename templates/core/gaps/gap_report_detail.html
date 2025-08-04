@@ -24,7 +24,7 @@
                             <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
                             </svg>
-                            <span class="ml-4 text-sm font-medium text-gray-500">{{ title }}</span>
+                            <span class="ml-4 text-sm font-medium text-gray-500">Liste des déclarations</span>
                         </div>
                     </li>
                 </ol>
@@ -59,55 +59,65 @@
         <div class="lg:col-span-2">
             <div class="bg-white shadow-lg rounded-lg overflow-hidden">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Entête de la déclaration</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Détails de la déclaration d'écart #{{ gap_report.id }}</p>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Entête</h3>
                 </div>
                 <div class="border-t border-gray-200">
                     <dl>
+                        <!-- 1. Déclaré par -->
                         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Source d'audit</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.audit_source.name }}</dd>
+                            <dt class="text-sm font-medium text-gray-500">Déclaré par</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.matricule }}</dd>
                         </div>
-                        {% if gap_report.source_reference %}
+                        
+                        <!-- 2. Autres personnes présentes -->
+                        {% if gap_report.involved_users.exists %}
                         <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Référence source</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.source_reference }}</dd>
+                            <dt class="text-sm font-medium text-gray-500">Autres personnes présentes</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">
+                                {% for user in gap_report.involved_users.all %}{{ user.get_full_name|default:user.matricule }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                            </dd>
                         </div>
                         {% endif %}
+                        
+                        <!-- 3. Date de l'observation -->
                         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                            <dt class="text-sm font-medium text-gray-500">Date de l'observation</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.observation_date|date:"d/m/Y" }}</dd>
+                        </div>
+                        
+                        <!-- 4. Service concerné -->
+                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <dt class="text-sm font-medium text-gray-500">Service concerné</dt>
                             <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.service.nom }}</dd>
                         </div>
-                        {% if gap_report.process %}
-                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Processus SMI associé</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.process.code }} - {{ gap_report.process.name }}</dd>
-                        </div>
-                        {% endif %}
+                        
+                        <!-- 5. Lieu -->
                         {% if gap_report.location %}
                         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <dt class="text-sm font-medium text-gray-500">Lieu</dt>
                             <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.location }}</dd>
                         </div>
                         {% endif %}
-                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Date d'observation</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.observation_date|date:"d/m/Y" }}</dd>
+                        
+                        <!-- 6. Source de l'audit -->
+                        <div class="{% if gap_report.location %}bg-white{% else %}bg-gray-50{% endif %} px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                            <dt class="text-sm font-medium text-gray-500">Source de l'audit</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.audit_source.name }}</dd>
                         </div>
+                        
+                        <!-- 7. Référence source -->
+                        {% if gap_report.source_reference %}
+                        <div class="{% if gap_report.location %}bg-gray-50{% else %}bg-white{% endif %} px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                            <dt class="text-sm font-medium text-gray-500">Référence source</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.source_reference }}</dd>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Processus SMI (si présent) -->
+                        {% if gap_report.process %}
                         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Déclaré par</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.matricule }}</dd>
-                        </div>
-                        {% if gap_report.involved_users.exists %}
-                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Autres utilisateurs impliqués</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">
-                                <ul class="list-disc list-inside">
-                                    {% for user in gap_report.involved_users.all %}
-                                    <li>{{ user.get_full_name|default:user.matricule }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </dd>
+                            <dt class="text-sm font-medium text-gray-500">Processus SMI associé</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">{{ gap_report.process.code }} - {{ gap_report.process.name }}</dd>
                         </div>
                         {% endif %}
                     </dl>
@@ -139,11 +149,66 @@
                                 </span>
                             </dd>
                         </div>
+                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                            <dt class="text-sm font-medium text-gray-500">Pièces jointes</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:col-span-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    {{ gap_report.attachments.count }}
+                                </span>
+                            </dd>
+                        </div>
                     </dl>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Pièces jointes de la déclaration -->
+    {% if gap_report.attachments.exists %}
+    <div class="mt-8">
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                    Pièces jointes de la déclaration
+                </h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for attachment in gap_report.attachments.all %}
+                <div class="px-4 py-4 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">{{ attachment.name }}</div>
+                                <div class="text-sm text-gray-500">
+                                    {{ attachment.file_size_mb }} Mo • {{ attachment.file_extension|upper }} • 
+                                    Ajouté le {{ attachment.created_at|date:"d/m/Y à H:i" }} par {{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.matricule }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <a href="{{ attachment.file.url }}" target="_blank"
+                               class="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Télécharger
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Liste des écarts -->
     <div class="mt-8">

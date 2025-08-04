@@ -154,7 +154,7 @@ def gap_report_detail(request, pk):
     
     context = {
         'gap_report': gap_report,
-        'title': f'Déclaration {gap_report.id}'
+        'title': f'Détail de la déclaration #{gap_report.id}'
     }
     return render(request, 'core/gaps/gap_report_detail.html', context)
 
@@ -319,7 +319,7 @@ def gap_report_edit(request, pk):
     gap_report = get_object_or_404(GapReport, pk=pk)
     
     if request.method == 'POST':
-        form = GapReportForm(request.POST, instance=gap_report, user=request.user)
+        form = GapReportForm(request.POST, request.FILES, instance=gap_report, user=request.user)
         if form.is_valid():
             gap_report = form.save()
             
@@ -334,7 +334,25 @@ def gap_report_edit(request, pk):
             else:
                 gap_report.involved_users.clear()
             
-            messages.success(request, f'Déclaration d\'écart {gap_report.id} modifiée avec succès.')
+            # Traiter les nouvelles pièces jointes
+            for key in request.POST.keys():
+                if key.startswith('attachment_name_'):
+                    index = key.split('_')[-1]
+                    attachment_name = request.POST.get(f'attachment_name_{index}')
+                    attachment_file = request.FILES.get(f'attachment_file_{index}')
+                    
+                    if attachment_name and attachment_file:
+                        from core.models import GapReportAttachment
+                        attachment = GapReportAttachment(
+                            gap_report=gap_report,
+                            name=attachment_name,
+                            file=attachment_file,
+                            uploaded_by=request.user
+                        )
+                        attachment.full_clean()
+                        attachment.save()
+            
+            messages.success(request, f'Déclaration d\'écart #{gap_report.id} modifiée avec succès.')
             return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     else:
         form = GapReportForm(instance=gap_report, user=request.user)
@@ -342,7 +360,7 @@ def gap_report_edit(request, pk):
     context = {
         'form': form,
         'gap_report': gap_report,
-        'title': f'Modification de la déclaration {gap_report.id}',
+        'title': f'Modification de la déclaration #{gap_report.id}',
         'submit_text': 'Sauvegarder les modifications'
     }
     return render(request, 'core/gaps/gap_report_form.html', context)
@@ -372,7 +390,7 @@ def gap_create(request, gap_report_pk):
     context = {
         'form': form,
         'gap_report': gap_report,
-        'title': f'Nouvel écart pour la déclaration {gap_report.id}',
+        'title': f'Nouvel écart pour la déclaration #{gap_report.id}',
         'submit_text': 'Créer l\'écart'
     }
     return render(request, 'core/gaps/gap_form.html', context)
@@ -465,15 +483,19 @@ def search_users(request):
     """
     query = request.GET.get('q', '').strip()
     
-    if len(query) < 2:
+    if len(query) < 1:
         return JsonResponse({'users': []})
     
-    # Rechercher dans nom, prénom ou matricule
-    users = User.objects.filter(
-        Q(nom__icontains=query) |
-        Q(prenom__icontains=query) |
-        Q(matricule__icontains=query)
-    ).order_by('nom', 'prenom')[:10]  # Limiter à 10 résultats
+    # Si la requête est "all", retourner tous les utilisateurs (pour l'initialisation)
+    if query.lower() == 'all':
+        users = User.objects.all().order_by('nom', 'prenom')[:100]  # Limiter à 100 utilisateurs
+    else:
+        # Rechercher dans nom, prénom ou matricule
+        users = User.objects.filter(
+            Q(nom__icontains=query) |
+            Q(prenom__icontains=query) |
+            Q(matricule__icontains=query)
+        ).order_by('nom', 'prenom')[:10]  # Limiter à 10 résultats
     
     users_data = []
     for user in users:
@@ -484,3 +506,43 @@ def search_users(request):
         })
     
     return JsonResponse({'users': users_data})
+
+
+@login_required
+@require_http_methods(["DELETE", "POST"])
+def delete_attachment(request, attachment_id):
+    """
+    Supprime une pièce jointe de déclaration.
+    """
+    from core.models import GapReportAttachment
+    from django.http import JsonResponse
+    import os
+    
+    try:
+        attachment = get_object_or_404(GapReportAttachment, id=attachment_id)
+        
+        # Vérifier que l'utilisateur a le droit de supprimer cette pièce jointe
+        # (par exemple, s'il est le créateur de la déclaration ou l'uploader du fichier)
+        if attachment.gap_report.declared_by != request.user and attachment.uploaded_by != request.user:
+            return JsonResponse({
+                'success': False,
+                'error': 'Vous n\'avez pas l\'autorisation de supprimer cette pièce jointe.'
+            }, status=403)
+        
+        # Supprimer le fichier physique
+        if attachment.file and os.path.exists(attachment.file.path):
+            os.remove(attachment.file.path)
+        
+        # Supprimer l'enregistrement en base de données
+        attachment.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Pièce jointe supprimée avec succès.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Erreur lors de la suppression : {str(e)}'
+        }, status=500)

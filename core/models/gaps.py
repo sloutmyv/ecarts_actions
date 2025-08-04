@@ -168,7 +168,7 @@ class GapReport(TimestampedModel):
             })
 
     def __str__(self):
-        return f"Déclaration {self.id} - {self.audit_source.name} - {self.observation_date}"
+        return f"Déclaration #{self.id} - {self.audit_source.name} - {self.observation_date}"
 
 
 class Gap(TimestampedModel):

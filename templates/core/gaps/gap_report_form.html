@@ -53,7 +53,7 @@
     <!-- Formulaire -->
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">
         
-        <form method="post" class="space-y-8">
+        <form method="post" enctype="multipart/form-data" class="space-y-8">
             {% csrf_token %}
             
             <div class="px-6 py-6 space-y-8">
@@ -156,6 +156,12 @@
                                 {{ form.observation_date.label }} <span class="text-red-500">*</span>
                             </label>
                             {{ form.observation_date }}
+                            <p class="mt-1 text-xs text-gray-500">
+                                <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                La date d'observation ne peut pas être postérieure à la date de déclaration
+                            </p>
                             {% if form.observation_date.errors %}
                                 <p class="mt-1 text-sm text-red-600">{{ form.observation_date.errors.0 }}</p>
                             {% endif %}
@@ -222,8 +228,24 @@
                         <div>
                             <label for="{{ form.audit_source.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
                                 {{ form.audit_source.label }} <span class="text-red-500">*</span>
+                                {% if form.audit_source.field.disabled %}
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                        </svg>
+                                        Verrouillé
+                                    </span>
+                                {% endif %}
                             </label>
                             {{ form.audit_source }}
+                            {% if form.audit_source.field.help_text %}
+                                <p class="mt-1 text-sm text-yellow-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    {{ form.audit_source.field.help_text }}
+                                </p>
+                            {% endif %}
                             {% if form.audit_source.errors %}
                                 <p class="mt-1 text-sm text-red-600">{{ form.audit_source.errors.0 }}</p>
                             {% endif %}
@@ -255,6 +277,68 @@
                         {% endif %}
                     </div>
                 </div>
+
+                
+                <!-- Section Pièces jointes (uniquement pour les modifications) -->
+                {% if gap_report %}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm font-bold">PIÈCES JOINTES</span>
+                    </h3>
+                    
+                    <!-- Pièces jointes existantes -->
+                    {% if gap_report.attachments.exists %}
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium text-gray-800 mb-3">Pièces jointes existantes</h4>
+                        <div class="space-y-2">
+                            {% for attachment in gap_report.attachments.all %}
+                            <div class="existing-attachment flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3" data-attachment-id="{{ attachment.id }}">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ attachment.name }}</div>
+                                        <div class="text-xs text-gray-500">{{ attachment.file_size_mb }} Mo • {{ attachment.file_extension|upper }}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <a href="{{ attachment.file.url }}" target="_blank"
+                                       class="text-blue-600 hover:text-blue-900 text-sm">
+                                        Télécharger
+                                    </a>
+                                    <button type="button" onclick="deleteAttachment({{ attachment.id }}, this)" 
+                                            class="text-red-500 hover:text-red-700 ml-2 p-1 rounded-full hover:bg-red-50"
+                                            title="Supprimer cette pièce jointe">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Ajouter de nouvelles pièces jointes -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-md font-medium text-gray-800">Ajouter des pièces jointes</h4>
+                            <button type="button" id="add-attachment-btn" 
+                                    class="inline-flex items-center justify-center w-6 h-6 bg-green-600 hover:bg-green-700 text-white rounded-full transition-colors">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div id="attachments-container" class="space-y-3">
+                            <!-- Les nouvelles pièces jointes seront ajoutées ici par JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
             </div>
 
@@ -305,6 +389,12 @@ form input:invalid {
     @apply border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500;
 }
 
+/* Styles pour les champs désactivés */
+form select:disabled,
+form input:disabled {
+    @apply bg-gray-100 text-gray-600 cursor-not-allowed opacity-75;
+}
+
 form label {
     @apply block text-sm font-medium text-gray-700;
 }
@@ -345,19 +435,18 @@ const connectedUserId = {{ user.id }};
 
 // Charger tous les utilisateurs au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
-    fetch('{% url "gaps:search_users" %}?q=')
+    // Charger tous les utilisateurs via l'API de recherche
+    fetch('{% url "gaps:search_users" %}?q=all')  // Utiliser "all" pour récupérer tous les utilisateurs
         .then(response => response.json())
         .then(data => {
-            // Ajouter tous les utilisateurs disponibles
-            {% for user_obj in form.involved_users.field.queryset %}
-                allUsers.push({
-                    id: {{ user_obj.id }},
-                    matricule: '{{ user_obj.matricule }}',
-                    nom: '{{ user_obj.nom }}',
-                    prenom: '{{ user_obj.prenom }}',
-                    fullName: '{{ user_obj.get_full_name|default:user_obj.matricule }}'
-                });
-            {% endfor %}
+            // Ajouter tous les utilisateurs disponibles depuis l'API
+            if (data.users) {
+                allUsers = data.users.map(user => ({
+                    id: user.id,
+                    matricule: user.matricule,
+                    fullName: user.name
+                }));
+            }
             
             // Pré-remplir avec les utilisateurs déjà sélectionnés
             {% if gap_report.involved_users.exists %}
@@ -402,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return false;
                 }
                 
-                const searchableText = (user.matricule + ' ' + user.nom + ' ' + user.prenom + ' ' + user.fullName).toLowerCase();
+                const searchableText = (user.matricule + ' ' + user.fullName).toLowerCase();
                 return searchableText.includes(term);
             });
             
@@ -486,5 +575,128 @@ document.addEventListener('click', function(e) {
         }
     }
 });
+
+// Gestion des pièces jointes (uniquement pour les modifications)
+{% if gap_report %}
+let attachmentIndex = 0;
+
+// Ajouter une nouvelle pièce jointe
+document.addEventListener('DOMContentLoaded', function() {
+    const addAttachmentBtn = document.getElementById('add-attachment-btn');
+    if (addAttachmentBtn) {
+        addAttachmentBtn.addEventListener('click', function() {
+            addAttachmentField();
+        });
+    }
+});
+
+function addAttachmentField() {
+    const container = document.getElementById('attachments-container');
+    
+    const attachmentDiv = document.createElement('div');
+    attachmentDiv.className = 'attachment-item bg-purple-50 border border-purple-200 rounded-lg p-3';
+    attachmentDiv.setAttribute('data-attachment-index', attachmentIndex);
+    
+    attachmentDiv.innerHTML = `
+        <div class="flex items-center justify-between">
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom de la pièce jointe</label>
+                    <input type="text" 
+                           name="attachment_name_${attachmentIndex}"
+                           placeholder="Description de la pièce jointe"
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fichier</label>
+                    <input type="file" 
+                           name="attachment_file_${attachmentIndex}"
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+            </div>
+            <button type="button" onclick="removeAttachment(this)" 
+                    class="ml-3 text-red-500 hover:text-red-700 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </button>
+        </div>
+        <div class="mt-2 text-xs text-gray-500">
+            Formats acceptés : PDF, DOC, XLS, PPT, JPG, PNG, TXT, CSV (max 5 Mo)
+        </div>
+    `;
+    
+    container.appendChild(attachmentDiv);
+    attachmentIndex++;
+}
+
+function removeAttachment(button) {
+    const attachmentDiv = button.closest('.attachment-item');
+    attachmentDiv.remove();
+}
+
+// Fonction pour supprimer une pièce jointe existante
+function deleteAttachment(attachmentId, button) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette pièce jointe ? Cette action est irréversible.')) {
+        return;
+    }
+    
+    // Désactiver le bouton pendant la suppression
+    button.disabled = true;
+    button.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>';
+    
+    // Obtenir le token CSRF
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch(`/gaps/api/delete-attachment/${attachmentId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Supprimer l'élément du DOM avec une animation
+            const attachmentDiv = button.closest('.existing-attachment');
+            attachmentDiv.style.opacity = '0.5';
+            attachmentDiv.style.transform = 'scale(0.95)';
+            attachmentDiv.style.transition = 'all 0.3s ease';
+            
+            setTimeout(() => {
+                attachmentDiv.remove();
+                
+                // Vérifier s'il reste des pièces jointes
+                const container = attachmentDiv.parentElement;
+                if (container && container.children.length === 0) {
+                    // Si plus de pièces jointes, cacher la section
+                    const section = container.closest('.mb-6');
+                    if (section) {
+                        section.style.display = 'none';
+                    }
+                }
+            }, 300);
+            
+            // Afficher un message de succès (optionnel)
+            console.log('Pièce jointe supprimée avec succès');
+            
+        } else {
+            alert('Erreur lors de la suppression : ' + data.error);
+            // Restaurer le bouton
+            button.disabled = false;
+            button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression de la pièce jointe');
+        // Restaurer le bouton
+        button.disabled = false;
+        button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+    });
+}
+{% endif %}
 </script>
 {% endblock %}
