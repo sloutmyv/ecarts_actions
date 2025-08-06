@@ -452,13 +452,13 @@ La gestion des écarts permet de déclarer, suivre et traiter les non-conformit�
 1. **Naviguer vers les écarts**
    - Dans le menu principal, cliquez sur **"Écarts"**
    - Vous verrez deux options :
-     - 📝 **"Déclarer un écart"** : Créer une nouvelle déclaration
+     - 📝 **"Déclarer un évenement"** : Créer une nouvelle déclaration
      - 📋 **"Liste des écarts"** : Consulter tous les écarts existants
 
 ### Déclarer un nouvel écart
 
 #### Étape 1 : Accès à la déclaration
-- Cliquez sur **"Déclarer un écart"** dans le menu ou sur la page de liste
+- Cliquez sur **"Déclarer un évenement"** dans le menu ou sur la page de liste
 - Une modale moderne s'ouvre avec le formulaire de déclaration structuré en sections
 
 #### Étape 2 : Section 🔵 "QUI ?" - Personnes impliquées
@@ -517,9 +517,9 @@ La déclaration commence par identifier les personnes présentes lors de l'obser
 #### Étape 6 : Ajouter des écarts individuels
 
 **Écarts multiples**
-- Utilisez le bouton ➕ "Ajouter un écart" pour créer plusieurs écarts dans la même déclaration
+- Utilisez le bouton ➕ "Ajouter un évenement" pour créer plusieurs écarts dans la même déclaration
 - Chaque écart nécessite :
-  - **Type d'écart** : Sélection selon la source d'audit choisie
+  - **Type d'évenements** : Sélection selon la source d'audit choisie
   - **Description** : Explication détaillée de l'écart observé
 
 **Pièces jointes** (optionnel)
@@ -535,7 +535,7 @@ La déclaration commence par identifier les personnes présentes lors de l'obser
 ### Consulter les déclarations et écarts
 
 #### Deux vues disponibles
-- **📋 Déclarations d'écart** : Vue des déclarations complètes avec filtres
+- **📋 Déclarations d'évenements** : Vue des déclarations complètes avec filtres
 - **📋 Liste des écarts** : Vue des écarts individuels
 
 #### Interface de la liste des déclarations
@@ -549,7 +549,7 @@ La liste des déclarations offre une vue d'ensemble avec filtres intelligents :
 
 **Colonnes affichées**
 - **Écart** : Numéro d'écart (format EC-YYYY-XXXX) et description tronquée
-- **Type** : Type d'écart configuré
+- **Type** : Type d'évenements configuré
 - **Service** : Service concerné par l'écart
 - **Source** : Source de l'audit ayant identifié l'écart
 - **Statut** : État actuel (Déclaré, Rejeté, Fermé) avec code couleur
@@ -567,7 +567,7 @@ La liste des déclarations offre une vue d'ensemble avec filtres intelligents :
 ### Navigation et raccourcis
 
 **Boutons rapides**
-- **"Déclarer un écart"** disponible en permanence dans l'en-tête de liste
+- **"Déclarer un évenement"** disponible en permanence dans l'en-tête de liste
 - **Message d'état vide** : Si aucun écart n'existe, bouton central pour démarrer
 
 **Interface responsive**
@@ -588,17 +588,129 @@ La liste des déclarations offre une vue d'ensemble avec filtres intelligents :
 2. **Suivez les statuts** : Surveillez l'évolution des écarts via les codes couleur
 3. **Analysez les tendances** : Identifiez les services avec le plus d'écarts
 
+### Modifier et gérer les écarts existants
+
+#### Accéder aux détails d'une déclaration
+1. **Navigation vers les détails**
+   - Cliquez sur une déclaration dans la liste des déclarations
+   - Accès à la vue détaillée avec toutes les informations
+
+2. **Informations affichées**
+   - **Entête** : Tableau avec déclarant, date d'observation, service, lieu, etc.
+   - **Pièces jointes de la déclaration** : Badges violets téléchargeables directement
+   - **Métadonnées** : Dates de création/modification, nombre d'écarts
+   - **Liste des écarts** : Tous les écarts associés à cette déclaration
+
+#### Interface de gestion des écarts individuels
+Chaque écart dans la déclaration affiche :
+- **Numéro d'écart + Type** : Première ligne avec l'identifiant et le type
+- **Description** : Explication détaillée de l'écart observé
+- **Pièces jointes** : Badges violets pour les fichiers associés à l'écart
+- **Statut** : Badge coloré indiquant l'état actuel
+- **Dates** : Création et dernière modification
+- **Actions** : Boutons de modification et suppression (selon les droits)
+
+#### Modifier un écart existant
+**Permissions** : Déclarant de la déclaration ou Administrateurs (SA/AD)
+
+1. **Accès à la modification**
+   - Cliquez sur l'icône ✏️ à droite de l'écart
+   - Badge "Admin" visible si vous n'êtes pas le déclarant original
+
+2. **Formulaire de modification**
+   - **Type d'évenements** : Modifiable selon la source d'audit
+   - **Description** : Zone de texte pour expliquer l'écart
+   - **Pièces jointes** : Ajout/suppression de fichiers
+   - **Statut** : Choix selon vos droits utilisateur
+
+3. **Gestion des statuts par niveau de droit**
+   - **Déclarant** : Peut passer de "Déclaré" à "Annulé" uniquement
+   - **SA/AD** : Accès à tous les statuts ("Retenu", "Non retenu", "Clos")
+   - **Écarts annulés** : Visibles seulement par le déclarant et les administrateurs
+
+4. **Pièces jointes dans la modification**
+   - **Ajout** : Bouton ➕ pour ajouter de nouvelles pièces jointes
+   - **Téléchargement** : Lien direct sur les pièces existantes
+   - **Suppression** : Bouton 🗑️ pour retirer une pièce jointe
+
+#### Supprimer un écart (SA/AD uniquement)
+
+**Permissions strictes** : Seuls les Super Administrateurs (SA) et Administrateurs (AD) peuvent supprimer des écarts.
+
+1. **Processus de suppression**
+   - Cliquez sur l'icône ✕ (croix) à droite de l'écart
+   - **Popup de confirmation élégante** s'affiche avec design orange
+
+2. **Messages contextuels intelligents**
+   
+   **Pour un écart parmi d'autres** :
+   ```
+   Êtes-vous sûr de vouloir supprimer définitivement l'écart "6.1" ?
+   
+   Cette action supprimera également 2 pièce(s) jointe(s) associée(s) 
+   et est irréversible.
+   ```
+
+   **Pour le dernier écart d'une déclaration** :
+   ```
+   ⚠️ ATTENTION : Vous êtes sur le point de supprimer le dernier écart de cette déclaration.
+   
+   Cette action supprimera :
+   • L'écart "6.1"
+   • Ses 2 pièce(s) jointe(s)
+   • La déclaration d'écart #6 dans son intégralité
+   
+   Cette action est IRRÉVERSIBLE et effacera complètement la déclaration.
+   ```
+
+3. **Actions de la popup**
+   - **Confirmer la suppression** (bouton rouge) : Procède à la suppression
+   - **Annuler** (bouton gris) : Ferme la popup sans action
+   - **Croix** : Ferme la popup
+
+4. **Suppression automatique des déclarations vides**
+   - Si c'est le dernier écart : suppression automatique de la déclaration complète
+   - Redirection vers la liste des déclarations
+   - Si ce n'est pas le dernier : retour à la page de détail de la déclaration
+
+5. **Nettoyage complet**
+   - Suppression physique de tous les fichiers associés
+   - Suppression des enregistrements en base de données
+   - Action irréversible avec confirmation explicite
+
+### Statuts des écarts et workflow
+
+#### Les 5 statuts disponibles
+- 🟡 **Déclaré** : Écart nouvellement créé (statut par défaut)
+- 🔘 **Annulé** : Écart annulé par le déclarant (caché aux autres utilisateurs)
+- 🔵 **Retenu** : Écart validé par l'administration
+- 🔴 **Non retenu** : Écart rejeté après analyse
+- 🟢 **Clos** : Écart traité et résolu
+
+#### Règles de transition des statuts
+- **Déclarants** : Peuvent seulement passer de "Déclaré" à "Annulé"
+- **SA/AD** : Accès complet à tous les statuts pour validation/clôture
+- **Écarts annulés** : Masqués de la vue générale, visibles par déclarant et administrateurs
+
 ### Droits et permissions
 
 **Tous les utilisateurs authentifiés peuvent :**
 - Déclarer des écarts
-- Consulter la liste des écarts
+- Consulter la liste des écarts (filtrée selon la visibilité)
 - Voir les détails des écarts
+- Modifier leurs propres déclarations et écarts
 
-**Les administrateurs peuvent en plus :**
-- Modifier les écarts existants
+**Les déclarants peuvent en plus :**
+- Modifier leurs Déclarations d'évenements
+- Ajouter/supprimer des pièces jointes sur leurs écarts
+- Changer le statut de leurs écarts (Déclaré → Annulé uniquement)
+
+**Les administrateurs (SA/AD) peuvent en plus :**
+- Modifier toutes les déclarations et écarts (badge "Admin" visible)
+- Accès à tous les statuts pour validation et clôture
+- Supprimer définitivement des écarts avec popup de confirmation
+- Voir les écarts annulés par les autres utilisateurs
 - Configurer les sources d'audit, processus et types d'écarts
-- Accéder aux fonctionnalités d'administration
 
 ### Résolution des problèmes courants
 
@@ -976,6 +1088,21 @@ Contactez votre administrateur système en fournissant toutes les informations c
 **🔄 Dernière mise à jour** : Août 2025
 
 ### Historique des versions
+
+**Version 2.2** (Août 2025)
+- 🗑️ **Suppression d'écarts** : Système de suppression avec popup de confirmation élégante
+- ⚠️ **Messages contextuels** : Avertissements spéciaux pour le dernier écart d'une déclaration
+- 🔗 **Suppression en cascade** : Déclaration automatiquement supprimée si plus d'écarts
+- 🔢 **Numérotation intelligente** : Correction du système de numérotation des écarts après suppression
+- 🎨 **Interface unifiée** : Popup HTMX + Alpine.js cohérente avec les services/agents
+- 🛠️ **Permissions strictes** : Seuls SA/AD peuvent supprimer des écarts
+
+**Version 2.1** (Août 2025)
+- ⚠️ **Système de statuts complet** : 5 statuts pour les écarts avec règles de visibilité
+- 🔐 **Gestion des permissions** : Statuts accessibles selon les droits utilisateur
+- 📎 **Pièces jointes écarts** : Ajout/suppression directe dans les formulaires de modification
+- 🎨 **Interface repensée** : Repositionnement des éléments et styling cohérent
+- 🏷️ **Badges colorés** : Système de couleurs uniforme pour les pièces jointes
 
 **Version 2.0** (Août 2025)
 - ✨ **Nouvelle fonctionnalité** : Gestion complète des utilisateurs

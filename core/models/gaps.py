@@ -70,12 +70,14 @@ class Process(CodedModel, TimestampedModel):
 
 class GapType(TimestampedModel):
     """
-    Type d'écart (Quoi) - entité administrable.
+    Type d'événement (Quoi) - entité administrable.
     Chaque type est associé à une source d'audit spécifique.
+    Le champ 'is_gap' permet de différencier les événements qui sont des écarts 
+    de ceux qui sont de simples événements.
     """
     name = models.CharField(
         max_length=100,
-        verbose_name="Nom du type d'écart"
+        verbose_name="Nom du type d'événement"
     )
     description = models.TextField(
         blank=True,
@@ -87,10 +89,15 @@ class GapType(TimestampedModel):
         related_name='gap_types',
         verbose_name="Source d'audit"
     )
+    is_gap = models.BooleanField(
+        default=True,
+        verbose_name="Écart",
+        help_text="Cochez si cet événement constitue un écart. Décochez pour un simple événement."
+    )
 
     class Meta:
-        verbose_name = "3.3 Type d'écart"
-        verbose_name_plural = "3.3 Types d'écart"
+        verbose_name = "3.3 Type d'événement"
+        verbose_name_plural = "3.3 Types d'événement"
         ordering = ['audit_source__name', 'name']
 
     def __str__(self):
@@ -150,7 +157,7 @@ class GapReport(TimestampedModel):
 
     class Meta:
         verbose_name = "3. Déclaration d'écart"
-        verbose_name_plural = "3. Déclarations d'écart"
+        verbose_name_plural = "3. Déclarations d'évenements"
         ordering = ['-observation_date', '-created_at']
 
     def clean(self):
@@ -166,6 +173,18 @@ class GapReport(TimestampedModel):
             raise ValidationError({
                 'process': 'Aucun processus ne doit être sélectionné pour cette source d\'audit.'
             })
+
+    def get_gaps_count(self):
+        """
+        Retourne le nombre d'écarts (is_gap=True) dans cette déclaration.
+        """
+        return self.gaps.filter(gap_type__is_gap=True).count()
+    
+    def get_events_count(self):
+        """
+        Retourne le nombre d'événements non-écarts (is_gap=False) dans cette déclaration.
+        """
+        return self.gaps.filter(gap_type__is_gap=False).count()
 
     def __str__(self):
         return f"Déclaration #{self.id} - {self.audit_source.name} - {self.observation_date}"
@@ -199,7 +218,7 @@ class Gap(TimestampedModel):
     gap_type = models.ForeignKey(
         GapType,
         on_delete=models.PROTECT,
-        verbose_name="Type d'écart (Quoi)"
+        verbose_name="Type d'événement (Quoi)"
     )
     description = models.TextField(
         verbose_name="Pourquoi (justification/explication)"
@@ -212,13 +231,13 @@ class Gap(TimestampedModel):
     )
 
     class Meta:
-        verbose_name = "Écart"
-        verbose_name_plural = "Écarts"
+        verbose_name = "3.4 Écart"
+        verbose_name_plural = "3.4 Écarts"
         ordering = ['-created_at']
 
     def clean(self):
         """
-        Validation pour s'assurer que le type d'écart correspond à la source d'audit.
+        Validation pour s'assurer que le type d'événement correspond à la source d'audit.
         """
         # Éviter la validation si gap_report n'est pas encore assigné
         if (self.gap_type and self.gap_report_id and hasattr(self, 'gap_report')):
@@ -226,7 +245,7 @@ class Gap(TimestampedModel):
                 gap_report = self.gap_report
                 if self.gap_type.audit_source != gap_report.audit_source:
                     raise ValidationError({
-                        'gap_type': 'Le type d\'écart doit correspondre à la source d\'audit de la déclaration.'
+                        'gap_type': 'Le type d\'événement doit correspondre à la source d\'audit de la déclaration.'
                     })
             except GapReport.DoesNotExist:
                 # Si gap_report n'existe pas encore, ignorer la validation
@@ -288,10 +307,25 @@ class Gap(TimestampedModel):
         Retourne les statuts disponibles pour un utilisateur donné.
         
         Règles d'accès aux statuts :
-        - Déclarant : peut passer de 'déclaré' à 'annulé' uniquement
-        - SA/AD : accès à tous les statuts
-        - Valideur (à définir plus tard) : accès aux statuts administratifs
+        - Pour les événements (non écarts) : seulement "déclaré" et "annulé"
+        - Pour les écarts : tous les statuts selon les droits utilisateur
         """
+        # Si ce n'est pas un écart, statuts limités
+        if not self.gap_type.is_gap:
+            if user.droits in ['SA', 'AD'] or self.gap_report.declared_by == user:
+                if self.status == 'declared':
+                    return [
+                        ('declared', 'Déclaré'),
+                        ('cancelled', 'Annulé'),
+                    ]
+                else:
+                    # Statut actuel uniquement
+                    return [(self.status, dict(self.STATUS_CHOICES)[self.status])]
+            else:
+                # Autres utilisateurs : lecture seule
+                return [(self.status, dict(self.STATUS_CHOICES)[self.status])]
+        
+        # Pour les vrais écarts : logique existante
         if user.droits in ['SA', 'AD']:
             # Administrateurs : tous les statuts
             return self.STATUS_CHOICES
@@ -311,3 +345,135 @@ class Gap(TimestampedModel):
 
     def __str__(self):
         return f"{self.gap_number} - {self.gap_type.name}"
+
+
+class HistoriqueModification(TimestampedModel):
+    """
+    Historique des modifications apportées aux Déclarations d'évenements et aux écarts.
+    """
+    
+    ACTION_CHOICES = [
+        ('creation', 'Création'),
+        ('modification', 'Modification'),
+        ('suppression', 'Suppression'),
+        ('changement_statut', 'Changement de statut'),
+    ]
+    
+    OBJET_CHOICES = [
+        ('gap_report', 'Déclaration d\'écart'),
+        ('gap', 'Écart'),
+    ]
+    
+    # Références polymorphiques vers les objets modifiés
+    gap_report = models.ForeignKey(
+        GapReport,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='historique_modifications',
+        verbose_name="Déclaration d'écart"
+    )
+    gap = models.ForeignKey(
+        Gap,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='historique_modifications',
+        verbose_name="Écart"
+    )
+    
+    # Informations sur la modification
+    action = models.CharField(
+        max_length=20,
+        choices=ACTION_CHOICES,
+        verbose_name="Action"
+    )
+    objet_type = models.CharField(
+        max_length=20,
+        choices=OBJET_CHOICES,
+        verbose_name="Type d'objet"
+    )
+    objet_id = models.PositiveIntegerField(
+        verbose_name="ID de l'objet"
+    )
+    objet_repr = models.CharField(
+        max_length=200,
+        verbose_name="Représentation de l'objet",
+        help_text="Représentation textuelle de l'objet au moment de la modification"
+    )
+    
+    # Utilisateur qui a effectué la modification
+    utilisateur = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        verbose_name="Utilisateur"
+    )
+    
+    # Détails de la modification
+    description = models.TextField(
+        verbose_name="Description de la modification",
+        help_text="Description détaillée des changements effectués"
+    )
+    donnees_avant = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Données avant modification",
+        help_text="État des données avant la modification (format JSON)"
+    )
+    donnees_apres = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Données après modification",
+        help_text="État des données après la modification (format JSON)"
+    )
+    
+    class Meta:
+        verbose_name = "Historique de modification"
+        verbose_name_plural = "Historiques de modifications"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['gap_report', '-created_at']),
+            models.Index(fields=['gap', '-created_at']),
+            models.Index(fields=['objet_type', 'objet_id', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.action} - {self.objet_repr} par {self.utilisateur} le {self.created_at.strftime('%d/%m/%Y à %H:%M')}"
+    
+    @classmethod
+    def enregistrer_modification(cls, objet, action, utilisateur, description, donnees_avant=None, donnees_apres=None):
+        """
+        Méthode utilitaire pour enregistrer une modification dans l'historique.
+        
+        Args:
+            objet: L'objet modifié (GapReport ou Gap)
+            action: Type d'action (creation, modification, suppression, changement_statut)
+            utilisateur: Utilisateur qui effectue la modification
+            description: Description de la modification
+            donnees_avant: Données avant modification (optionnel)
+            donnees_apres: Données après modification (optionnel)
+        """
+        # Déterminer le type d'objet et la déclaration associée
+        if isinstance(objet, GapReport):
+            objet_type = 'gap_report'
+            gap_report = objet
+            gap = None
+        elif isinstance(objet, Gap):
+            objet_type = 'gap'
+            gap_report = objet.gap_report
+            gap = objet
+        else:
+            raise ValueError(f"Type d'objet non supporté: {type(objet)}")
+        
+        return cls.objects.create(
+            gap_report=gap_report,
+            gap=gap,
+            action=action,
+            objet_type=objet_type,
+            objet_id=objet.id,
+            objet_repr=str(objet),
+            utilisateur=utilisateur,
+            description=description,
+            donnees_avant=donnees_avant,
+            donnees_apres=donnees_apres
+        )

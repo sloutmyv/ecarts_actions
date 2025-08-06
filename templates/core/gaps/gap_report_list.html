@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Déclarations d'écart{% endblock %}
+{% block title %}Déclarations d'évenements{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
@@ -11,9 +11,9 @@
                 <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Déclarations d'écart
+                Déclarations d'évenements
             </h1>
-            <p class="text-gray-600 mt-2">Gérez les déclarations d'écart</p>
+            <p class="text-gray-600 mt-2">Gérez les Déclarations d'évenements</p>
         </div>
         <button 
             hx-get="{% url 'gaps:gap_report_create' %}"
@@ -23,7 +23,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
             </svg>
-            Déclarer un écart
+            Déclarer un évenement
         </button>
     </div>
 
@@ -105,7 +105,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <span class="text-sm text-green-800">
-                <strong>Vue globale :</strong> Affichage de toutes les déclarations d'écart de tous les utilisateurs. 
+                <strong>Vue globale :</strong> Affichage de toutes les Déclarations d'évenements de tous les utilisateurs. 
                 <em>Cliquez sur "Ma vue" pour revenir à votre vue personnalisée.</em>
             </span>
         </div>
@@ -174,10 +174,17 @@
                                     <div class="text-xs text-gray-500">
                                         par {{ gap_report.declared_by.get_full_name|default:gap_report.declared_by.matricule }}
                                     </div>
-                                    <div class="mt-1">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            {{ gap_report.gaps.count }} écart{{ gap_report.gaps.count|pluralize }}
+                                    <div class="mt-1 flex flex-col items-end space-y-1">
+                                        {% if gap_report.get_gaps_count > 0 %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            {{ gap_report.get_gaps_count }} écart{{ gap_report.get_gaps_count|pluralize }}
                                         </span>
+                                        {% endif %}
+                                        {% if gap_report.get_events_count > 0 %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ gap_report.get_events_count }} événement{{ gap_report.get_events_count|pluralize }}
+                                        </span>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -200,7 +207,7 @@
                     hx-target="#modal-container"
                     hx-trigger="click"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Déclarer un écart
+                    Déclarer un évenement
                 </button>
             </div>
         {% endif %}

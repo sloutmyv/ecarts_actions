@@ -43,7 +43,7 @@
                     <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
-                    Ajouter un écart
+                    Ajouter un évenement
                 </a>
                 <a href="{% url 'gaps:gap_report_edit' gap_report.pk %}" 
                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
@@ -198,7 +198,7 @@
     <div class="mt-8">
         <div class="bg-white shadow-lg rounded-lg overflow-hidden">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Écarts déclarés</h3>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Évenements déclarés</h3>
             </div>
             {% if visible_gaps %}
                 <ul role="list" class="divide-y divide-gray-200">
@@ -207,9 +207,14 @@
                         <div class="flex justify-between">
                             <!-- Partie gauche : Numéro + Type et Description -->
                             <div class="flex-1 min-w-0">
-                                <!-- Ligne 1 : Numéro + Type d'écart -->
+                                <!-- Ligne 1 : Numéro + Badge Écart + Type d'événement -->
                                 <div class="flex items-center space-x-2 mb-2">
                                     <h4 class="text-base font-medium text-gray-900">{{ gap.gap_number }}</h4>
+                                    {% if gap.gap_type.is_gap %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                            ÉCART
+                                        </span>
+                                    {% endif %}
                                     <span class="text-sm text-gray-500">{{ gap.gap_type.name }}</span>
                                 </div>
                                 
@@ -307,20 +312,23 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun écart déclaré</h3>
-                    <p class="mt-1 text-sm text-gray-500">Commencez par ajouter un écart à cette déclaration.</p>
+                    <p class="mt-1 text-sm text-gray-500">Commencez par Ajouter un évenement à cette déclaration.</p>
                     <div class="mt-6">
                         <a href="{% url 'gaps:gap_create' gap_report.pk %}" 
                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
                             <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                             </svg>
-                            Ajouter un écart
+                            Ajouter un évenement
                         </a>
                     </div>
                 </div>
             {% endif %}
         </div>
     </div>
+
+    <!-- Historique des modifications (Log) -->
+    {% include 'core/gaps/partials/historique_log.html' %}
 </div>
 
 <!-- Modal container pour les popups HTMX -->

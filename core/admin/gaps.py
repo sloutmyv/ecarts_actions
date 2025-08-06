@@ -56,14 +56,17 @@ class ProcessAdmin(admin.ModelAdmin):
 
 @admin.register(GapType)
 class GapTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'audit_source', 'created_at']
-    list_filter = ['audit_source', 'created_at']
+    list_display = ['name', 'audit_source', 'is_gap', 'created_at']
+    list_filter = ['audit_source', 'is_gap', 'created_at']
     search_fields = ['name', 'description', 'audit_source__name']
     ordering = ['audit_source__name', 'name']
     
     fieldsets = (
         (None, {
             'fields': ('name', 'audit_source', 'description')
+        }),
+        ('Configuration', {
+            'fields': ('is_gap',)
         }),
     )
     

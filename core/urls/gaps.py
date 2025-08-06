@@ -10,7 +10,7 @@ urlpatterns = [
     # Liste des écarts individuels (page principale)
     path('', gaps.gap_list, name='gap_list'),
     
-    # Déclarations d'écart
+    # Déclarations d'évenements
     path('declarations/', gaps.gap_report_list, name='gap_report_list'),
     path('declaration/<int:pk>/', gaps.gap_report_detail, name='gap_report_detail'),
     path('declaration/new/', gaps.gap_report_create, name='gap_report_create'),

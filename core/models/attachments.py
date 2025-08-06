@@ -58,8 +58,8 @@ class GapReportAttachment(TimestampedModel):
     )
 
     class Meta:
-        verbose_name = "Pièce jointe de déclaration"
-        verbose_name_plural = "Pièces jointes de déclaration"
+        verbose_name = "3.5 Pièce jointe de déclaration"
+        verbose_name_plural = "3.5 Pièces jointes de déclaration"
         ordering = ['-created_at']
 
     def clean(self):
@@ -125,8 +125,8 @@ class GapAttachment(TimestampedModel):
     )
 
     class Meta:
-        verbose_name = "Pièce jointe d'écart"
-        verbose_name_plural = "Pièces jointes d'écart"
+        verbose_name = "3.6 Pièce jointe d'écart"
+        verbose_name_plural = "3.6 Pièces jointes d'écart"
         ordering = ['-created_at']
 
     def clean(self):

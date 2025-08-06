@@ -14,7 +14,7 @@
                     <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
-                    Déclarer un écart
+                    Déclarer un évenement
                 {% endif %}
             </h2>
             <button onclick="closeGlobalModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -313,7 +313,7 @@
                     <!-- Premier écart (template) -->
                     <div class="gap-row border border-gray-200 rounded-lg p-4 mb-4" data-gap-index="0">
                         <div class="flex items-center justify-between mb-4">
-                            <h4 class="text-lg font-semibold text-gray-900">Écart #<span class="gap-number">1</span></h4>
+                            <h4 class="text-lg font-semibold text-gray-900">Évenement #<span class="gap-number">1</span></h4>
                             <button 
                                 type="button" 
                                 class="remove-gap-btn text-red-500 hover:text-red-700 text-sm hidden"
@@ -323,11 +323,11 @@
                         </div>
                         
                         <div class="grid grid-cols-1 gap-4">
-                            <!-- Type d'écart avec QUOI ? -->
+                            <!-- Type d'évenements avec QUOI ? -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                                     <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">QUOI ?</span>
-                                    Type d'écart <span class="text-red-500">*</span>
+                                    Type d'évenements <span class="text-red-500">*</span>
                                 </label>
                                 <select 
                                     name="gap_type_0" 
@@ -337,11 +337,11 @@
                                 </select>
                             </div>
 
-                            <!-- Description de l'écart avec POURQUOI ? -->
+                            <!-- Description de l'évenement avec POURQUOI ? -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                                     <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">POURQUOI ?</span>
-                                    Description de l'écart <span class="text-red-500">*</span>
+                                    Description de l'évenement <span class="text-red-500">*</span>
                                 </label>
                                 <textarea 
                                     name="gap_description_0"
@@ -376,7 +376,7 @@
                     </div>
                 </div>
                 
-                <!-- Bouton Ajouter un écart -->
+                <!-- Bouton Ajouter un évenement -->
                 <div class="flex items-center justify-center mt-4">
                     <button 
                         type="button" 
@@ -386,7 +386,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
-                        Ajouter un écart
+                        Ajouter un évenement
                     </button>
                 </div>
             </div>
@@ -403,7 +403,7 @@
                 <button 
                     type="submit"
                     class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                    <span id="submit-btn-text">Créer l'écart</span>
+                    <span id="submit-btn-text">Créer l'évenement</span>
                 </button>
             </div>
         </form>
@@ -663,7 +663,7 @@
         
         newRow.innerHTML = `
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-lg font-semibold text-gray-900">Écart #<span class="gap-number">${gapIndex + 1}</span></h4>
+                <h4 class="text-lg font-semibold text-gray-900">Évenement #<span class="gap-number">${gapIndex + 1}</span></h4>
                 <button 
                     type="button" 
                     class="remove-gap-btn text-red-500 hover:text-red-700 text-sm"
@@ -673,11 +673,11 @@
             </div>
             
             <div class="grid grid-cols-1 gap-4">
-                <!-- Type d'écart avec QUOI ? -->
+                <!-- Type d'évenements avec QUOI ? -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                         <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">QUOI ?</span>
-                        Type d'écart <span class="text-red-500">*</span>
+                        Type d'évenements <span class="text-red-500">*</span>
                     </label>
                     <select 
                         name="gap_type_${gapIndex}" 
@@ -687,11 +687,11 @@
                     </select>
                 </div>
 
-                <!-- Description de l'écart avec POURQUOI ? -->
+                <!-- Description de l'évenement avec POURQUOI ? -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                         <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">POURQUOI ?</span>
-                        Description de l'écart <span class="text-red-500">*</span>
+                        Description de l'évenement <span class="text-red-500">*</span>
                     </label>
                     <textarea 
                         name="gap_description_${gapIndex}"

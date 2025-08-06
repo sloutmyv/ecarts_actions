@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name='gaptype',
-            options={'ordering': ['audit_source__name', 'name'], 'verbose_name': "3.3 Type d'écart", 'verbose_name_plural': "3.3 Types d'écart"},
+            options={'ordering': ['audit_source__name', 'name'], 'verbose_name': "3.3 Type d'évenements", 'verbose_name_plural': "3.3 Types d'écart"},
         ),
         migrations.AlterModelOptions(
             name='process',

@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name='gapreport',
-            options={'ordering': ['-observation_date', '-created_at'], 'verbose_name': "3. Déclaration d'écart", 'verbose_name_plural': "3. Déclarations d'écart"},
+            options={'ordering': ['-observation_date', '-created_at'], 'verbose_name': "3. Déclaration d'écart", 'verbose_name_plural': "3. Déclarations d'évenements"},
         ),
         migrations.AlterField(
             model_name='gapreport',

@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from datetime import datetime
 
-from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, User, GapReportAttachment, GapAttachment
+from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, User, GapReportAttachment, GapAttachment, HistoriqueModification
 from core.forms import GapReportForm, GapForm, GapAttachmentForm
 
 
@@ -70,7 +70,7 @@ def gap_list(request):
 @login_required
 def gap_report_list(request):
     """
-    Liste des déclarations d'écart avec filtres.
+    Liste des Déclarations d'évenements avec filtres.
     Par défaut, filtre selon les informations de l'utilisateur connecté.
     """
     # Récupérer les paramètres de filtrage
@@ -195,9 +195,17 @@ def gap_report_detail(request, pk):
         if gap.is_visible_to_user(request.user):
             visible_gaps.append(gap)
     
+    # Récupérer l'historique complet de la déclaration (pour admin/superadmin uniquement)
+    historique = []
+    if request.user.droits in ['SA', 'AD']:
+        historique = HistoriqueModification.objects.filter(
+            gap_report=gap_report
+        ).select_related('utilisateur').order_by('-created_at')[:50]  # Limiter à 50 entrées récentes
+    
     context = {
         'gap_report': gap_report,
         'visible_gaps': visible_gaps,
+        'historique': historique,
         'title': f'Détail de la déclaration #{gap_report.id}'
     }
     return render(request, 'core/gaps/gap_report_detail.html', context)

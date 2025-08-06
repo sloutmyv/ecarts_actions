@@ -1,6 +1,7 @@
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib import messages
+from .signals import set_current_user
 
 
 class ForcePasswordChangeMiddleware:
@@ -43,4 +44,23 @@ class ForcePasswordChangeMiddleware:
         
         # Code exécuté pour chaque requête/réponse après la vue
         
+        return response
+
+
+class HistoriqueMiddleware:
+    """
+    Middleware pour capturer l'utilisateur actuel dans les signaux d'historique.
+    """
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Définir l'utilisateur actuel pour les signaux
+        if request.user.is_authenticated:
+            set_current_user(request.user)
+        else:
+            set_current_user(None)
+
+        response = self.get_response(request)
         return response

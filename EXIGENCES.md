@@ -1,6 +1,6 @@
 EC01 – La solution doit permettre de déclarer manuellement des écarts dans une base de données unique
 La solution de gestion des écarts doit permettre la déclaration d’un écart, via un formulaire proposant différents champs. 
-Une fois le formulaire validé, une nouvelle entrée sera créée dans une base de données unique contenant tous les écarts déclarés.
+Une fois le formulaire validé, une nouvelle entrée sera créée dans une base de données unique contenant tous les Évenements déclarés.
 OK
 
 EC02 – La solution doit permettre de lier un écart à un audit existant

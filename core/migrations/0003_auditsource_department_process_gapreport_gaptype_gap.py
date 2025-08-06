@@ -81,7 +81,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'verbose_name': "Déclaration d'écart",
-                'verbose_name_plural': "Déclarations d'écart",
+                'verbose_name_plural': "Déclarations d'évenements",
                 'ordering': ['-observation_date', '-created_at'],
             },
         ),
@@ -92,13 +92,13 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Créé le')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Modifié le')),
                 ('code', models.CharField(help_text="Code unique pour identifier l'élément", max_length=20, unique=True, verbose_name='Code')),
-                ('name', models.CharField(max_length=100, verbose_name="Nom du type d'écart")),
+                ('name', models.CharField(max_length=100, verbose_name="Nom du Type d'évenements")),
                 ('description', models.TextField(blank=True, verbose_name='Description')),
                 ('is_active', models.BooleanField(default=True, verbose_name='Actif')),
                 ('audit_source', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='gap_types', to='core.auditsource', verbose_name="Source d'audit")),
             ],
             options={
-                'verbose_name': "Type d'écart",
+                'verbose_name': "Type d'évenements",
                 'verbose_name_plural': "Types d'écart",
                 'ordering': ['audit_source__name', 'name'],
                 'unique_together': {('code', 'audit_source')},
@@ -114,7 +114,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(verbose_name='Pourquoi (justification/explication)')),
                 ('status', models.CharField(choices=[('declared', 'Déclaré'), ('rejected', 'Non retenu'), ('closed', 'Clos')], default='declared', max_length=20, verbose_name='Statut')),
                 ('gap_report', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='gaps', to='core.gapreport', verbose_name="Déclaration d'écart")),
-                ('gap_type', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.gaptype', verbose_name="Type d'écart (Quoi)")),
+                ('gap_type', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.gaptype', verbose_name="Type d'évenements (Quoi)")),
             ],
             options={
                 'verbose_name': 'Écart',
