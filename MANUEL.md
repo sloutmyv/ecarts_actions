@@ -17,20 +17,61 @@
 
 ### Qu'est-ce qu'EcartsActions ?
 
-EcartsActions est une application de **gestion d'écarts et d'actions** qui permet de :
-- Gérer une structure organisationnelle hiérarchique (services/départements)
-- Gérer les utilisateurs avec un système de droits à 3 niveaux
-- Authentification sécurisée par matricule avec changement de mot de passe obligatoire
-- Déclarer et suivre les écarts/non-conformités avec un système complet de gestion
-- Planifier et suivre les actions correctives (fonctionnalité à venir)
+EcartsActions est une application moderne de **gestion d'événements et d'écarts** qui permet de :
+- **Gérer les événements** avec classification conditionnelle écart/non-écart
+- **Structure organisationnelle** hiérarchique (services/départements) avec tri automatique
+- **Gestion des utilisateurs** avec système de droits granulaires à 3 niveaux  
+- **Authentification sécurisée** par matricule avec changement de mot de passe obligatoire
+- **Déclarer et suivre** les événements/écarts avec système complet de badges visuels
+- **Filtrage intelligent** avec vue personnalisée et tri cliquable sur colonnes
+- **Historique complet** des modifications avec signaux Django
+- **Contrôle d'accès** granulaire selon les rôles et permissions
 
 ### Public cible
 
 Ce manuel s'adresse aux :
-- **Super Administrateurs** : Accès complet à toutes les fonctionnalités (y compris Admin Django)
-- **Administrateurs** : Gestion des services et utilisateurs (sans Admin Django)
-- **Utilisateurs** : Accès aux fonctionnalités principales (Dashboard, Écarts, Actions)
-- **Gestionnaires IT** : Responsables de la configuration technique et maintenance
+- **Super Administrateurs (SA)** : Accès complet + interface Admin Django + modification de tous les événements
+- **Administrateurs (AD)** : Gestion des services/utilisateurs + modification de tous les événements (sans Admin Django)
+- **Utilisateurs (US)** : Accès aux fonctionnalités principales + modification de leurs propres déclarations uniquement
+- **Gestionnaires IT** : Responsables de la configuration technique, filtres avancés et maintenance système
+
+## 🆕 Nouveautés - Système d'Événements et d'Écarts
+
+### Évolution Conceptuelle
+
+L'application a évolué d'un système de **"gestion d'écarts"** vers un système plus complet de **"gestion d'événements et d'écarts"**.
+
+#### Avant vs Maintenant
+- **Avant** : Tous les éléments étaient considérés comme des "écarts"
+- **Maintenant** : Distinction entre "événements" (faits observés) et "écarts" (non-conformités)
+
+### Nouvelles Fonctionnalités
+
+#### 🏷️ Classification Conditionnelle
+- **Types d'événements** avec champ booléen "Écart"
+- **Badges visuels** : Rouge "ÉCART" uniquement pour les vrais écarts
+- **Statuts différenciés** : Écarts (5 statuts) vs Événements (2 statuts)
+
+#### 🔍 Filtrage Avancé
+- **Cases à cocher** : Afficher écarts et/ou événements
+- **Par défaut** : Seuls les écarts sont affichés
+- **Tri cliquable** : Sur toutes les colonnes avec flèches directionnelles
+- **Interface centrée** : Meilleure UX avec champs et boutons centrés
+
+#### 👁️ Vues Intelligentes  
+- **Vue personnalisée** : Pré-remplissage automatique service/déclarant
+- **Filtrage contextuel** : Écarts de son service + déclarés + impliqués
+- **Indicateurs visuels** : Bannières colorées selon le mode de vue
+
+#### 🔐 Permissions Granulaires
+- **Modification conditionnelle** : Bouton "Modifier" visible selon les droits
+- **Contrôle d'accès** : SA/AD = tous, US = leurs déclarations uniquement
+- **Sécurité renforcée** : Validation des paramètres et protection XSS
+
+#### 📊 Badges de Comptage
+- **Rouge** : Nombre d'écarts dans une déclaration
+- **Bleu** : Nombre d'événements non-écarts  
+- **Masqués si zéro** : Interface épurée
 
 ## 🔐 Connexion et authentification
 

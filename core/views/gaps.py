@@ -38,16 +38,128 @@ def get_services_hierarchical_order():
 @login_required
 def gap_list(request):
     """
-    Liste de tous les écarts individuels.
+    Liste de tous les écarts individuels avec filtrage avancé et tri.
     """
-    # Filtrage par service si fourni
+    # Récupération des paramètres de filtrage
     selected_service = request.GET.get('service')
+    selected_status = request.GET.get('status')
+    selected_gap_type = request.GET.get('gap_type')
+    selected_audit_source = request.GET.get('audit_source')
+    declared_by_search = request.GET.get('declared_by_search', '')
+    declared_by_id = request.GET.get('declared_by_id')
+    show_all = request.GET.get('show_all') == '1'
+    
+    # Paramètres pour les types d'événements (écarts vs événements)
+    show_gaps = request.GET.get('show_gaps') == '1'
+    show_events = request.GET.get('show_events') == '1'
+    
+    # Par défaut, afficher seulement les écarts si aucune case n'est cochée
+    if not show_gaps and not show_events:
+        show_gaps = True
+    
+    # Paramètres de tri
+    sort_by = request.GET.get('sort', 'created_at')
+    sort_order = request.GET.get('order', 'desc')
+    
+    # Construction de la requête de base
     gaps = Gap.objects.select_related(
         'gap_report__audit_source', 'gap_report__service', 'gap_report__declared_by', 'gap_type'
-    ).order_by('-created_at')
+    )
     
-    if selected_service:
-        gaps = gaps.filter(gap_report__service_id=selected_service)
+    # Vue par défaut : écarts du service de l'utilisateur + déclarés par lui + impliqués
+    form_submitted = any([
+        selected_service and selected_service.strip() and selected_service != 'None',
+        selected_status and selected_status.strip() and selected_status != 'None', 
+        selected_gap_type and selected_gap_type.strip() and selected_gap_type != 'None',
+        selected_audit_source and selected_audit_source.strip() and selected_audit_source != 'None',
+        declared_by_search and declared_by_search.strip() and declared_by_search != 'None',
+        declared_by_id and declared_by_id.strip() and declared_by_id != 'None',
+        request.GET.get('show_gaps') is not None or request.GET.get('show_events') is not None
+    ])
+    
+    if not show_all and not form_submitted:
+        # Vue personnalisée par défaut
+        user_gaps_filter = Q(gap_report__declared_by=request.user)
+        
+        # Ajouter les écarts du service de l'utilisateur
+        if request.user.service:
+            user_gaps_filter |= Q(gap_report__service=request.user.service)
+        
+        # Ajouter les écarts où l'utilisateur est impliqué
+        user_gaps_filter |= Q(gap_report__involved_users=request.user)
+        
+        gaps = gaps.filter(user_gaps_filter).distinct()
+        
+        # Pré-remplir les champs pour la vue personnalisée
+        if not selected_service and request.user.service:
+            selected_service = str(request.user.service.id)
+        if not declared_by_id:
+            declared_by_id = str(request.user.id)
+            declared_by_search = request.user.get_full_name() or request.user.matricule
+    
+    # Application des filtres
+    if selected_service and selected_service.strip() and selected_service != 'None':
+        try:
+            service_id = int(selected_service)
+            gaps = gaps.filter(gap_report__service_id=service_id)
+        except (ValueError, TypeError):
+            pass
+    
+    if selected_status and selected_status.strip() and selected_status != 'None':
+        gaps = gaps.filter(status=selected_status)
+    
+    if selected_gap_type and selected_gap_type.strip() and selected_gap_type != 'None':
+        try:
+            gap_type_id = int(selected_gap_type)
+            gaps = gaps.filter(gap_type_id=gap_type_id)
+        except (ValueError, TypeError):
+            pass
+    
+    if selected_audit_source and selected_audit_source.strip() and selected_audit_source != 'None':
+        try:
+            audit_source_id = int(selected_audit_source)
+            gaps = gaps.filter(gap_report__audit_source_id=audit_source_id)
+        except (ValueError, TypeError):
+            pass
+    
+    if declared_by_id and declared_by_id.strip() and declared_by_id != 'None':
+        try:
+            user_id = int(declared_by_id)
+            gaps = gaps.filter(gap_report__declared_by_id=user_id)
+        except (ValueError, TypeError):
+            pass
+    elif declared_by_search and declared_by_search.strip():
+        gaps = gaps.filter(
+            Q(gap_report__declared_by__nom__icontains=declared_by_search) |
+            Q(gap_report__declared_by__prenom__icontains=declared_by_search) |
+            Q(gap_report__declared_by__matricule__icontains=declared_by_search)
+        )
+    
+    # Filtrage par type d'événement (écarts vs événements)
+    if show_gaps and not show_events:
+        # Seulement les écarts
+        gaps = gaps.filter(gap_type__is_gap=True)
+    elif show_events and not show_gaps:
+        # Seulement les événements
+        gaps = gaps.filter(gap_type__is_gap=False)
+    # Si les deux sont cochées ou aucune (par défaut écarts), on affiche tout
+    
+    # Application du tri
+    valid_sort_fields = {
+        'gap_number': 'gap_number',
+        'gap_type': 'gap_type__name', 
+        'service': 'gap_report__service__nom',
+        'audit_source': 'gap_report__audit_source__name',
+        'status': 'status',
+        'created_at': 'created_at',
+        'declared_by': 'gap_report__declared_by__nom'
+    }
+    
+    if sort_by in valid_sort_fields:
+        order_prefix = '-' if sort_order == 'desc' else ''
+        gaps = gaps.order_by(f'{order_prefix}{valid_sort_fields[sort_by]}')
+    else:
+        gaps = gaps.order_by('-created_at')
     
     # Filtrer les écarts selon la visibilité pour l'utilisateur connecté
     visible_gaps = []
@@ -55,13 +167,39 @@ def gap_list(request):
         if gap.is_visible_to_user(request.user):
             visible_gaps.append(gap)
     
-    # Récupérer tous les services pour le filtre
+    # Récupérer les données pour les filtres
     services = get_services_hierarchical_order()
+    gap_types = GapType.objects.all().order_by('audit_source__name', 'name')
+    audit_sources = AuditSource.objects.all().order_by('name')
+    
+    # Déterminer le service sélectionné pour l'affichage
+    selected_service_name = None
+    if selected_service and selected_service.strip() and selected_service != 'None':
+        try:
+            service_id = int(selected_service)
+            selected_service_obj = Service.objects.get(id=service_id)
+            selected_service_name = selected_service_obj.get_chemin_hierarchique()
+        except (Service.DoesNotExist, ValueError, TypeError):
+            pass
     
     context = {
         'gaps': visible_gaps,
         'services': services,
+        'gap_types': gap_types,
+        'audit_sources': audit_sources,
         'selected_service': selected_service,
+        'selected_service_name': selected_service_name,
+        'selected_status': selected_status,
+        'selected_gap_type': selected_gap_type,
+        'selected_audit_source': selected_audit_source,
+        'declared_by_search': declared_by_search,
+        'declared_by_id': declared_by_id,
+        'show_all': show_all,
+        'form_submitted': form_submitted,
+        'show_gaps': show_gaps,
+        'show_events': show_events,
+        'current_sort': sort_by,
+        'current_order': sort_order,
         'page_title': 'Liste des Écarts'
     }
     return render(request, 'core/gaps/gap_list.html', context)
@@ -106,6 +244,10 @@ def gap_report_list(request):
             selected_service = str(request.user.service.id)  # Pré-sélectionner le service dans le filtre
         
         gap_reports = gap_reports.filter(user_filter)
+        
+        # Pré-remplir les champs pour la vue personnalisée
+        declared_by_id = str(request.user.id)
+        declared_by_search = request.user.get_full_name() or request.user.matricule
     elif show_all:
         # Afficher toutes les déclarations sans aucun filtre
         pass  # gap_reports reste non filtré
@@ -168,7 +310,7 @@ def gap_report_list(request):
         'selected_service': selected_service,
         'selected_service_name': selected_service_name,
         'declared_by_search': declared_by_search,
-        'declared_by_id': request.GET.get('declared_by_id', ''),
+        'declared_by_id': declared_by_id if 'declared_by_id' in locals() else request.GET.get('declared_by_id', ''),
         'selected_audit_source': selected_audit_source,
         'show_all': show_all,
         'form_submitted': form_submitted,

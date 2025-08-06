@@ -36,27 +36,159 @@
     </div>
 
     <!-- Filtres -->
-    <div class="bg-white shadow-sm rounded-lg p-4 mb-6">
-        <form method="get" class="flex gap-4 items-end">
-            <div class="flex-1">
-                <label for="service" class="block text-sm font-medium text-gray-700 mb-1">Filtrer par service</label>
+    <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+        <form method="get" id="gap-filters-form" class="space-y-6">
+            <!-- Cases à cocher pour type d'événements -->
+            <div class="border-b border-gray-200 pb-4">
+                <label class="text-sm font-medium text-gray-700 mb-3 block">Affichage</label>
+                <div class="flex gap-6">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="show_gaps" value="1" {% if show_gaps %}checked{% endif %} class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <span class="ml-2 text-sm text-gray-700">Écarts</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="show_events" value="1" {% if show_events %}checked{% endif %} class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <span class="ml-2 text-sm text-gray-700">Événements</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Autres filtres -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
+            <!-- Filtre par service/entité -->
+            <div>
+                <label for="service" class="block text-sm font-medium text-gray-700 mb-2">Entité</label>
                 <select name="service" id="service" 
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        onchange="this.form.submit()">
-                    <option value="">Tous les services</option>
+                        class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Toutes les entités</option>
                     {% for service in services %}
-                        <option value="{{ service.id }}" {% if service.id|stringformat:"s" == selected_service %}selected{% endif %}>
+                        <option value="{{ service.id }}" {% if selected_service and service.id|stringformat:"s" == selected_service %}selected{% endif %}>
                             {{ service.get_chemin_hierarchique }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors">
+            
+            <!-- Recherche par déclarant -->
+            <div class="relative">
+                <label for="declared_by_search" class="block text-sm font-medium text-gray-700 mb-2">Déclarant</label>
+                <input 
+                    type="text" 
+                    name="declared_by_search" 
+                    id="declared_by_search" 
+                    value="{{ declared_by_search }}"
+                    placeholder="Nom, prénom ou matricule..."
+                    autocomplete="off"
+                    class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                
+                <!-- Suggestions dropdown -->
+                <div id="user-suggestions" class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
+                    <!-- Les suggestions apparaîtront ici -->
+                </div>
+                
+                <!-- Champ caché pour stocker l'ID utilisateur sélectionné -->
+                <input type="hidden" name="declared_by_id" id="declared_by_id" value="{{ declared_by_id }}">
+            </div>
+            
+            <!-- Filtre par type d'écart -->
+            <div>
+                <label for="gap_type" class="block text-sm font-medium text-gray-700 mb-2">Type d'événement</label>
+                <select name="gap_type" id="gap_type" 
+                        class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Tous les types</option>
+                    {% for gap_type in gap_types %}
+                        <option value="{{ gap_type.id }}" {% if selected_gap_type and gap_type.id|stringformat:"s" == selected_gap_type %}selected{% endif %}>
+                            {{ gap_type.audit_source.name }} - {{ gap_type.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filtre par source d'audit -->
+            <div>
+                <label for="audit_source" class="block text-sm font-medium text-gray-700 mb-2">Source d'audit</label>
+                <select name="audit_source" id="audit_source" 
+                        class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Toutes les sources</option>
+                    {% for source in audit_sources %}
+                        <option value="{{ source.id }}" {% if selected_audit_source and source.id|stringformat:"s" == selected_audit_source %}selected{% endif %}>
+                            {{ source.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filtre par statut -->
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                <select name="status" id="status" 
+                        class="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Tous les statuts</option>
+                    <option value="declared" {% if selected_status == 'declared' %}selected{% endif %}>Déclaré</option>
+                    <option value="cancelled" {% if selected_status == 'cancelled' %}selected{% endif %}>Annulé</option>
+                    <option value="retained" {% if selected_status == 'retained' %}selected{% endif %}>Retenu</option>
+                    <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Non retenu</option>
+                    <option value="closed" {% if selected_status == 'closed' %}selected{% endif %}>Clos</option>
+                </select>
+            </div>
+            </div>
+        </form>
+        
+        <!-- Boutons d'action -->
+        <div class="flex justify-center gap-2 mt-4">
+            <button type="submit" form="gap-filters-form" class="h-10 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
                 Filtrer
             </button>
-            {% if selected_service %}<a href="{% url 'gaps:gap_list' %}" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md transition-colors">Effacer</a>{% endif %}
-        </form>
+            {% if not show_all %}
+                <a href="{% url 'gaps:gap_list' %}?show_all=1" class="h-10 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center" title="Voir tous les écarts de tous les utilisateurs">
+                    Tout voir
+                </a>
+            {% else %}
+                <a href="{% url 'gaps:gap_list' %}" class="h-10 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center" title="Retour à la vue personnalisée">
+                    Ma vue
+                </a>
+            {% endif %}
+        </div>
     </div>
+
+    <!-- Indicateur de filtrage -->
+    {% if show_all %}
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-sm text-green-800">
+                <strong>Vue globale :</strong> Affichage de tous les écarts de tous les utilisateurs. 
+                <em>Cliquez sur "Ma vue" pour revenir à votre vue personnalisée.</em>
+            </span>
+        </div>
+    </div>
+    {% elif form_submitted %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"/>
+            </svg>
+            <span class="text-sm text-yellow-800">
+                <strong>Vue filtrée :</strong> Affichage selon les critères sélectionnés
+                {% if selected_service == "" %} (toutes les entités){% elif selected_service_name %} ({{ selected_service_name }}){% endif %}{% if declared_by_search %}, déclarant : "{{ declared_by_search }}"{% endif %}{% if selected_status %}, statut sélectionné{% endif %}{% if selected_gap_type %}, type sélectionné{% endif %}{% if selected_audit_source %}, source d'audit sélectionnée{% endif %}.
+            </span>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-sm text-blue-800">
+                <strong>Vue personnalisée :</strong> Affichage des écarts de votre service{% if user.service %} ({{ user.service.nom }}){% endif %}, que vous avez déclarés, ou auxquels vous êtes impliqué. 
+                <em>Cliquez sur "Tout voir" pour voir tous les écarts.</em>
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Liste des écarts -->
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -65,12 +197,54 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Écart</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Déclaré le</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if current_sort == 'gap_number' and current_order == 'asc' %}order=desc{% else %}order=asc{% endif %}&sort=gap_number{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="flex items-center hover:text-gray-700 group">
+                                    Écart
+                                    <svg class="w-3 h-3 ml-1 {% if current_sort != 'gap_number' %}text-gray-300 group-hover:text-gray-500{% elif current_order == 'asc' %}text-gray-600{% else %}text-gray-600 transform rotate-180{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if current_sort == 'gap_type' and current_order == 'asc' %}order=desc{% else %}order=asc{% endif %}&sort=gap_type{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="flex items-center hover:text-gray-700 group">
+                                    Type
+                                    <svg class="w-3 h-3 ml-1 {% if current_sort != 'gap_type' %}text-gray-300 group-hover:text-gray-500{% elif current_order == 'asc' %}text-gray-600{% else %}text-gray-600 transform rotate-180{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if current_sort == 'service' and current_order == 'asc' %}order=desc{% else %}order=asc{% endif %}&sort=service{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="flex items-center hover:text-gray-700 group">
+                                    Service
+                                    <svg class="w-3 h-3 ml-1 {% if current_sort != 'service' %}text-gray-300 group-hover:text-gray-500{% elif current_order == 'asc' %}text-gray-600{% else %}text-gray-600 transform rotate-180{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if current_sort == 'audit_source' and current_order == 'asc' %}order=desc{% else %}order=asc{% endif %}&sort=audit_source{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="flex items-center hover:text-gray-700 group">
+                                    Source
+                                    <svg class="w-3 h-3 ml-1 {% if current_sort != 'audit_source' %}text-gray-300 group-hover:text-gray-500{% elif current_order == 'asc' %}text-gray-600{% else %}text-gray-600 transform rotate-180{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if current_sort == 'status' and current_order == 'asc' %}order=desc{% else %}order=asc{% endif %}&sort=status{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="flex items-center hover:text-gray-700 group">
+                                    Statut
+                                    <svg class="w-3 h-3 ml-1 {% if current_sort != 'status' %}text-gray-300 group-hover:text-gray-500{% elif current_order == 'asc' %}text-gray-600{% else %}text-gray-600 transform rotate-180{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="?{% if current_sort == 'created_at' and current_order == 'asc' %}order=desc{% else %}order=asc{% endif %}&sort=created_at{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'order' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="flex items-center hover:text-gray-700 group">
+                                    Déclaré le
+                                    <svg class="w-3 h-3 ml-1 {% if current_sort != 'created_at' %}text-gray-300 group-hover:text-gray-500{% elif current_order == 'asc' %}text-gray-600{% else %}text-gray-600 transform rotate-180{% endif %}" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                            </th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -89,6 +263,11 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{ gap.gap_type.name }}</div>
+                                {% if gap.gap_type.is_gap %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 mt-1">
+                                    ÉCART
+                                </span>
+                                {% endif %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{ gap.gap_report.service.nom }}</div>
@@ -99,14 +278,17 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                     {% if gap.status == 'declared' %}bg-yellow-100 text-yellow-800
+                                    {% elif gap.status == 'cancelled' %}bg-gray-100 text-gray-800
+                                    {% elif gap.status == 'retained' %}bg-blue-100 text-blue-800
                                     {% elif gap.status == 'rejected' %}bg-red-100 text-red-800
                                     {% elif gap.status == 'closed' %}bg-green-100 text-green-800
                                     {% endif %}">
                                     {{ gap.get_status_display }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ gap.created_at|date:"d/m/Y" }}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ gap.created_at|date:"d/m/Y" }}</div>
+                                <div class="text-xs text-gray-500">par {{ gap.gap_report.declared_by.get_full_name|default:gap.gap_report.declared_by.matricule }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">
@@ -117,12 +299,14 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                     </a>
+                                    {% if user.droits == 'SA' or user.droits == 'AD' or gap.gap_report.declared_by == user %}
                                     <a href="{% url 'gaps:gap_edit' gap.pk %}" 
                                        class="text-gray-600 hover:text-gray-900" title="Modifier">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -164,4 +348,130 @@
 <!-- Script pour les écarts -->
 {% load static %}
 <script src="{% static 'js/gaps.js' %}"></script>
+
+<!-- Script pour l'autocomplétion des utilisateurs -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('declared_by_search');
+    const suggestionsDiv = document.getElementById('user-suggestions');
+    const hiddenIdInput = document.getElementById('declared_by_id');
+    let currentFocus = -1;
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            // Faire une requête AJAX pour récupérer les suggestions
+            fetch(`{% url 'gaps:search_users' %}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    showSuggestions(data.users);
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la recherche:', error);
+                    hideSuggestions();
+                });
+        });
+        
+        function showSuggestions(users) {
+            if (users.length === 0) {
+                hideSuggestions();
+                return;
+            }
+            
+            let html = '';
+            users.forEach((user, index) => {
+                html += `
+                    <div class="suggestion-item px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0" 
+                         data-user-id="${user.id}" 
+                         data-user-name="${user.name}"
+                         data-index="${index}">
+                        <div class="font-medium text-gray-900">${user.name}</div>
+                        <div class="text-sm text-gray-500">${user.matricule}</div>
+                    </div>
+                `;
+            });
+            
+            suggestionsDiv.innerHTML = html;
+            suggestionsDiv.classList.remove('hidden');
+            currentFocus = -1;
+            
+            // Ajouter les événements click sur les suggestions
+            document.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    selectUser(this.dataset.userId, this.dataset.userName);
+                });
+            });
+        }
+        
+        function hideSuggestions() {
+            suggestionsDiv.classList.add('hidden');
+            currentFocus = -1;
+        }
+        
+        function selectUser(userId, userName) {
+            searchInput.value = userName;
+            hiddenIdInput.value = userId;
+            hideSuggestions();
+        }
+        
+        // Navigation au clavier
+        searchInput.addEventListener('keydown', function(e) {
+            const suggestions = document.querySelectorAll('.suggestion-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocus++;
+                if (currentFocus >= suggestions.length) currentFocus = 0;
+                addActive(suggestions);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocus--;
+                if (currentFocus < 0) currentFocus = suggestions.length - 1;
+                addActive(suggestions);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentFocus > -1 && suggestions[currentFocus]) {
+                    const item = suggestions[currentFocus];
+                    selectUser(item.dataset.userId, item.dataset.userName);
+                }
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+        
+        function addActive(suggestions) {
+            removeActive(suggestions);
+            if (currentFocus >= 0 && suggestions[currentFocus]) {
+                suggestions[currentFocus].classList.add('bg-blue-100');
+            }
+        }
+        
+        function removeActive(suggestions) {
+            suggestions.forEach(item => {
+                item.classList.remove('bg-blue-100');
+            });
+        }
+        
+        // Fermer les suggestions en cliquant ailleurs
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#declared_by_search') && !e.target.closest('#user-suggestions')) {
+                hideSuggestions();
+            }
+        });
+        
+        // Effacer l'ID caché si l'utilisateur modifie manuellement le texte
+        searchInput.addEventListener('keyup', function() {
+            if (this.value !== this.dataset.lastSelected) {
+                hiddenIdInput.value = '';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

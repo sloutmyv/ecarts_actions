@@ -25,14 +25,29 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
 - **Import/Export JSON**: Sauvegarde et restauration des données (services et utilisateurs)
 - **Modales de confirmation**: Système uniforme de confirmation pour les suppressions
-- **Gestion des Écarts**: Système complet de déclaration et suivi des écarts qualité avec pièces jointes
-- **Modal de Déclaration**: Interface structurée QUI/QUAND/OÙ/COMMENT pour saisir les écarts
+
+### 🚀 **Système d'Événements et d'Écarts**
+- **Gestion des Événements**: Système complet de déclaration et suivi des événements avec classification écart/non-écart
+- **Classification Conditionnelle**: Types d'événements avec champ booléen pour distinguer les vrais écarts des simples événements
+- **Modal de Déclaration**: Interface structurée QUI/QUAND/OÙ/COMMENT pour saisir les événements
 - **Pièces Jointes**: Support des attachements pour déclarations et écarts individuels
-- **Filtrage Intelligent**: Vue personnalisée par défaut (écarts de son service + déclarés + impliqués) avec option "Tout voir"
-- **Permissions Administratives**: Super Administrateurs (SA) et Administrateurs (AD) peuvent modifier toutes les déclarations
-- **Interface Écarts Optimisée**: Affichage restructuré avec numéro/type en première ligne, description en dessous
-- **Formulaires Cohérents**: Styling uniforme entre formulaires de déclaration et d'écart avec badges colorés
-- **Plans d'Actions**: Planification et suivi des actions correctives (à venir)
+- **Statuts Différenciés**: Statuts complets pour les écarts, statuts limités (déclaré/annulé) pour les événements non-écarts
+- **Badges Visuels**: Distinction visuelle avec badges "ÉCART" rouges pour identifier les vrais écarts
+- **Historique des Modifications**: Suivi complet des changements avec signaux Django et logging détaillé
+
+### 🔍 **Filtrage et Tri Avancés**
+- **Vue Personnalisée par Défaut**: Affichage automatique des écarts/événements de son service + déclarés + impliqués
+- **Filtrage Multi-Critères**: Service, déclarant (avec autocomplétion), type d'événement, source d'audit, statut
+- **Filtrage par Type**: Cases à cocher pour afficher écarts et/ou événements (par défaut: écarts uniquement)
+- **Tri Cliquable**: Tri par colonnes avec indicateurs visuels (flèches) sur toutes les listes
+- **Interface Centrée**: Champs de filtres et boutons centrés pour une meilleure UX
+- **Pré-remplissage Intelligent**: Champs service/déclarant auto-remplis en vue personnalisée
+
+### 🔐 **Permissions et Sécurité**
+- **Contrôle d'Accès Granulaire**: Seuls le déclarant, SA et AD peuvent modifier un écart/événement
+- **Visibilité Conditionnelle**: Boutons de modification masqués selon les permissions
+- **Filtrage Sécurisé**: Protection contre les injections avec validation des paramètres
+- **Gestion des Sessions**: Middleware pour suivi des modifications par utilisateur
 
 ### Objectifs techniques
 - Interface utilisateur moderne et responsive
