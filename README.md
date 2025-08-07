@@ -21,6 +21,7 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 ### Fonctionnalités principales
 - **Gestion des Services**: Organisation hiérarchique des départements/services avec tri alphabétique automatique
 - **Gestion des Utilisateurs**: Système d'authentification personnalisé avec 3 niveaux de droits
+- **Gestion du Workflow**: Système d'affectation de valideurs par service avec niveaux de validation (1, 2, 3)
 - **Authentification Matricule**: Connexion par matricule (format: Lettre + 4 chiffres)
 - **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
 - **Import/Export JSON**: Sauvegarde et restauration des données (services et utilisateurs)
@@ -48,6 +49,13 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Visibilité Conditionnelle**: Boutons de modification masqués selon les permissions
 - **Filtrage Sécurisé**: Protection contre les injections avec validation des paramètres
 - **Gestion des Sessions**: Middleware pour suivi des modifications par utilisateur
+
+### ⚖️ **Système de Workflow de Validation**
+- **Matrice de Valideurs**: Affectation de valideurs par service avec jusqu'à 3 niveaux de validation
+- **Services Feuilles**: Configuration limitée aux services terminaux (sans sous-services)
+- **Tri Intelligent**: Tri alphabétique par nom ou code avec indicateurs visuels
+- **Interface Épurée**: Modal d'assignation HTMX avec gestion AJAX des affectations
+- **Gestion Flexible**: Possibilité d'avoir 1, 2 ou 3 niveaux selon les besoins du service
 
 ### Objectifs techniques
 - Interface utilisateur moderne et responsive
@@ -190,6 +198,49 @@ def clean(self):
 - ❌ `Service A` → parent : `Service A` (auto-référence)
 - ❌ `Service A` → `Service B` → `Service A` (cycle)
 - ✅ `Service A` → `Service B` → `Service C` (hiérarchie valide)
+
+### Modèle ValidateurService
+
+Le modèle `ValidateurService` gère l'affectation de valideurs aux services pour le workflow de validation des écarts.
+
+```python
+class ValidateurService(TimestampedModel):
+    service = models.ForeignKey(Service, on_delete=models.CASCADE)
+    validateur = models.ForeignKey(User, on_delete=models.CASCADE,
+                                  limit_choices_to={'droits__in': [User.ADMIN, User.SUPER_ADMIN]})
+    niveau = models.IntegerField(choices=[(1, 'Niveau 1'), (2, 'Niveau 2'), (3, 'Niveau 3')])
+    actif = models.BooleanField(default=True)
+```
+
+#### Fonctionnalités du modèle ValidateurService
+
+| Fonctionnalité | Description | Usage |
+|----------------|-------------|-------|
+| **Niveaux de validation** | Jusqu'à 3 niveaux par service | 1=Première validation, 2=Intermédiaire, 3=Finale |
+| **Contraintes uniques** | Un valideur par service par niveau | Évite les doublons d'affectation |
+| **Activation/Désactivation** | Champ `actif` pour gestion temporaire | Suspension sans suppression |
+| **Restriction Admin** | Seuls SA/AD peuvent être valideurs | Sécurité du workflow |
+
+#### Méthodes utilitaires
+
+```python
+# Récupérer les validateurs d'un service
+ValidateurService.get_validateurs_service(service, niveau=1, actif_seulement=True)
+
+# Services qu'un valideur peut valider  
+ValidateurService.get_services_validateur(validateur, actif_seulement=True)
+
+# Niveau maximum configuré pour un service
+ValidateurService.get_niveaux_max_service(service)
+```
+
+#### Interface de gestion workflow
+
+- **Page dédiée** : `/workflow/` accessible aux administrateurs
+- **Matrice visuelle** : Tableau des services feuilles avec valideurs par niveau
+- **Tri intelligent** : Par nom ou code de service avec indicateurs visuels
+- **Assignation AJAX** : Modal pour ajouter/retirer des valideurs instantanément
+- **Codes couleur** : Vert=Niveau 1, Bleu=Niveau 2, Violet=Niveau 3
 
 ### Interactions avec la base de données
 
@@ -423,6 +474,7 @@ ecarts_actions/
 │   │   ├── users.py          # 👤 Modèle User (authentification personnalisée)
 │   │   ├── gaps.py           # ⚠️ Modèles GapReport, Gap, GapType, AuditSource pour gestion complète des écarts
 │   │   ├── attachments.py    # 📎 Modèles GapReportAttachment, GapAttachment pour pièces jointes
+│   │   ├── workflow.py       # ⚖️ Modèle ValidateurService pour gestion workflow de validation
 │   │   └── actions.py        # 📋 Modèles Action, PlanAction (à venir)
 │   ├── 📁 views/              # 👁️ Vues par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
@@ -431,6 +483,7 @@ ecarts_actions/
 │   │   ├── users.py          # 👤 CRUD utilisateurs + gestion droits + import/export
 │   │   ├── auth.py           # 🔐 Authentification personnalisée
 │   │   ├── gaps.py           # ⚠️ Gestion complète des écarts qualité avec filtrage intelligent et permissions
+│   │   ├── workflow.py       # ⚖️ Gestion workflow : affectation valideurs par service et niveau
 │   │   └── actions.py        # 📋 Gestion des plans d'actions (à venir)
 │   ├── 📁 admin/              # 🔧 Configuration admin par domaine
 │   │   ├── __init__.py       # 📦 Import centralisé
@@ -478,6 +531,8 @@ ecarts_actions/
 │       │   ├── gap_report_form_modal.html # 📝 Modal déclaration structuré QUI/QUAND/OÙ/COMMENT
 │       │   ├── gap_form.html  # 📝 Formulaire écart avec styling cohérent et badges colorés
 │       │   └── partials/      # 🧩 Composants HTMX (champs dynamiques, processus)
+│       ├── 📁 workflow/       # ⚖️ Templates gestion workflow
+│       │   └── management.html # 📊 Matrice valideurs par service avec tri et assignation AJAX
 │       └── 📁 actions/        # 📋 Templates gestion actions (à venir)
 ├── 📁 static/                 # 🎭 Fichiers statiques
 │   ├── css/                  # 🎨 CSS personnalisés
@@ -868,6 +923,44 @@ python manage.py loaddata backup.json
 ---
 
 ## 🆕 Changements récents
+
+### v2.3.0 - Système de Workflow de Validation (2025-08-07)
+
+#### ⚖️ Nouveau modèle de workflow
+- **Modèle ValidateurService** : Gestion complète des affectations valideurs par service et niveau
+- **3 niveaux de validation** : Système flexible avec 1, 2 ou 3 niveaux selon les besoins
+- **Contraintes métier** : Seuls les administrateurs (SA/AD) peuvent être valideurs
+- **Services feuilles uniquement** : Configuration limitée aux services terminaux sans sous-services
+
+#### 🎯 Interface de gestion intuitive
+- **Matrice visuelle** : Tableau avec services en lignes et niveaux en colonnes
+- **Codes couleur distincts** : Vert=Niveau 1, Bleu=Niveau 2, Violet=Niveau 3
+- **Légende explicite** : Explication des niveaux en haut de page
+- **Compteur de services** : Nombre de services feuilles affichés
+
+#### 🔧 Fonctionnalités d'assignation
+- **Modal HTMX** : Interface d'assignation moderne avec Alpine.js
+- **Assignation AJAX** : Ajout de valideurs sans rechargement de page
+- **Suppression intuitive** : Bouton "×" sur chaque badge de valideur
+- **Gestion des doublons** : Prévention automatique des affectations multiples
+
+#### 📊 Tri et organisation
+- **Tri alphabétique par défaut** : Services triés par nom A→Z automatiquement
+- **Tri cliquable** : En-tête "Service" cliquable pour inverser l'ordre
+- **Tri par code** : Clic sur le code d'un service pour trier par code
+- **Indicateurs visuels** : Flèches indiquant l'ordre de tri actuel
+
+#### 🛠️ Améliorations techniques  
+- **Migration dédiée** : `0013_validateurservice.py` pour le nouveau modèle
+- **API endpoints** : URLs complètes pour assignation/suppression via AJAX
+- **Template tags personnalisés** : Système simplifié sans dépendances externes
+- **Gestion d'erreurs robuste** : Messages explicites et fallbacks appropriés
+
+#### 🎨 Navigation intégrée
+- **Menu Administration** : Lien "Gestion du workflow" ajouté au menu existant
+- **Restriction d'accès** : Accessible uniquement aux SA/AD
+- **Icône dédiée** : Icône de validation pour identification rapide
+- **Design cohérent** : Suit les conventions visuelles de l'application
 
 ### v2.2.0 - Système de suppression d'écarts avec popup et gestion déclarations (2025-08-04)
 
