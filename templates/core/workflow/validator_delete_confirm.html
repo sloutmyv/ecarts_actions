@@ -1,71 +1,168 @@
-<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
-     x-data="{open: true}" 
-     x-show="open"
-     x-transition
-     @click.self="open = false">
-    <div class="bg-orange-50 border border-orange-200 text-orange-800 px-6 py-4 rounded-lg shadow-lg max-w-md mx-4" 
-         @click.stop>
-        <div class="flex items-start">
-            <div class="flex-shrink-0">
-                <svg class="w-6 h-6 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                </svg>
+<!-- Modal de confirmation de suppression -->
+<div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Confirmer la suppression</h3>
+                <button onclick="closeDeleteModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
-            <div class="ml-3 flex-1">
-                <h3 class="text-sm font-medium text-orange-800 mb-2">Retirer le validateur</h3>
-                <p class="text-sm text-orange-700 mb-4">{{ message }}</p>
-                
-                {% if is_last_validator %}
-                    <div class="bg-red-100 border border-red-200 rounded-md p-3 mb-4">
+        </div>
+        
+        <div class="px-6 py-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 14c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm text-gray-700">
+                        {{ message }}
+                    </p>
+                    
+                    <div class="mt-3 p-3 bg-gray-50 rounded-md">
+                        <div class="text-xs text-gray-600">
+                            <div><strong>Validateur:</strong> {{ validateur_service.validateur.get_full_name }}</div>
+                            <div><strong>Service:</strong> {{ validateur_service.service.nom }}</div>
+                            <div><strong>Source d'audit:</strong> {{ validateur_service.audit_source.name }}</div>
+                            <div><strong>Niveau:</strong> {{ validateur_service.niveau }}</div>
+                        </div>
+                    </div>
+                    
+                    {% if is_last_validator %}
+                    <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                         <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div class="ml-2">
-                                <p class="text-xs text-red-800 font-medium">
-                                    ⚠️ Impossible de supprimer le dernier validateur
-                                </p>
-                                <p class="text-xs text-red-700 mt-1">
-                                    Chaque combinaison service/source d'audit doit avoir au moins un validateur pour fonctionner.
+                            <svg class="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-medium text-yellow-800">Attention : Dernier validateur</p>
+                                <p class="text-xs text-yellow-700 mt-1">
+                                    Ce service n'aura plus aucun validateur pour cette source d'audit.
                                 </p>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="flex justify-end">
-                        <button 
-                            @click="open = false"
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                            Fermer
-                        </button>
-                    </div>
-                {% else %}
-                    <div class="flex space-x-3">
-                        <button 
-                            hx-post="{% url 'remove_validator' validateur_service.pk %}"
-                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                            hx-target="#modal-container"
-                            hx-swap="innerHTML"
-                            @click="open = false"
-                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                            Confirmer la suppression
-                        </button>
-                        <button 
-                            @click="open = false"
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                            Annuler
-                        </button>
-                    </div>
-                {% endif %}
+                    {% endif %}
+                </div>
             </div>
-            
-            <button @click="open = false" class="ml-2 text-orange-400 hover:text-orange-500">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
+        </div>
+        
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+            <button onclick="closeDeleteModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Annuler
+            </button>
+            <button onclick="confirmDelete({{ validateur_service.pk }}, {{ validateur_service.service.id }}, {{ validateur_service.audit_source.id }}, {{ validateur_service.niveau }})" 
+                    class="px-4 py-2 text-sm font-medium text-white {% if is_last_validator %}bg-yellow-600 hover:bg-yellow-700{% else %}bg-red-600 hover:bg-red-700{% endif %} rounded-md">
+                {% if is_last_validator %}Supprimer quand même{% else %}Confirmer la suppression{% endif %}
             </button>
         </div>
     </div>
 </div>
+
+<script>
+function closeDeleteModal() {
+    const modal = document.getElementById('delete-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        // Nettoyer le conteneur modal après animation
+        setTimeout(() => {
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer) {
+                modalContainer.innerHTML = '';
+            }
+        }, 100);
+    }
+}
+
+async function confirmDelete(validateurServiceId, serviceId, auditSourceId, niveau) {
+    try {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        const response = await fetch(`/workflow/remove/${validateurServiceId}/`, {
+            method: 'POST',
+            headers: {
+                'HX-Request': 'true'
+            },
+            body: formData
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success) {
+                // Mettre à jour la section détaillée
+                const targetId = `niveau-${serviceId}-${auditSourceId}-${niveau}`;
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.innerHTML = data.niveau_html;
+                }
+                
+                // Mettre à jour l'aperçu des badges
+                const overviewId = `service-overview-${serviceId}`;
+                const overviewElement = document.getElementById(overviewId);
+                if (overviewElement) {
+                    overviewElement.innerHTML = data.overview_html;
+                }
+                
+                // Fermer le modal
+                closeDeleteModal();
+                
+                // Afficher toast de succès
+                const workflowContainer = document.querySelector('[x-data*="optimizedWorkflowManager"]');
+                if (workflowContainer && workflowContainer._x_dataStack && workflowContainer._x_dataStack[0]) {
+                    workflowContainer._x_dataStack[0].showToast('Validateur supprimé avec succès', 'success');
+                }
+            } else {
+                console.error('Erreur lors de la suppression:', data);
+                closeDeleteModal();
+                
+                // Afficher toast d'erreur
+                const workflowContainer = document.querySelector('[x-data*="optimizedWorkflowManager"]');
+                if (workflowContainer && workflowContainer._x_dataStack && workflowContainer._x_dataStack[0]) {
+                    workflowContainer._x_dataStack[0].showToast('Erreur lors de la suppression', 'error');
+                }
+            }
+        } else {
+            console.error('Erreur réseau:', response.status);
+            closeDeleteModal();
+            
+            // Afficher toast d'erreur
+            const workflowContainer = document.querySelector('[x-data*="optimizedWorkflowManager"]');
+            if (workflowContainer && workflowContainer._x_dataStack && workflowContainer._x_dataStack[0]) {
+                workflowContainer._x_dataStack[0].showToast('Erreur lors de la suppression', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        closeDeleteModal();
+        
+        // Afficher toast d'erreur
+        const workflowContainer = document.querySelector('[x-data*="optimizedWorkflowManager"]');
+        if (workflowContainer && workflowContainer._x_dataStack && workflowContainer._x_dataStack[0]) {
+            workflowContainer._x_dataStack[0].showToast('Erreur lors de la suppression', 'error');
+        }
+    }
+}
+
+// Fermer le modal avec la touche Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+
+// Fermer le modal en cliquant en dehors
+document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDeleteModal();
+    }
+});
+</script>

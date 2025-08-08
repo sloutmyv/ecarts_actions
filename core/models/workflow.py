@@ -60,8 +60,8 @@ class ValidateurService(TimestampedModel):
     )
     
     class Meta:
-        verbose_name = "Validateur de service"
-        verbose_name_plural = "Validateurs de service"
+        verbose_name = "4. Validateurs"
+        verbose_name_plural = "4. Validateurs"
         ordering = ['service__nom', 'audit_source__name', 'niveau']
         unique_together = ['service', 'audit_source', 'niveau']
         

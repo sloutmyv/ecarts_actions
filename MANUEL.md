@@ -841,6 +841,24 @@ Comptabilité (⚠️ 1/3 non assignées)
 
 ---
 
+### ✨ Interface Dynamique et Responsive
+
+#### Mise à jour en temps réel
+- **Badges d'aperçu dynamiques** : Les badges dans l'en-tête des services se mettent à jour instantanément
+- **Pas de rechargement** : Toutes les modifications sont visibles immédiatement sans recharger la page
+- **Feedback visuel** : Toasts de confirmation pour chaque action (assignation/suppression)
+
+#### Modal de suppression optimisé
+- **Centrage parfait** : Modal toujours centré à l'écran avec arrière-plan sombre
+- **Tous les boutons fonctionnels** : Annuler, Supprimer, X et Escape fonctionnent parfaitement
+- **Fermeture propre** : Nettoyage automatique du DOM après fermeture
+- **Interface unifiée** : Design cohérent avec le reste de l'application
+
+#### Système d'assignation fluide
+- **Recherche intelligente** : Recherche d'utilisateurs en temps réel (matricule/nom)
+- **Sélection intuitive** : Clic pour sélectionner, interface claire
+- **Feedback immédiat** : Confirmation visuelle de l'assignation
+
 ### Statuts des écarts et workflow
 
 #### Les 5 statuts disponibles
@@ -1251,6 +1269,14 @@ Contactez votre administrateur système en fournissant toutes les informations c
 **🔄 Dernière mise à jour** : Août 2025
 
 ### Historique des versions
+
+**Version 2.3** (Août 2025)
+- ⚖️ **Workflow de validation optimisé** : Interface compacte avec badges réduits
+- 🔄 **Mise à jour dynamique** : Les badges d'aperçu se mettent à jour en temps réel
+- 🎯 **Modal de suppression refait** : Interface centrée et entièrement fonctionnelle
+- ✨ **UX améliorée** : Pas de rechargement de page, feedback immédiat
+- 🎨 **Design compact** : Réduction des tailles pour une interface plus épurée
+- 🔧 **Stabilité renforcée** : JavaScript vanilla pour une meilleure compatibilité
 
 **Version 2.2** (Août 2025)
 - 🗑️ **Suppression d'écarts** : Système de suppression avec popup de confirmation élégante

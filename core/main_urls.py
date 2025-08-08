@@ -44,9 +44,8 @@ urlpatterns = [
     path('workflow/', views.workflow_management, name='workflow_management'),
     path('workflow/assign/', views.assign_validator, name='assign_validator'),
     path('workflow/remove/<int:validateur_service_id>/', views.remove_validator, name='remove_validator'),
-    path('workflow/toggle/', views.toggle_validator_status, name='toggle_validator_status'),
-    path('workflow/service/<int:service_id>/validators/', views.get_service_validators, name='get_service_validators'),
     path('workflow/stats/', views.workflow_stats, name='workflow_stats'),
     path('workflow/search-users/', views.search_users, name='search_users'),
     path('workflow/service/<int:service_id>/detail/', views.service_detail_api, name='service_detail_api'),
+    path('workflow/niveau/<int:service_id>/<int:audit_source_id>/<int:niveau>/', views.get_niveau_partial, name='get_niveau_partial'),
 ]

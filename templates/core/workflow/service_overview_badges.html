@@ -1,0 +1,27 @@
+<!-- Aperçu des validateurs configurés -->
+{% if audit_sources_data %}
+<div class="mt-2.5 flex flex-wrap items-center gap-2">
+    {% for audit_source_data in audit_sources_data %}
+        <div class="flex items-center gap-1.5 bg-white/50 px-2.5 py-1 rounded border">
+            <span class="text-xs font-medium text-gray-700">{{ audit_source_data.audit_source.name }}:</span>
+            <div class="flex gap-0.5">
+                {% if audit_source_data.niveau_1 %}
+                    <div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <span class="text-white text-xs font-semibold leading-none">1</span>
+                    </div>
+                {% endif %}
+                {% if audit_source_data.niveau_2 %}
+                    <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span class="text-white text-xs font-semibold leading-none">2</span>
+                    </div>
+                {% endif %}
+                {% if audit_source_data.niveau_3 %}
+                    <div class="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
+                        <span class="text-white text-xs font-semibold leading-none">3</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}

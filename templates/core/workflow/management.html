@@ -3,7 +3,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8" x-data="workflowManager()">
+<div class="container mx-auto px-4 py-8" x-data="optimizedWorkflowManager()">
     <!-- En-tête -->
     <div class="flex justify-between items-center mb-8">
         <div>
@@ -13,241 +13,271 @@
                 </svg>
                 {{ page_title }}
             </h1>
-            <p class="text-gray-600 mt-2">Configurez les valideurs et niveau de validation pour chaque service</p>
+            <p class="text-gray-600 mt-2">Configurez les valideurs par service et source d'audit - Interface optimisée</p>
         </div>
         
+        <!-- Statistiques rapides -->
+        <div class="bg-white rounded-lg shadow-sm border p-4">
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div>
+                    <div class="text-2xl font-bold text-blue-600">{{ services_avec_validateurs|length }}</div>
+                    <div class="text-xs text-gray-500">Services</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-green-600">
+                        {{ services_completement_configures }}
+                    </div>
+                    <div class="text-xs text-gray-500">Configurés</div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Messages Toast -->
+    <div id="toast-container" 
+         x-show="toastVisible" 
+         x-transition
+         class="fixed top-4 right-4 z-50 max-w-sm">
+        <div class="bg-white border-l-4 p-4 shadow-lg rounded"
+             :class="toastType === 'success' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg x-show="toastType === 'success'" class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <svg x-show="toastType === 'error'" class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium" 
+                       :class="toastType === 'success' ? 'text-green-800' : 'text-red-800'"
+                       x-text="toastMessage"></p>
+                </div>
+                <button @click="hideToast()" class="ml-auto">
+                    <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Messages -->
-    <div id="messages" class="mb-4"></div>
-
-
-    <!-- Options de tri -->
-    <div class="bg-white shadow rounded-lg p-4 mb-6">
+    <!-- Options de tri et filtrage -->
+    <div class="bg-white shadow-sm rounded-lg p-4 mb-6 border">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <h3 class="text-sm font-medium text-gray-700">Tri :</h3>
-                <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-sm font-medium text-gray-700">Tri et filtres :</h3>
+                <div class="flex items-center gap-2">
                     <a href="?sort=nom&order=asc" 
-                       class="{% if current_sort == 'nom' and current_order == 'asc' %}bg-blue-100 text-blue-800{% else %}bg-gray-100 text-gray-700{% endif %} px-3 py-1 rounded text-sm hover:bg-gray-200">
+                       class="{% if current_sort == 'nom' and current_order == 'asc' %}bg-blue-100 text-blue-800 border-blue-300{% else %}bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100{% endif %} px-3 py-1.5 border rounded-md text-sm font-medium transition-colors">
                         Nom A→Z
                     </a>
                     <a href="?sort=nom&order=desc" 
-                       class="{% if current_sort == 'nom' and current_order == 'desc' %}bg-blue-100 text-blue-800{% else %}bg-gray-100 text-gray-700{% endif %} px-3 py-1 rounded text-sm hover:bg-gray-200">
+                       class="{% if current_sort == 'nom' and current_order == 'desc' %}bg-blue-100 text-blue-800 border-blue-300{% else %}bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100{% endif %} px-3 py-1.5 border rounded-md text-sm font-medium transition-colors">
                         Nom Z→A
                     </a>
                     <a href="?sort=code&order=asc" 
-                       class="{% if current_sort == 'code' and current_order == 'asc' %}bg-blue-100 text-blue-800{% else %}bg-gray-100 text-gray-700{% endif %} px-3 py-1 rounded text-sm hover:bg-gray-200">
+                       class="{% if current_sort == 'code' and current_order == 'asc' %}bg-blue-100 text-blue-800 border-blue-300{% else %}bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100{% endif %} px-3 py-1.5 border rounded-md text-sm font-medium transition-colors">
                         Code A→Z
-                    </a>
-                    <a href="?sort=code&order=desc" 
-                       class="{% if current_sort == 'code' and current_order == 'desc' %}bg-blue-100 text-blue-800{% else %}bg-gray-100 text-gray-700{% endif %} px-3 py-1 rounded text-sm hover:bg-gray-200">
-                        Code Z→A
                     </a>
                 </div>
             </div>
             
+            <!-- Filtre par statut -->
             <div class="flex items-center gap-2">
-                <span class="text-sm text-gray-600">
-                    {{ services_avec_validateurs|length }} service{{ services_avec_validateurs|length|pluralize:"s" }}
-                </span>
+                <select x-model="statusFilter" @change="filterServices()" class="text-sm border border-gray-300 rounded-md px-3 py-1.5">
+                    <option value="all">Tous les services</option>
+                    <option value="configured">Services configurés</option>
+                    <option value="partial">Partiellement configurés</option>
+                    <option value="missing">Non configurés</option>
+                </select>
             </div>
         </div>
     </div>
 
-    <!-- Liste des services -->
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden" x-data="workflowManager()">
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">Services</h2>
-            <p class="text-sm text-gray-600 mt-1">Sélectionnez un service pour configurer ses validateurs par source d'audit</p>
+    <!-- Liste des services optimisée -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden border">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Configuration des Validateurs</h2>
+            <p class="text-sm text-gray-600 mt-1">Cliquez sur un service pour gérer ses validateurs par source d'audit</p>
         </div>
         
         {% if services_avec_validateurs %}
-                <div class="divide-y divide-gray-100">
-                    {% for data in services_avec_validateurs %}
-                    <div x-data="{ expanded: false }" class="border-l-2 border-transparent {% if not data.has_validators %}bg-red-25 border-l-red-400{% endif %}">
-                        <!-- Ligne du service -->
-                        <div class="px-4 py-4 hover:bg-blue-50 cursor-pointer transition-colors hover:border-blue-400"
-                             @click="expanded = !expanded">
-                            <div class="flex items-center justify-between">
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-3">
-                                        <div>
-                                            <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
-                                                {{ data.service.nom }}
-                                                {% if data.sources_sans_validateurs_count > 0 %}
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                                        ⚠️ {{ data.sources_sans_validateurs_count }}/{{ data.total_sources_count }} non assignée{{ data.sources_sans_validateurs_count|pluralize:"s" }}
-                                                    </span>
-                                                {% else %}
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                                        ✓ {{ data.total_sources_count }}/{{ data.total_sources_count }} configurée{{ data.total_sources_count|pluralize:"s" }}
-                                                    </span>
-                                                {% endif %}
-                                            </h3>
-                                            <p class="text-xs text-gray-500">
-                                                {{ data.service.code }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Aperçu rapide des validateurs -->
-                                    <div class="mt-1 flex items-center gap-3 text-xs">
-                                        {% for audit_source_data in data.audit_sources %}
-                                            {% if audit_source_data.has_validators %}
-                                            <div class="flex items-center gap-1">
-                                                <span class="text-gray-500">{{ audit_source_data.audit_source.name }}:</span>
-                                                <div class="flex gap-0.5">
-                                                    {% if audit_source_data.niveau_1.first %}
-                                                        <div class="w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
-                                                            <span class="text-white text-xs">1</span>
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if audit_source_data.niveau_2.first %}
-                                                        <div class="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
-                                                            <span class="text-white text-xs">2</span>
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if audit_source_data.niveau_3.first %}
-                                                        <div class="w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
-                                                            <span class="text-white text-xs">3</span>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
+            <div class="divide-y divide-gray-100">
+                {% for data in services_avec_validateurs %}
+                <div x-data="{ 
+                    expanded: false, 
+                    serviceId: {{ data.service.id }}, 
+                    serviceName: '{{ data.service.nom|escapejs }}',
+                    configured: {{ data.sources_sans_validateurs_count|yesno:"false,true" }},
+                    partial: {% if data.sources_sans_validateurs_count > 0 and data.has_validators %}true{% else %}false{% endif %}
+                }" 
+                x-show="shouldShowService(configured, partial)"
+                class="border-l-4 transition-all duration-200 {% if not data.has_validators %}border-red-400 bg-red-25{% elif data.sources_sans_validateurs_count > 0 %}border-yellow-400 bg-yellow-25{% else %}border-green-400 bg-green-25{% endif %}">
+                    
+                    <!-- En-tête du service -->
+                    <div class="px-6 py-4 hover:bg-blue-25 cursor-pointer transition-all duration-150"
+                         @click="expanded = !expanded">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-gray-900 flex items-center gap-3">
+                                            {{ data.service.nom }}
+                                            
+                                            <!-- Badge de statut amélioré -->
+                                            {% if data.sources_sans_validateurs_count == 0 %}
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Complet {{ data.total_sources_count }}/{{ data.total_sources_count }}
+                                                </span>
+                                            {% elif data.has_validators %}
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Partiel {{ data.sources_configurees_count }}/{{ data.total_sources_count }}
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8.707 0l1.414-1.414a1 1 0 111.414 1.414L10.414 10l1.707 1.707a1 1 0 11-1.414 1.414L9.293 11.707 7.586 10l1.707-1.293z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Non configuré 0/{{ data.total_sources_count }}
+                                                </span>
                                             {% endif %}
-                                        {% endfor %}
+                                        </h3>
+                                        <p class="text-sm text-gray-500 mt-1">
+                                            Code: <span class="font-mono">{{ data.service.code }}</span>
+                                        </p>
                                     </div>
                                 </div>
                                 
-                                <!-- Flèche pour indiquer qu'on peut cliquer -->
-                                <div class="ml-2">
-                                    <svg class="w-4 h-4 text-gray-400 transition-transform" :class="{ 'rotate-90': expanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
+                                <!-- Aperçu des validateurs configurés -->
+                                {% if data.has_validators %}
+                                <div id="service-overview-{{ data.service.id }}" class="mt-2.5 flex flex-wrap items-center gap-2">
+                                    {% for audit_source_data in data.audit_sources %}
+                                        {% if audit_source_data.has_validators %}
+                                        <div class="flex items-center gap-1.5 bg-white/50 px-2.5 py-1 rounded border">
+                                            <span class="text-xs font-medium text-gray-700">{{ audit_source_data.audit_source.name }}:</span>
+                                            <div class="flex gap-0.5">
+                                                {% if audit_source_data.niveau_1 %}
+                                                    <div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-xs font-semibold leading-none">1</span>
+                                                    </div>
+                                                {% endif %}
+                                                {% if audit_source_data.niveau_2 %}
+                                                    <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-xs font-semibold leading-none">2</span>
+                                                    </div>
+                                                {% endif %}
+                                                {% if audit_source_data.niveau_3 %}
+                                                    <div class="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
+                                                        <span class="text-white text-xs font-semibold leading-none">3</span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
                                 </div>
+                                {% else %}
+                                <div id="service-overview-{{ data.service.id }}" class="mt-2.5"></div>
+                                {% endif %}
                             </div>
-                        </div>
-                        
-                        <!-- Dropdown des sources d'audit -->
-                        <div x-show="expanded" x-transition class="bg-gray-50 border-t border-gray-200">
-                            {% for audit_source_data in data.audit_sources %}
-                            <div class="px-6 py-4 flex items-center justify-between hover:bg-white border-b border-gray-100 last:border-b-0">
-                                <!-- Nom de la source à gauche -->
-                                <div class="flex-1">
-                                    <h4 class="text-sm font-medium text-gray-900">{{ audit_source_data.audit_source.name }}</h4>
-                                    {% if audit_source_data.audit_source.description %}
-                                        <p class="text-xs text-gray-500 mt-0.5">{{ audit_source_data.audit_source.description }}</p>
+                            
+                            <!-- Indicateur d'expansion -->
+                            <div class="ml-4 flex items-center gap-2">
+                                <span class="text-sm text-gray-500">
+                                    {% if data.has_validators %}
+                                        {{ data.sources_configurees_count }} configurée{{ data.sources_configurees_count|pluralize:"s" }}
+                                    {% else %}
+                                        Cliquer pour configurer
                                     {% endif %}
-                                </div>
-                                
-                                <!-- Assignations par niveau à droite -->
-                                <div class="flex items-center gap-6 text-xs">
-                                    <!-- Niveau 1 -->
-                                    <div class="flex items-center gap-2">
-                                        <div class="flex items-center gap-1">
-                                            <div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                                <span class="text-white text-xs font-bold">1</span>
-                                            </div>
-                                        </div>
-                                        {% if audit_source_data.niveau_1.first %}
-                                            <div class="flex items-center gap-1 bg-green-100 px-2 py-1 rounded text-green-800">
-                                                <span>{{ audit_source_data.niveau_1.first.validateur.get_full_name }}</span>
-                                                <a href="{% url 'remove_validator' audit_source_data.niveau_1.first.pk %}" 
-                                                   hx-get="{% url 'remove_validator' audit_source_data.niveau_1.first.pk %}"
-                                                   hx-target="#modal-container"
-                                                   class="text-green-600 hover:text-red-600 ml-1" 
-                                                   title="Retirer">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        {% else %}
-                                            <button onclick="window.openAssignModal({{ data.service.id }}, '{{ data.service.nom|escapejs }}', {{ audit_source_data.audit_source.id }}, '{{ audit_source_data.audit_source.name|escapejs }}', 1)"
-                                                    class="text-green-600 hover:text-green-800 px-2 py-1 border border-green-300 rounded hover:bg-green-50">
-                                                + Assigner
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <!-- Niveau 2 -->
-                                    <div class="flex items-center gap-2">
-                                        <div class="flex items-center gap-1">
-                                            <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                                <span class="text-white text-xs font-bold">2</span>
-                                            </div>
-                                        </div>
-                                        {% if audit_source_data.niveau_2.first %}
-                                            <div class="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded text-blue-800">
-                                                <span>{{ audit_source_data.niveau_2.first.validateur.get_full_name }}</span>
-                                                <a href="{% url 'remove_validator' audit_source_data.niveau_2.first.pk %}" 
-                                                   hx-get="{% url 'remove_validator' audit_source_data.niveau_2.first.pk %}"
-                                                   hx-target="#modal-container"
-                                                   class="text-blue-600 hover:text-red-600 ml-1" 
-                                                   title="Retirer">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        {% else %}
-                                            <button onclick="window.openAssignModal({{ data.service.id }}, '{{ data.service.nom|escapejs }}', {{ audit_source_data.audit_source.id }}, '{{ audit_source_data.audit_source.name|escapejs }}', 2)"
-                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50">
-                                                + Assigner
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <!-- Niveau 3 -->
-                                    <div class="flex items-center gap-2">
-                                        <div class="flex items-center gap-1">
-                                            <div class="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
-                                                <span class="text-white text-xs font-bold">3</span>
-                                            </div>
-                                        </div>
-                                        {% if audit_source_data.niveau_3.first %}
-                                            <div class="flex items-center gap-1 bg-purple-100 px-2 py-1 rounded text-purple-800">
-                                                <span>{{ audit_source_data.niveau_3.first.validateur.get_full_name }}</span>
-                                                <a href="{% url 'remove_validator' audit_source_data.niveau_3.first.pk %}" 
-                                                   hx-get="{% url 'remove_validator' audit_source_data.niveau_3.first.pk %}"
-                                                   hx-target="#modal-container"
-                                                   class="text-purple-600 hover:text-red-600 ml-1" 
-                                                   title="Retirer">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        {% else %}
-                                            <button onclick="window.openAssignModal({{ data.service.id }}, '{{ data.service.nom|escapejs }}', {{ audit_source_data.audit_source.id }}, '{{ audit_source_data.audit_source.name|escapejs }}', 3)"
-                                                    class="text-purple-600 hover:text-purple-800 px-2 py-1 border border-purple-300 rounded hover:bg-purple-50">
-                                                + Assigner
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                </div>
+                                </span>
+                                <svg class="w-5 h-5 text-gray-400 transition-transform duration-200" 
+                                     :class="{ 'rotate-90': expanded }" 
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
                             </div>
-                            {% endfor %}
                         </div>
                     </div>
-                    {% endfor %}
+                    
+                    <!-- Panneau détaillé des sources d'audit -->
+                    <div x-show="expanded" 
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 max-h-0"
+                         x-transition:enter-end="opacity-100 max-h-screen"
+                         x-transition:leave="transition ease-in duration-200"
+                         x-transition:leave-start="opacity-100 max-h-screen"
+                         x-transition:leave-end="opacity-0 max-h-0"
+                         class="bg-gray-50/50 border-t border-gray-200 overflow-hidden">
+                        
+                        <div class="px-6 py-3">
+                            <h4 class="text-sm font-medium text-gray-900 mb-3">Configuration par source d'audit</h4>
+                            
+                            <div class="space-y-2.5">
+                                {% for audit_source_data in data.audit_sources %}
+                                <div class="bg-white rounded border border-gray-200 p-3 hover:shadow-sm transition-shadow">
+                                    <div class="flex items-center justify-between">
+                                        <!-- Info source d'audit -->
+                                        <div class="flex-1">
+                                            <h5 class="font-medium text-gray-900">{{ audit_source_data.audit_source.name }}</h5>
+                                            {% if audit_source_data.audit_source.description %}
+                                                <p class="text-sm text-gray-500 mt-1">{{ audit_source_data.audit_source.description }}</p>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Configuration des niveaux -->
+                                        <div class="flex items-center gap-3">
+                                            <!-- Niveau 1 -->
+                                            <div class="flex items-center gap-1.5" 
+                                                 id="niveau-{{ data.service.id }}-{{ audit_source_data.audit_source.id }}-1">
+                                                {% include 'core/workflow/niveau_partial.html' with service=data.service audit_source=audit_source_data.audit_source niveau=1 validateur_assigne=audit_source_data.niveau_1 %}
+                                            </div>
+                                            
+                                            <!-- Niveau 2 -->
+                                            <div class="flex items-center gap-1.5" 
+                                                 id="niveau-{{ data.service.id }}-{{ audit_source_data.audit_source.id }}-2">
+                                                {% include 'core/workflow/niveau_partial.html' with service=data.service audit_source=audit_source_data.audit_source niveau=2 validateur_assigne=audit_source_data.niveau_2 %}
+                                            </div>
+                                            
+                                            <!-- Niveau 3 -->
+                                            <div class="flex items-center gap-1.5" 
+                                                 id="niveau-{{ data.service.id }}-{{ audit_source_data.audit_source.id }}-3">
+                                                {% include 'core/workflow/niveau_partial.html' with service=data.service audit_source=audit_source_data.audit_source niveau=3 validateur_assigne=audit_source_data.niveau_3 %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                {% endfor %}
+            </div>
         {% else %}
-            <div class="p-8 text-center">
-                <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-12 text-center">
+                <div class="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun service trouvé</h3>
-                <p class="text-gray-500 mb-4">Vous devez d'abord créer des services pour configurer le workflow.</p>
+                <h3 class="text-xl font-medium text-gray-900 mb-2">Aucun service trouvé</h3>
+                <p class="text-gray-500 mb-6">Vous devez d'abord créer des services pour configurer le workflow.</p>
+                <a href="{% url 'admin:index' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    Aller à l'administration
+                </a>
             </div>
         {% endif %}
     </div>
 
-    <!-- Modal d'assignation de valideur -->
+    <!-- Modal d'assignation optimisé -->
     <div x-show="assignModal" 
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -255,101 +285,100 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" 
+         class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50" 
          x-cloak>
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Assigner un valideur</h3>
-                    <button @click="assignModal = false" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        <div class="relative top-20 mx-auto p-6 border w-96 shadow-xl rounded-lg bg-white">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-gray-900">Assigner un validateur</h3>
+                <button @click="closeAssignModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Info contextuelle -->
+            <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+                <div class="text-sm text-blue-800">
+                    <div><strong>Service:</strong> <span x-text="selectedAssignment.serviceName"></span></div>
+                    <div><strong>Source d'audit:</strong> <span x-text="selectedAssignment.auditSourceName"></span></div>
+                    <div><strong>Niveau:</strong> <span x-text="selectedAssignment.niveau"></span></div>
+                </div>
+            </div>
+            
+            <!-- Recherche d'utilisateur -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher un utilisateur</label>
+                <div class="relative" @click.away="showResults = false">
+                    <input 
+                        type="text" 
+                        x-model="userSearch"
+                        @input="searchUsers()"
+                        @focus="showResults = userSearch.length >= 2"
+                        placeholder="Tapez le matricule ou le nom..."
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
-                    </button>
-                </div>
-                
-                <div class="mb-4">
-                    <p class="text-sm text-gray-600">
-                        Service: <span class="font-medium" x-text="selectedService.nom"></span>
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        Source d'audit: <span class="font-medium" x-text="selectedService.auditSourceNom"></span>
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        Niveau: <span class="font-medium" x-text="selectedService.niveau"></span>
-                    </p>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher un utilisateur</label>
-                    <div class="relative" @click.away="showResults = false">
-                        <input 
-                            type="text" 
-                            x-model="userSearch"
-                            @input="searchUsers()"
-                            @focus="showResults = true"
-                            placeholder="Tapez le matricule ou le nom..."
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 pr-10"
-                        >
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </div>
-                        
-                        <!-- Résultats de recherche -->
-                        <div x-show="showResults && searchResults.length > 0" 
-                             x-transition
-                             class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            <template x-for="user in searchResults" :key="user.id">
-                                <div @click="selectUser(user)" 
-                                     class="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <div class="font-medium text-gray-900" x-text="user.nom_complet"></div>
-                                            <div class="text-sm text-gray-500" x-text="'Matricule: ' + user.matricule"></div>
-                                            <div class="text-xs text-gray-400" x-text="user.service"></div>
-                                        </div>
-                                        <span class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600" x-text="user.droits"></span>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                        
-                        <!-- Message si aucun résultat -->
-                        <div x-show="showResults && searchResults.length === 0 && userSearch.length >= 2" 
-                             x-transition
-                             class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg p-4">
-                            <div class="text-sm text-gray-500">Aucun utilisateur trouvé</div>
-                        </div>
                     </div>
                     
-                    <!-- Utilisateur sélectionné -->
-                    <div x-show="selectedUser" class="mt-3 p-3 bg-blue-50 rounded-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="font-medium text-blue-900" x-text="selectedUser?.nom_complet"></div>
-                                <div class="text-sm text-blue-700" x-text="'Matricule: ' + selectedUser?.matricule"></div>
+                    <!-- Résultats de recherche optimisés -->
+                    <div x-show="showResults && searchResults.length > 0" 
+                         x-transition
+                         class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <template x-for="user in searchResults" :key="user.id">
+                            <div @click="selectUser(user)" 
+                                 class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <div class="font-medium text-gray-900" x-text="user.nom_complet"></div>
+                                        <div class="text-sm text-gray-500" x-text="'Matricule: ' + user.matricule"></div>
+                                        <div class="text-xs text-gray-400" x-text="user.service"></div>
+                                    </div>
+                                    <span class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600 font-medium" x-text="user.droits"></span>
+                                </div>
                             </div>
-                            <button @click="clearSelection()" class="text-blue-600 hover:text-blue-800">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
+                        </template>
+                    </div>
+                    
+                    <!-- Message si aucun résultat -->
+                    <div x-show="showResults && searchResults.length === 0 && userSearch.length >= 2" 
+                         x-transition
+                         class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg p-4">
+                        <div class="text-sm text-gray-500 text-center">Aucun utilisateur trouvé</div>
                     </div>
                 </div>
                 
-                <div class="flex justify-end gap-3">
-                    <button @click="assignModal = false" 
-                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                        Annuler
-                    </button>
-                    <button @click="assignValidator()" 
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        Assigner
-                    </button>
+                <!-- Utilisateur sélectionné -->
+                <div x-show="selectedUser" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-green-900" x-text="selectedUser?.nom_complet"></div>
+                            <div class="text-sm text-green-700" x-text="'Matricule: ' + selectedUser?.matricule"></div>
+                        </div>
+                        <button @click="clearSelection()" class="text-green-600 hover:text-green-800 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex justify-end gap-3">
+                <button @click="closeAssignModal()" 
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                    Annuler
+                </button>
+                <button @click="assignValidator()" 
+                        :disabled="!selectedUser"
+                        :class="selectedUser ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
+                        class="px-4 py-2 rounded-md transition-colors">
+                    Assigner
+                </button>
             </div>
         </div>
     </div>
@@ -359,129 +388,197 @@
 <div id="modal-container"></div>
 
 <script>
-function workflowManager() {
+function optimizedWorkflowManager() {
     return {
+        // Modal d'assignation
         assignModal: false,
-        selectedService: { id: null, nom: '', auditSourceId: null, auditSourceNom: '', niveau: null },
-        selectedValidatorId: '',
+        selectedAssignment: {
+            serviceId: null,
+            serviceName: '',
+            auditSourceId: null,
+            auditSourceName: '',
+            niveau: null
+        },
+        
+        // Recherche d'utilisateurs
         userSearch: '',
         searchResults: [],
         showResults: false,
         selectedUser: null,
+        searchTimeout: null,
         
+        // Toast notifications
+        toastVisible: false,
+        toastMessage: '',
+        toastType: 'success', // 'success' ou 'error'
         
-        openAssignModal(serviceId, serviceNom, auditSourceId, auditSourceNom, niveau) {
-            this.selectedService = { 
-                id: serviceId, 
-                nom: serviceNom, 
-                auditSourceId: auditSourceId,
-                auditSourceNom: auditSourceNom,
-                niveau: niveau 
+        // Filtres
+        statusFilter: 'all',
+        
+        // Méthodes d'assignation
+        openAssignModal(serviceId, serviceName, auditSourceId, auditSourceName, niveau) {
+            this.selectedAssignment = {
+                serviceId,
+                serviceName,
+                auditSourceId,
+                auditSourceName,
+                niveau
             };
-            this.selectedValidatorId = '';
+            this.resetModalState();
+            this.assignModal = true;
+        },
+        
+        closeAssignModal() {
+            this.assignModal = false;
+            this.resetModalState();
+        },
+        
+        resetModalState() {
             this.userSearch = '';
             this.searchResults = [];
             this.showResults = false;
             this.selectedUser = null;
-            this.assignModal = true;
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
         },
         
+        // Recherche d'utilisateurs avec debounce
         async searchUsers() {
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+            
             if (this.userSearch.length < 2) {
                 this.searchResults = [];
                 this.showResults = false;
                 return;
             }
             
-            try {
-                const response = await fetch(`{% url "search_users" %}?q=${encodeURIComponent(this.userSearch)}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    this.searchResults = data.users;
-                    this.showResults = true;
-                } else {
-                    this.showMessage('Erreur lors de la recherche', 'error');
+            this.searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`{% url "search_users" %}?q=${encodeURIComponent(this.userSearch)}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.searchResults = data.users;
+                        this.showResults = true;
+                    } else {
+                        this.showToast('Erreur lors de la recherche', 'error');
+                    }
+                } catch (error) {
+                    this.showToast('Erreur lors de la recherche', 'error');
                 }
-            } catch (error) {
-                this.showMessage('Erreur lors de la recherche', 'error');
-            }
+            }, 300);
         },
         
         selectUser(user) {
             this.selectedUser = user;
-            this.selectedValidatorId = user.id;
             this.userSearch = user.nom_complet;
             this.showResults = false;
         },
         
         clearSelection() {
             this.selectedUser = null;
-            this.selectedValidatorId = '';
             this.userSearch = '';
             this.showResults = false;
         },
         
+        // Assignation avec HTMX optimisé
         async assignValidator() {
-            if (!this.selectedValidatorId) {
-                this.showMessage('Veuillez sélectionner un utilisateur', 'error');
+            if (!this.selectedUser) {
+                this.showToast('Veuillez sélectionner un utilisateur', 'error');
                 return;
             }
             
-            const formData = new FormData();
-            formData.append('service_id', this.selectedService.id);
-            formData.append('audit_source_id', this.selectedService.auditSourceId);
-            formData.append('validateur_id', this.selectedValidatorId);
-            formData.append('niveau', this.selectedService.niveau);
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            const targetId = `niveau-${this.selectedAssignment.serviceId}-${this.selectedAssignment.auditSourceId}-${this.selectedAssignment.niveau}`;
             
             try {
+                // Utiliser fetch pour l'assignation
+                const formData = new FormData();
+                formData.append('service_id', this.selectedAssignment.serviceId);
+                formData.append('audit_source_id', this.selectedAssignment.auditSourceId);
+                formData.append('validateur_id', this.selectedUser.id);
+                formData.append('niveau', this.selectedAssignment.niveau);
+                formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                
                 const response = await fetch('{% url "assign_validator" %}', {
                     method: 'POST',
                     body: formData
                 });
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    this.showMessage(data.message, 'success');
-                    this.assignModal = false;
-                    // Recharger la page pour refléter les changements
-                    window.location.reload();
+                if (response.ok) {
+                    // Récupérer les données JSON de mise à jour
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Mettre à jour la section détaillée
+                        document.getElementById(targetId).innerHTML = data.niveau_html;
+                        
+                        // Mettre à jour l'aperçu des badges dans l'en-tête du service
+                        const overviewId = `service-overview-${this.selectedAssignment.serviceId}`;
+                        const overviewElement = document.getElementById(overviewId);
+                        if (overviewElement && data.overview_html) {
+                            overviewElement.innerHTML = data.overview_html;
+                        }
+                        
+                        // Afficher le toast de succès et fermer le modal
+                        this.showToast(`Validateur assigné avec succès au niveau ${this.selectedAssignment.niveau}`, 'success');
+                        this.closeAssignModal();
+                    } else {
+                        this.showToast(data.error || 'Erreur lors de l\'assignation', 'error');
+                    }
                 } else {
-                    this.showMessage(data.error, 'error');
+                    this.showToast('Erreur lors de l\'assignation', 'error');
                 }
+                
             } catch (error) {
-                this.showMessage('Erreur lors de l\'assignation', 'error');
+                console.error('Erreur lors de l\'assignation:', error);
+                this.showToast('Erreur lors de l\'assignation', 'error');
             }
         },
         
-        showMessage(text, type) {
-            const messageContainer = document.getElementById('messages');
-            const alertClass = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700';
+        // Gestion des toasts
+        showToast(message, type = 'success') {
+            this.toastMessage = message;
+            this.toastType = type;
+            this.toastVisible = true;
             
-            messageContainer.innerHTML = `
-                <div class="border px-4 py-3 rounded ${alertClass}" role="alert">
-                    ${text}
-                </div>
-            `;
-            
-            // Supprimer le message après 5 secondes
+            // Masquer automatiquement après 5 secondes
             setTimeout(() => {
-                messageContainer.innerHTML = '';
+                this.hideToast();
             }, 5000);
+        },
+        
+        hideToast() {
+            this.toastVisible = false;
+        },
+        
+        // Filtrage des services
+        filterServices() {
+            // Cette méthode sera utilisée par Alpine.js pour filtrer l'affichage
+        },
+        
+        shouldShowService(configured, partial) {
+            switch(this.statusFilter) {
+                case 'configured':
+                    return configured;
+                case 'partial':
+                    return partial;
+                case 'missing':
+                    return !configured && !partial;
+                default:
+                    return true;
+            }
         }
     }
 }
-</script>
 
-<script>
-// Fonction globale pour ouvrir le modal d'assignation
-window.openAssignModal = function(serviceId, serviceNom, auditSourceId, auditSourceNom, niveau) {
-    // Trouver le composant Alpine.js et appeler sa méthode
-    const workflowContainer = document.querySelector('[x-data*="workflowManager"]');
+// Fonction globale pour l'assignation (compatibilité)
+window.openAssignModal = function(serviceId, serviceName, auditSourceId, auditSourceName, niveau) {
+    const workflowContainer = document.querySelector('[x-data*="optimizedWorkflowManager"]');
     if (workflowContainer && workflowContainer._x_dataStack && workflowContainer._x_dataStack[0]) {
-        workflowContainer._x_dataStack[0].openAssignModal(serviceId, serviceNom, auditSourceId, auditSourceNom, niveau);
+        workflowContainer._x_dataStack[0].openAssignModal(serviceId, serviceName, auditSourceId, auditSourceName, niveau);
     }
 };
 </script>
