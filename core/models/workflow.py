@@ -6,12 +6,15 @@ from django.core.exceptions import ValidationError
 from .base import TimestampedModel
 from .services import Service
 from .users import User
+from .gaps import AuditSource
 
 
 class ValidateurService(TimestampedModel):
     """
-    Modèle pour assigner des valideurs à des services avec des niveaux de validation.
-    Permet de définir qui peut valider les écarts d'un service donné à quel niveau.
+    Modèle pour assigner des valideurs à des services avec des niveaux de validation
+    pour des sources d'audit spécifiques.
+    Permet de définir qui peut valider les écarts d'un service donné à quel niveau
+    pour une source d'audit donnée.
     """
     NIVEAU_1 = 1
     NIVEAU_2 = 2
@@ -30,12 +33,19 @@ class ValidateurService(TimestampedModel):
         verbose_name="Service"
     )
     
+    audit_source = models.ForeignKey(
+        AuditSource,
+        on_delete=models.CASCADE,
+        related_name='validateurs',
+        verbose_name="Source d'audit",
+        default=1  # Audit interne/AFNOR par défaut pour les enregistrements existants
+    )
+    
     validateur = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='services_valides',
-        verbose_name="Validateur",
-        limit_choices_to={'droits__in': [User.ADMIN, User.SUPER_ADMIN]}
+        verbose_name="Validateur"
     )
     
     niveau = models.IntegerField(
@@ -52,29 +62,42 @@ class ValidateurService(TimestampedModel):
     class Meta:
         verbose_name = "Validateur de service"
         verbose_name_plural = "Validateurs de service"
-        ordering = ['service__nom', 'niveau']
-        unique_together = ['service', 'validateur', 'niveau']
+        ordering = ['service__nom', 'audit_source__name', 'niveau']
+        unique_together = ['service', 'audit_source', 'niveau']
         
     def __str__(self):
-        return f"{self.service.nom} - {self.validateur.get_full_name()} (Niveau {self.niveau})"
+        return f"{self.service.nom} - {self.audit_source.name} - {self.validateur.get_full_name()} (Niveau {self.niveau})"
     
     def clean(self):
         """Validation des règles métier."""
         super().clean()
         
-        # Vérifier que le validateur a les droits nécessaires
-        if self.validateur and self.validateur.droits not in [User.ADMIN, User.SUPER_ADMIN]:
-            raise ValidationError({
-                'validateur': 'Seuls les administrateurs peuvent être validateurs.'
-            })
+        
+        # Vérifier qu'il n'y a qu'un seul validateur par niveau par service par source d'audit
+        if self.service and self.audit_source and self.niveau:
+            existing = ValidateurService.objects.filter(
+                service=self.service,
+                audit_source=self.audit_source,
+                niveau=self.niveau,
+                actif=True
+            )
+            if self.pk:
+                existing = existing.exclude(pk=self.pk)
+            
+            if existing.exists():
+                raise ValidationError({
+                    'validateur': f'Un validateur est déjà assigné au niveau {self.niveau} '
+                                f'pour ce service et cette source d\'audit.'
+                })
     
     @classmethod
-    def get_validateurs_service(cls, service, niveau=None, actif_seulement=True):
+    def get_validateurs_service(cls, service, audit_source=None, niveau=None, actif_seulement=True):
         """
-        Retourne les validateurs d'un service donné, optionnellement filtrés par niveau.
+        Retourne les validateurs d'un service donné, optionnellement filtrés par source d'audit et niveau.
         
         Args:
             service: Instance de Service
+            audit_source: Instance d'AuditSource (optionnel)
             niveau: Niveau de validation (optionnel)
             actif_seulement: Si True, ne retourne que les validateurs actifs
         
@@ -83,13 +106,16 @@ class ValidateurService(TimestampedModel):
         """
         queryset = cls.objects.filter(service=service)
         
+        if audit_source is not None:
+            queryset = queryset.filter(audit_source=audit_source)
+        
         if niveau is not None:
             queryset = queryset.filter(niveau=niveau)
             
         if actif_seulement:
             queryset = queryset.filter(actif=True)
             
-        return queryset.select_related('validateur', 'service')
+        return queryset.select_related('validateur', 'service', 'audit_source')
     
     @classmethod
     def get_services_validateur(cls, validateur, actif_seulement=True):

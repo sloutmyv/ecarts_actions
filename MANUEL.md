@@ -719,6 +719,128 @@ Chaque écart dans la déclaration affiche :
    - Suppression des enregistrements en base de données
    - Action irréversible avec confirmation explicite
 
+## ⚖️ Gestion du Workflow de Validation
+
+### Vue d'ensemble
+
+Le système de workflow de validation permet d'assigner des valideurs pour chaque combinaison **Service × Source d'Audit × Niveau de Validation**. Cette approche granulaire garantit que chaque type d'écart peut être validé par les bonnes personnes selon sa source d'origine.
+
+### Accès au Workflow
+
+#### Qui peut accéder ?
+- **Super Administrateurs (SA)** : Accès complet à la gestion du workflow
+- **Administrateurs (AD)** : Accès complet à la gestion du workflow
+- **Utilisateurs (US)** : Aucun accès (menu masqué)
+
+#### Comment y accéder ?
+1. **Menu Administration** → **Gestion du workflow**
+2. URL directe : `/workflow/`
+3. Icône : ⚖️ (balance de la justice)
+
+### Interface Dropdown Minimaliste
+
+#### Navigation en deux étapes
+1. **Clic sur un service** : Le dropdown s'ouvre pour afficher ses sources d'audit
+2. **Assignation par niveau** : Chaque source affiche 3 niveaux de validation (Vert=N1, Bleu=N2, Violet=N3)
+
+#### Indicateurs visuels par service
+- **🟢 Vert** : "✓ Y/Y configurées" - Toutes les sources d'audit ont des valideurs
+- **🔴 Rouge** : "⚠️ X/Y non assignées" - Certaines sources manquent de valideurs
+
+#### Layout épuré
+- **Gauche** : Nom de la source d'audit + description
+- **Droite** : 3 niveaux avec valideurs ou boutons "+ Assigner"
+- **Badges couleur** : Nom du valideur avec bouton × pour suppression
+
+### Assignation de Valideurs
+
+#### Qui peut être valideur ?
+- **Tous les utilisateurs** de l'application (plus de restriction aux seuls admins)
+- Recherche par **matricule** ou **nom/prénom** avec autocomplétion
+
+#### Processus d'assignation
+1. **Cliquer sur "+ Assigner"** pour le niveau souhaité
+2. **Modal d'assignation** s'ouvre avec :
+   - Service : Nom du service concerné
+   - Source d'audit : Nom de la source concernée
+   - Niveau : 1, 2 ou 3
+3. **Rechercher l'utilisateur** : Taper matricule ou nom (min. 2 caractères)
+4. **Sélectionner** dans la liste déroulante
+5. **Confirmer** l'assignation
+
+#### Contraintes d'assignation
+- **Un valideur maximum** par combinaison Service/Source/Niveau
+- **Remplacement automatique** : Si un valideur existe déjà, il est remplacé
+- **Niveaux indépendants** : Un utilisateur peut être valideur sur plusieurs niveaux/sources
+
+### Suppression de Valideurs
+
+#### Comment supprimer ?
+1. **Cliquer sur la croix** (×) dans le badge du valideur
+2. **Modal de confirmation** avec détails de la suppression
+3. **Confirmer ou annuler** la suppression
+
+#### Protection contre suppression
+- **Dernier valideur d'une source** : Impossible de supprimer si c'est le dernier
+- **Message d'avertissement** : "Impossible de supprimer le dernier valideur d'une combinaison service/source d'audit"
+- **Minimum requis** : Au moins 1 valideur par combinaison service/source
+
+### Sources d'Audit Disponibles
+
+Le système intègre toutes les sources d'audit définies dans l'application :
+- **Audit interne/AFNOR** (source par défaut)
+- **Audit client**
+- **Audit fournisseur** 
+- **Autres sources** selon la configuration
+
+### Exemples Pratiques
+
+#### Scénario : Service "Comptabilité" avec 3 sources d'audit
+
+**Configuration idéale :**
+```
+Comptabilité (✓ 3/3 configurées)
+└─ Audit interne/AFNOR
+   ├─ Niveau 1: Jean Dupont [Chef comptable]
+   ├─ Niveau 2: Marie Martin [Directrice financ.]
+   └─ Niveau 3: Paul Durand [Directeur général]
+└─ Audit client
+   ├─ Niveau 1: Jean Dupont [Chef comptable]
+   └─ Niveau 2: Marie Martin [Directrice financ.]
+└─ Audit fournisseur
+   └─ Niveau 1: Jean Dupont [Chef comptable]
+```
+
+**Configuration partielle :**
+```
+Comptabilité (⚠️ 1/3 non assignées)
+└─ Audit interne/AFNOR
+   └─ Niveau 1: Jean Dupont [Chef comptable]
+└─ Audit client
+   └─ [Aucun valideur assigné]
+└─ Audit fournisseur  
+   └─ [Aucun valideur assigné]
+```
+
+### Bonnes Pratiques
+
+#### Organisation recommandée
+- **Niveau 1** : Responsables opérationnels (chefs de service)
+- **Niveau 2** : Management intermédiaire (directeurs de département)
+- **Niveau 3** : Direction générale (validation finale)
+
+#### Gestion des sources d'audit
+- **Audit interne** : Valideurs internes à l'organisation
+- **Audit client** : Focus sur la satisfaction client et conformité
+- **Audit fournisseur** : Expertise achats et relations fournisseurs
+
+#### Maintenance du workflow
+- **Vérification régulière** : Tous les services ont-ils des valideurs ?
+- **Mise à jour** lors de changements organisationnels
+- **Documentation** des rôles et responsabilités de chaque niveau
+
+---
+
 ### Statuts des écarts et workflow
 
 #### Les 5 statuts disponibles

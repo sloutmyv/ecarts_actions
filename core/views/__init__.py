@@ -14,7 +14,7 @@ from .gaps import (
 )
 from .workflow import (
     workflow_management, assign_validator, remove_validator, toggle_validator_status,
-    get_service_validators, workflow_stats
+    get_service_validators, workflow_stats, search_users, service_detail_api
 )
 
 # Export explicite pour les imports directs
@@ -27,5 +27,5 @@ __all__ = [
     'gap_list', 'gap_report_list', 'gap_report_detail', 'gap_report_create', 'gap_report_edit',
     'gap_create', 'gap_edit', 'get_gap_types', 'get_process_field',
     'workflow_management', 'assign_validator', 'remove_validator', 'toggle_validator_status',
-    'get_service_validators', 'workflow_stats'
+    'get_service_validators', 'workflow_stats', 'search_users', 'service_detail_api'
 ]

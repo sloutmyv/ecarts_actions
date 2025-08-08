@@ -18,42 +18,10 @@
         
     </div>
 
-    <!-- Légende des niveaux -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 class="text-lg font-semibold text-blue-900 mb-3">Niveaux de validation</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="flex items-center gap-3">
-                <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                    <span class="text-white text-xs font-bold">1</span>
-                </div>
-                <div>
-                    <div class="font-medium text-gray-900">Niveau 1</div>
-                    <div class="text-sm text-gray-600">Première validation</div>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span class="text-white text-xs font-bold">2</span>
-                </div>
-                <div>
-                    <div class="font-medium text-gray-900">Niveau 2</div>
-                    <div class="text-sm text-gray-600">Validation intermédiaire</div>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                    <span class="text-white text-xs font-bold">3</span>
-                </div>
-                <div>
-                    <div class="font-medium text-gray-900">Niveau 3</div>
-                    <div class="text-sm text-gray-600">Validation finale</div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Messages -->
     <div id="messages" class="mb-4"></div>
+
 
     <!-- Options de tri -->
     <div class="bg-white shadow rounded-lg p-4 mb-6">
@@ -88,168 +56,184 @@
         </div>
     </div>
 
-    <!-- Matrice des valideurs -->
-    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+    <!-- Liste des services -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden" x-data="workflowManager()">
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">Matrice des valideurs par service</h2>
-            <p class="text-sm text-gray-600 mt-1">Seuls les services feuilles (sans sous-services) sont affichés</p>
+            <h2 class="text-xl font-semibold text-gray-900">Services</h2>
+            <p class="text-sm text-gray-600 mt-1">Sélectionnez un service pour configurer ses validateurs par source d'audit</p>
         </div>
         
         {% if services_avec_validateurs %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center gap-2">
-                                    <a href="?sort=nom&order={% if current_sort == 'nom' and current_order == 'asc' %}desc{% else %}asc{% endif %}" 
-                                       class="flex items-center gap-1 hover:text-gray-700">
-                                        Service
-                                        {% if current_sort == 'nom' %}
-                                            {% if current_order == 'asc' %}
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                                                </svg>
-                                            {% else %}
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                                </svg>
+                <div class="divide-y divide-gray-100">
+                    {% for data in services_avec_validateurs %}
+                    <div x-data="{ expanded: false }" class="border-l-2 border-transparent {% if not data.has_validators %}bg-red-25 border-l-red-400{% endif %}">
+                        <!-- Ligne du service -->
+                        <div class="px-4 py-4 hover:bg-blue-50 cursor-pointer transition-colors hover:border-blue-400"
+                             @click="expanded = !expanded">
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3">
+                                        <div>
+                                            <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                                {{ data.service.nom }}
+                                                {% if data.sources_sans_validateurs_count > 0 %}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                        ⚠️ {{ data.sources_sans_validateurs_count }}/{{ data.total_sources_count }} non assignée{{ data.sources_sans_validateurs_count|pluralize:"s" }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                        ✓ {{ data.total_sources_count }}/{{ data.total_sources_count }} configurée{{ data.total_sources_count|pluralize:"s" }}
+                                                    </span>
+                                                {% endif %}
+                                            </h3>
+                                            <p class="text-xs text-gray-500">
+                                                {{ data.service.code }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Aperçu rapide des validateurs -->
+                                    <div class="mt-1 flex items-center gap-3 text-xs">
+                                        {% for audit_source_data in data.audit_sources %}
+                                            {% if audit_source_data.has_validators %}
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-gray-500">{{ audit_source_data.audit_source.name }}:</span>
+                                                <div class="flex gap-0.5">
+                                                    {% if audit_source_data.niveau_1.first %}
+                                                        <div class="w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+                                                            <span class="text-white text-xs">1</span>
+                                                        </div>
+                                                    {% endif %}
+                                                    {% if audit_source_data.niveau_2.first %}
+                                                        <div class="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                                                            <span class="text-white text-xs">2</span>
+                                                        </div>
+                                                    {% endif %}
+                                                    {% if audit_source_data.niveau_3.first %}
+                                                        <div class="w-3 h-3 bg-purple-500 rounded-full flex items-center justify-center">
+                                                            <span class="text-white text-xs">3</span>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
                                             {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Flèche pour indiquer qu'on peut cliquer -->
+                                <div class="ml-2">
+                                    <svg class="w-4 h-4 text-gray-400 transition-transform" :class="{ 'rotate-90': expanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dropdown des sources d'audit -->
+                        <div x-show="expanded" x-transition class="bg-gray-50 border-t border-gray-200">
+                            {% for audit_source_data in data.audit_sources %}
+                            <div class="px-6 py-4 flex items-center justify-between hover:bg-white border-b border-gray-100 last:border-b-0">
+                                <!-- Nom de la source à gauche -->
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-medium text-gray-900">{{ audit_source_data.audit_source.name }}</h4>
+                                    {% if audit_source_data.audit_source.description %}
+                                        <p class="text-xs text-gray-500 mt-0.5">{{ audit_source_data.audit_source.description }}</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Assignations par niveau à droite -->
+                                <div class="flex items-center gap-6 text-xs">
+                                    <!-- Niveau 1 -->
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-1">
+                                            <div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                                <span class="text-white text-xs font-bold">1</span>
+                                            </div>
+                                        </div>
+                                        {% if audit_source_data.niveau_1.first %}
+                                            <div class="flex items-center gap-1 bg-green-100 px-2 py-1 rounded text-green-800">
+                                                <span>{{ audit_source_data.niveau_1.first.validateur.get_full_name }}</span>
+                                                <a href="{% url 'remove_validator' audit_source_data.niveau_1.first.pk %}" 
+                                                   hx-get="{% url 'remove_validator' audit_source_data.niveau_1.first.pk %}"
+                                                   hx-target="#modal-container"
+                                                   class="text-green-600 hover:text-red-600 ml-1" 
+                                                   title="Retirer">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
                                         {% else %}
-                                            <svg class="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
-                                            </svg>
+                                            <button onclick="window.openAssignModal({{ data.service.id }}, '{{ data.service.nom|escapejs }}', {{ audit_source_data.audit_source.id }}, '{{ audit_source_data.audit_source.name|escapejs }}', 1)"
+                                                    class="text-green-600 hover:text-green-800 px-2 py-1 border border-green-300 rounded hover:bg-green-50">
+                                                + Assigner
+                                            </button>
                                         {% endif %}
-                                    </a>
-                                </div>
-                            </th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center justify-center gap-1">
-                                    <div class="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                        <span class="text-white text-xs">1</span>
                                     </div>
-                                    Niveau 1
-                                </div>
-                            </th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center justify-center gap-1">
-                                    <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                        <span class="text-white text-xs">2</span>
-                                    </div>
-                                    Niveau 2
-                                </div>
-                            </th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <div class="flex items-center justify-center gap-1">
-                                    <div class="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
-                                        <span class="text-white text-xs">3</span>
-                                    </div>
-                                    Niveau 3
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for data in services_avec_validateurs %}
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4">
-                                <div class="text-sm font-medium text-gray-900">{{ data.service.nom }}</div>
-                                <div class="text-sm text-gray-500">
-                                    <a href="?sort=code&order={% if current_sort == 'code' and current_order == 'asc' %}desc{% else %}asc{% endif %}" 
-                                       class="hover:text-gray-700" title="Trier par code">
-                                        {{ data.service.code }}
-                                        {% if current_sort == 'code' %}
-                                            {% if current_order == 'asc' %}↑{% else %}↓{% endif %}
+                                    
+                                    <!-- Niveau 2 -->
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-1">
+                                            <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                                <span class="text-white text-xs font-bold">2</span>
+                                            </div>
+                                        </div>
+                                        {% if audit_source_data.niveau_2.first %}
+                                            <div class="flex items-center gap-1 bg-blue-100 px-2 py-1 rounded text-blue-800">
+                                                <span>{{ audit_source_data.niveau_2.first.validateur.get_full_name }}</span>
+                                                <a href="{% url 'remove_validator' audit_source_data.niveau_2.first.pk %}" 
+                                                   hx-get="{% url 'remove_validator' audit_source_data.niveau_2.first.pk %}"
+                                                   hx-target="#modal-container"
+                                                   class="text-blue-600 hover:text-red-600 ml-1" 
+                                                   title="Retirer">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <button onclick="window.openAssignModal({{ data.service.id }}, '{{ data.service.nom|escapejs }}', {{ audit_source_data.audit_source.id }}, '{{ audit_source_data.audit_source.name|escapejs }}', 2)"
+                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50">
+                                                + Assigner
+                                            </button>
                                         {% endif %}
-                                    </a>
-                                </div>
-                                {% if data.service.get_chemin_hierarchique != data.service.nom %}
-                                    <div class="text-xs text-gray-400 mt-1">{{ data.service.get_chemin_hierarchique }}</div>
-                                {% endif %}
-                            </td>
-                            
-                            <!-- Niveau 1 -->
-                            <td class="px-4 py-4 text-center">
-                                <div id="niveau-1-{{ data.service.id }}" class="space-y-1">
-                                    {% for vs in data.niveau_1 %}
-                                        <div class="inline-flex items-center gap-2 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                                            {{ vs.validateur.get_full_name }}
-                                            <button 
-                                                @click="removeValidator({{ vs.id }})"
-                                                class="text-green-600 hover:text-green-800"
-                                                title="Retirer">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
+                                    </div>
+                                    
+                                    <!-- Niveau 3 -->
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-1">
+                                            <div class="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
+                                                <span class="text-white text-xs font-bold">3</span>
+                                            </div>
                                         </div>
-                                    {% empty %}
-                                        <span class="text-gray-400 text-xs">Aucun valideur</span>
-                                    {% endfor %}
-                                </div>
-                                <button 
-                                    @click="openAssignModal({{ data.service.id }}, '{{ data.service.nom }}', 1)"
-                                    class="mt-2 text-green-600 hover:text-green-800 text-xs">
-                                    + Ajouter
-                                </button>
-                            </td>
-                            
-                            <!-- Niveau 2 -->
-                            <td class="px-4 py-4 text-center">
-                                <div id="niveau-2-{{ data.service.id }}" class="space-y-1">
-                                    {% for vs in data.niveau_2 %}
-                                        <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                                            {{ vs.validateur.get_full_name }}
-                                            <button 
-                                                @click="removeValidator({{ vs.id }})"
-                                                class="text-blue-600 hover:text-blue-800"
-                                                title="Retirer">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
+                                        {% if audit_source_data.niveau_3.first %}
+                                            <div class="flex items-center gap-1 bg-purple-100 px-2 py-1 rounded text-purple-800">
+                                                <span>{{ audit_source_data.niveau_3.first.validateur.get_full_name }}</span>
+                                                <a href="{% url 'remove_validator' audit_source_data.niveau_3.first.pk %}" 
+                                                   hx-get="{% url 'remove_validator' audit_source_data.niveau_3.first.pk %}"
+                                                   hx-target="#modal-container"
+                                                   class="text-purple-600 hover:text-red-600 ml-1" 
+                                                   title="Retirer">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <button onclick="window.openAssignModal({{ data.service.id }}, '{{ data.service.nom|escapejs }}', {{ audit_source_data.audit_source.id }}, '{{ audit_source_data.audit_source.name|escapejs }}', 3)"
+                                                    class="text-purple-600 hover:text-purple-800 px-2 py-1 border border-purple-300 rounded hover:bg-purple-50">
+                                                + Assigner
                                             </button>
-                                        </div>
-                                    {% empty %}
-                                        <span class="text-gray-400 text-xs">Aucun valideur</span>
-                                    {% endfor %}
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <button 
-                                    @click="openAssignModal({{ data.service.id }}, '{{ data.service.nom }}', 2)"
-                                    class="mt-2 text-blue-600 hover:text-blue-800 text-xs">
-                                    + Ajouter
-                                </button>
-                            </td>
-                            
-                            <!-- Niveau 3 -->
-                            <td class="px-4 py-4 text-center">
-                                <div id="niveau-3-{{ data.service.id }}" class="space-y-1">
-                                    {% for vs in data.niveau_3 %}
-                                        <div class="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                                            {{ vs.validateur.get_full_name }}
-                                            <button 
-                                                @click="removeValidator({{ vs.id }})"
-                                                class="text-purple-600 hover:text-purple-800"
-                                                title="Retirer">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    {% empty %}
-                                        <span class="text-gray-400 text-xs">Aucun valideur</span>
-                                    {% endfor %}
-                                </div>
-                                <button 
-                                    @click="openAssignModal({{ data.service.id }}, '{{ data.service.nom }}', 3)"
-                                    class="mt-2 text-purple-600 hover:text-purple-800 text-xs">
-                                    + Ajouter
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
         {% else %}
             <div class="p-8 text-center">
                 <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -289,18 +273,71 @@
                         Service: <span class="font-medium" x-text="selectedService.nom"></span>
                     </p>
                     <p class="text-sm text-gray-600">
+                        Source d'audit: <span class="font-medium" x-text="selectedService.auditSourceNom"></span>
+                    </p>
+                    <p class="text-sm text-gray-600">
                         Niveau: <span class="font-medium" x-text="selectedService.niveau"></span>
                     </p>
                 </div>
                 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Sélectionner un valideur</label>
-                    <select x-model="selectedValidatorId" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                        <option value="">-- Choisir un valideur --</option>
-                        {% for validateur in validateurs %}
-                        <option value="{{ validateur.id }}">{{ validateur.get_full_name }} ({{ validateur.matricule }})</option>
-                        {% endfor %}
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher un utilisateur</label>
+                    <div class="relative" @click.away="showResults = false">
+                        <input 
+                            type="text" 
+                            x-model="userSearch"
+                            @input="searchUsers()"
+                            @focus="showResults = true"
+                            placeholder="Tapez le matricule ou le nom..."
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 pr-10"
+                        >
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+                        
+                        <!-- Résultats de recherche -->
+                        <div x-show="showResults && searchResults.length > 0" 
+                             x-transition
+                             class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            <template x-for="user in searchResults" :key="user.id">
+                                <div @click="selectUser(user)" 
+                                     class="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-medium text-gray-900" x-text="user.nom_complet"></div>
+                                            <div class="text-sm text-gray-500" x-text="'Matricule: ' + user.matricule"></div>
+                                            <div class="text-xs text-gray-400" x-text="user.service"></div>
+                                        </div>
+                                        <span class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600" x-text="user.droits"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        
+                        <!-- Message si aucun résultat -->
+                        <div x-show="showResults && searchResults.length === 0 && userSearch.length >= 2" 
+                             x-transition
+                             class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg p-4">
+                            <div class="text-sm text-gray-500">Aucun utilisateur trouvé</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Utilisateur sélectionné -->
+                    <div x-show="selectedUser" class="mt-3 p-3 bg-blue-50 rounded-md">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-medium text-blue-900" x-text="selectedUser?.nom_complet"></div>
+                                <div class="text-sm text-blue-700" x-text="'Matricule: ' + selectedUser?.matricule"></div>
+                            </div>
+                            <button @click="clearSelection()" class="text-blue-600 hover:text-blue-800">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="flex justify-end gap-3">
@@ -318,27 +355,82 @@
     </div>
 </div>
 
+<!-- Conteneur pour les modales HTMX -->
+<div id="modal-container"></div>
+
 <script>
 function workflowManager() {
     return {
         assignModal: false,
-        selectedService: { id: null, nom: '', niveau: null },
+        selectedService: { id: null, nom: '', auditSourceId: null, auditSourceNom: '', niveau: null },
         selectedValidatorId: '',
+        userSearch: '',
+        searchResults: [],
+        showResults: false,
+        selectedUser: null,
         
-        openAssignModal(serviceId, serviceNom, niveau) {
-            this.selectedService = { id: serviceId, nom: serviceNom, niveau: niveau };
+        
+        openAssignModal(serviceId, serviceNom, auditSourceId, auditSourceNom, niveau) {
+            this.selectedService = { 
+                id: serviceId, 
+                nom: serviceNom, 
+                auditSourceId: auditSourceId,
+                auditSourceNom: auditSourceNom,
+                niveau: niveau 
+            };
             this.selectedValidatorId = '';
+            this.userSearch = '';
+            this.searchResults = [];
+            this.showResults = false;
+            this.selectedUser = null;
             this.assignModal = true;
+        },
+        
+        async searchUsers() {
+            if (this.userSearch.length < 2) {
+                this.searchResults = [];
+                this.showResults = false;
+                return;
+            }
+            
+            try {
+                const response = await fetch(`{% url "search_users" %}?q=${encodeURIComponent(this.userSearch)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.searchResults = data.users;
+                    this.showResults = true;
+                } else {
+                    this.showMessage('Erreur lors de la recherche', 'error');
+                }
+            } catch (error) {
+                this.showMessage('Erreur lors de la recherche', 'error');
+            }
+        },
+        
+        selectUser(user) {
+            this.selectedUser = user;
+            this.selectedValidatorId = user.id;
+            this.userSearch = user.nom_complet;
+            this.showResults = false;
+        },
+        
+        clearSelection() {
+            this.selectedUser = null;
+            this.selectedValidatorId = '';
+            this.userSearch = '';
+            this.showResults = false;
         },
         
         async assignValidator() {
             if (!this.selectedValidatorId) {
-                this.showMessage('Veuillez sélectionner un valideur', 'error');
+                this.showMessage('Veuillez sélectionner un utilisateur', 'error');
                 return;
             }
             
             const formData = new FormData();
             formData.append('service_id', this.selectedService.id);
+            formData.append('audit_source_id', this.selectedService.auditSourceId);
             formData.append('validateur_id', this.selectedValidatorId);
             formData.append('niveau', this.selectedService.niveau);
             formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
@@ -364,36 +456,6 @@ function workflowManager() {
             }
         },
         
-        async removeValidator(validatorServiceId) {
-            if (!confirm('Êtes-vous sûr de vouloir retirer ce valideur ?')) {
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('validateur_service_id', validatorServiceId);
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-            
-            try {
-                const response = await fetch('{% url "remove_validator" %}', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    this.showMessage(data.message, 'success');
-                    // Recharger la page pour refléter les changements
-                    window.location.reload();
-                } else {
-                    this.showMessage(data.error, 'error');
-                }
-            } catch (error) {
-                this.showMessage('Erreur lors de la suppression', 'error');
-            }
-        },
-        
-        
         showMessage(text, type) {
             const messageContainer = document.getElementById('messages');
             const alertClass = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700';
@@ -411,6 +473,17 @@ function workflowManager() {
         }
     }
 }
+</script>
+
+<script>
+// Fonction globale pour ouvrir le modal d'assignation
+window.openAssignModal = function(serviceId, serviceNom, auditSourceId, auditSourceNom, niveau) {
+    // Trouver le composant Alpine.js et appeler sa méthode
+    const workflowContainer = document.querySelector('[x-data*="workflowManager"]');
+    if (workflowContainer && workflowContainer._x_dataStack && workflowContainer._x_dataStack[0]) {
+        workflowContainer._x_dataStack[0].openAssignModal(serviceId, serviceNom, auditSourceId, auditSourceNom, niveau);
+    }
+};
 </script>
 
 <!-- Token CSRF pour les requêtes AJAX -->

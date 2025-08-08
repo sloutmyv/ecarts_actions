@@ -51,11 +51,12 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Gestion des Sessions**: Middleware pour suivi des modifications par utilisateur
 
 ### ⚖️ **Système de Workflow de Validation**
-- **Matrice de Valideurs**: Affectation de valideurs par service avec jusqu'à 3 niveaux de validation
-- **Services Feuilles**: Configuration limitée aux services terminaux (sans sous-services)
-- **Tri Intelligent**: Tri alphabétique par nom ou code avec indicateurs visuels
-- **Interface Épurée**: Modal d'assignation HTMX avec gestion AJAX des affectations
-- **Gestion Flexible**: Possibilité d'avoir 1, 2 ou 3 niveaux selon les besoins du service
+- **Matrice Service × Source d'Audit × Niveau**: Affectation de valideurs avec dimension source d'audit intégrée
+- **Interface Dropdown Minimaliste**: Navigation service → sources d'audit pour assignation simplifiée
+- **Compteurs Dynamiques**: Affichage du nombre de sources non assignées par service
+- **Tous Utilisateurs Éligibles**: Suppression des restrictions aux seuls administrateurs
+- **Boutons d'Assignation Fonctionnels**: Correction du scope Alpine.js avec fonction globale
+- **Design Épuré**: Suppression du bandeau d'avertissement global au profit d'indicateurs par service
 
 ### Objectifs techniques
 - Interface utilisateur moderne et responsive
@@ -923,6 +924,38 @@ python manage.py loaddata backup.json
 ---
 
 ## 🆕 Changements récents
+
+### v2.4.0 - Interface Workflow Dropdown Minimaliste avec Gestion Sources d'Audit (2025-08-08)
+
+#### 📊 Nouvelle architecture Service × Source d'Audit × Niveau
+- **Dimension source d'audit intégrée** : Modèle ValidateurService étendu avec AuditSource comme foreign key
+- **Contrainte unique restructurée** : `['service', 'audit_source', 'niveau']` pour éviter les conflits
+- **Migration avec valeur par défaut** : `default=1` (Audit interne/AFNOR) pour les enregistrements existants
+- **Méthode get_validateurs_service améliorée** : Ajout du paramètre `audit_source`
+
+#### 🎨 Interface Dropdown Minimaliste
+- **Suppression bandeau d'avertissement global** : Plus de grande zone rouge perturbante
+- **Compteurs par service** : Format "X/Y non assignées" (rouge) ou "✓ Y/Y configurées" (vert)
+- **Navigation dropdown intuitive** : Clic service → dépliage sources d'audit en ligne
+- **Layout réorganisé** : Source d'audit à gauche, niveaux à droite pour clarté visuelle
+
+#### ⚙️ Corrections Techniques Critiques
+- **Boutons d'assignation fonctionnels** : Résolution du problème de scope Alpine.js
+- **Fonction globale window.openAssignModal** : Contournement élégant des limitations x-data
+- **Échappement JavaScript correct** : Usage de `escapejs` pour gérer les apostrophes
+- **Pont Alpine.js** : Accès au data stack pour déclenchement modal depuis DOM global
+
+#### 🎯 Améliorations UX
+- **Suppression des restrictions admin** : Tous les utilisateurs peuvent être valideurs
+- **Interface plus compacte** : Hauteur de lignes augmentée mais design épuré
+- **Flèche rotative** : Animation 90° pour indiquer l'état du dropdown
+- **Badges couleur par niveau** : Vert/Bleu/Violet avec bouton suppression intégré
+
+#### 🛠️ Refactoring Backend
+- **Vues workflow restructurées** : assign_validator() et remove_validator() gèrent audit_source_id
+- **API service_detail_api()** : Endpoint JSON pour chargement dynamique des sources par service
+- **search_users() étendu** : Recherche sur tous les utilisateurs au lieu des seuls admins
+- **Validation étendue** : clean() vérifie l'unicité service/audit_source/niveau
 
 ### v2.3.0 - Système de Workflow de Validation (2025-08-07)
 
