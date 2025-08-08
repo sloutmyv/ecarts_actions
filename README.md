@@ -21,11 +21,12 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 ### Fonctionnalités principales
 - **Gestion des Services**: Organisation hiérarchique des départements/services avec tri alphabétique automatique
 - **Gestion des Utilisateurs**: Système d'authentification personnalisé avec 3 niveaux de droits
-- **Gestion du Workflow**: Système d'affectation de valideurs par service avec niveaux de validation (1, 2, 3)
+- **Workflow de Validation Optimisé**: Interface compacte avec mise à jour dynamique en temps réel
 - **Authentification Matricule**: Connexion par matricule (format: Lettre + 4 chiffres)
-- **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques
+- **Interface moderne**: Navigation intuitive avec dropdowns hiérarchiques et transitions fluides
 - **Import/Export JSON**: Sauvegarde et restauration des données (services et utilisateurs)
-- **Modales de confirmation**: Système uniforme de confirmation pour les suppressions
+- **Modales de confirmation**: Système uniforme de confirmation pour toutes les opérations critiques
+- **Performance Optimisée**: Templates cachés, requêtes optimisées, et réduction du FOUC
 
 ### 🚀 **Système d'Événements et d'Écarts**
 - **Gestion des Événements**: Système complet de déclaration et suivi des événements avec classification écart/non-écart
@@ -200,27 +201,28 @@ def clean(self):
 - ❌ `Service A` → `Service B` → `Service A` (cycle)
 - ✅ `Service A` → `Service B` → `Service C` (hiérarchie valide)
 
-### Modèle ValidateurService
+### ⚖️ Modèle ValidateurService - Workflow Optimisé
 
-Le modèle `ValidateurService` gère l'affectation de valideurs aux services pour le workflow de validation des écarts.
+Le modèle `ValidateurService` gère l'affectation de valideurs aux services avec une architecture optimisée pour les performances et l'UX.
 
 ```python
 class ValidateurService(TimestampedModel):
-    service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    validateur = models.ForeignKey(User, on_delete=models.CASCADE,
-                                  limit_choices_to={'droits__in': [User.ADMIN, User.SUPER_ADMIN]})
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='validateurs')
+    audit_source = models.ForeignKey(AuditSource, on_delete=models.CASCADE)
+    validateur = models.ForeignKey(User, on_delete=models.CASCADE)  # Tous les utilisateurs
     niveau = models.IntegerField(choices=[(1, 'Niveau 1'), (2, 'Niveau 2'), (3, 'Niveau 3')])
     actif = models.BooleanField(default=True)
 ```
 
-#### Fonctionnalités du modèle ValidateurService
+#### ✨ Nouvelles Fonctionnalités (v2.3)
 
-| Fonctionnalité | Description | Usage |
-|----------------|-------------|-------|
-| **Niveaux de validation** | Jusqu'à 3 niveaux par service | 1=Première validation, 2=Intermédiaire, 3=Finale |
-| **Contraintes uniques** | Un valideur par service par niveau | Évite les doublons d'affectation |
-| **Activation/Désactivation** | Champ `actif` pour gestion temporaire | Suspension sans suppression |
-| **Restriction Admin** | Seuls SA/AD peuvent être valideurs | Sécurité du workflow |
+| Fonctionnalité | Description | Impact |
+|----------------|-------------|--------|
+| **Matrice Service × Source × Niveau** | Un valideur par combinaison | Granularité maximale |
+| **Tous utilisateurs éligibles** | Plus de restriction aux seuls admins | Flexibilité d'assignation |
+| **Interface compacte** | Badges réduits (w-6→w-5, w-4) | Affichage optimisé |
+| **Mise à jour dynamique** | Badges d'aperçu temps réel | Aucun rechargement nécessaire |
+| **Modal refait** | JavaScript vanilla stable | Tous les boutons fonctionnels |
 
 #### Méthodes utilitaires
 
@@ -352,24 +354,58 @@ services_niveau_2 = Service.objects.filter(
 5. **Protection administrateur** : L'utilisateur effectuant l'import est préservé
 6. **Transaction atomique** : Import complet ou échec total (pas de demi-mesure)
 
-### Optimisations de performance
+### 🚀 Optimisations de performance
 
-#### Requêtes optimisées
+#### Requêtes optimisées pour le workflow
 ```python
-# Éviter N+1 queries avec select_related
-services = Service.objects.select_related('parent')
+# Workflow - Éviter N+1 queries avec préchargement optimisé
+services_feuilles = Service.objects.filter(
+    sous_services__isnull=True
+).prefetch_related(
+    Prefetch(
+        'validateurs',
+        queryset=ValidateurService.objects.filter(actif=True).select_related(
+            'validateur', 'audit_source'
+        )
+    )
+).order_by(order_field)
 
-# Précharger les sous-services
-services = Service.objects.prefetch_related('sous_services')
-
-# Requête complète optimisée
-services = Service.objects.select_related('parent').prefetch_related('sous_services')
+# Pré-construction d'un dictionnaire pour éliminer les requêtes N+1
+validateurs_dict = {}
+for service in services_feuilles:
+    validateurs_dict[service.id] = {}
+    for audit_source in audit_sources:
+        validateurs_dict[service.id][audit_source.id] = {1: None, 2: None, 3: None}
 ```
 
-#### Index de base de données
-- Index automatique sur `id` (clé primaire)
-- Index automatique sur `code` (contrainte unique)
-- Index automatique sur `parent_id` (clé étrangère)
+#### Performance frontend - Réduction FOUC
+```html
+<!-- Préchargement des ressources critiques -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com">
+<link rel="dns-prefetch" href="https://unpkg.com">
+
+<!-- CSS critique en inline -->
+<style>
+    .pre-tailwind { visibility: hidden; }
+    .tailwind-loaded .pre-tailwind { visibility: visible; }
+</style>
+```
+
+#### Cache de développement
+```python
+# Templates cachés pour éviter rechargements constants
+TEMPLATES[0]['OPTIONS']['loaders'] = [
+    ('django.template.loaders.cached.Loader', [...])
+]
+
+# Cache en mémoire pour meilleures performances
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': 300,
+    }
+}
+```
 
 ### Migration et évolution du schéma
 

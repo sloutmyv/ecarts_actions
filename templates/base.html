@@ -5,10 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}EcartsActions{% endblock %}</title>
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Préchargement des ressources critiques -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    
+    <!-- CSS critique en inline pour éviter le FOUC -->
+    <style>
+        /* CSS critique pour éviter le flash de contenu non stylé */
+        .htmx-request { opacity: 0.8; }
+        .htmx-settling { opacity: 0.8; }
+        .htmx-swapping { opacity: 0.8; }
+        
+        /* Styles de base pour éviter le FOUC */
+        body { 
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
+            line-height: 1.5;
+            -webkit-text-size-adjust: 100%;
+            -moz-tab-size: 4;
+            tab-size: 4;
+        }
+        
+        /* Cache le contenu jusqu'à ce que Tailwind soit chargé */
+        .pre-tailwind { visibility: hidden; }
+        .tailwind-loaded .pre-tailwind { visibility: visible; }
+        
+        /* Styles critiques pour la navigation */
+        .nav-loading { 
+            background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+    
+    <!-- Tailwind CSS avec optimisations -->
     <script>
-        tailwind.config = {
+        // Configuration Tailwind avant le chargement
+        window.tailwindConfig = {
             theme: {
                 extend: {
                     colors: {
@@ -39,11 +78,33 @@
                     }
                 }
             }
-        }
+        };
+        
+        // Marquer quand Tailwind est prêt
+        document.addEventListener('DOMContentLoaded', function() {
+            // Petite attente pour s'assurer que Tailwind a fini de compiler
+            setTimeout(() => {
+                document.documentElement.classList.add('tailwind-loaded');
+            }, 100);
+        });
     </script>
     
-    <!-- HTMX -->
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = window.tailwindConfig;
+    </script>
+    
+    <!-- HTMX avec optimisations -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script>
+        // Configuration HTMX pour de meilleures transitions
+        if (typeof htmx !== 'undefined') {
+            htmx.config.defaultSwapStyle = 'innerHTML';
+            htmx.config.defaultSwapDelay = 0;
+            htmx.config.defaultSettleDelay = 20;
+        }
+    </script>
     
     <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -113,7 +174,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col pre-tailwind">
     <!-- Navigation -->
     <nav class="bg-white border-b border-gray-200 sticky top-0 z-40" x-data="{ mobileMenuOpen: false }">
         <div class="container mx-auto px-4 py-8">

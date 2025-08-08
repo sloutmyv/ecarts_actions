@@ -156,3 +156,27 @@ AUTHENTICATION_BACKENDS = [
     'core.backends.MatriculeAuthBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Performance optimizations for development
+if DEBUG:
+    # Cache templates in memory pour éviter le rechargement constant
+    TEMPLATES[0]['APP_DIRS'] = False  # Désactiver APP_DIRS quand on utilise des loaders
+    TEMPLATES[0]['OPTIONS']['loaders'] = [
+        ('django.template.loaders.cached.Loader', [
+            'django.template.loaders.filesystem.Loader',
+            'django.template.loaders.app_directories.Loader',
+        ]),
+    ]
+    
+    # Cache simple pour le développement (améliore les performances)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+                'CULL_FREQUENCY': 3,
+            }
+        }
+    }

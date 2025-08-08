@@ -1268,15 +1268,32 @@ Contactez votre administrateur système en fournissant toutes les informations c
 
 **🔄 Dernière mise à jour** : Août 2025
 
+## 🚀 Optimisations de Performance
+
+### Réduction du FOUC (Flash of Unstyled Content)
+
+Le système implémente plusieurs optimisations pour réduire le temps de chargement et améliorer l'expérience utilisateur :
+
+#### Solutions mises en place :
+- **Préchargement des ressources** : DNS prefetch et preconnect pour les CDN
+- **CSS critique en inline** : Styles de base chargés immédiatement
+- **Templates cachés** : Mise en cache des templates en développement
+- **Cache en mémoire** : Optimisation des performances Django
+- **Configuration HTMX optimisée** : Délais de transition réduits
+
+Ces optimisations réduisent significativement le temps de transition entre les pages et éliminent l'affichage de contenu non stylé.
+
 ### Historique des versions
 
 **Version 2.3** (Août 2025)
-- ⚖️ **Workflow de validation optimisé** : Interface compacte avec badges réduits
-- 🔄 **Mise à jour dynamique** : Les badges d'aperçu se mettent à jour en temps réel
-- 🎯 **Modal de suppression refait** : Interface centrée et entièrement fonctionnelle
-- ✨ **UX améliorée** : Pas de rechargement de page, feedback immédiat
-- 🎨 **Design compact** : Réduction des tailles pour une interface plus épurée
-- 🔧 **Stabilité renforcée** : JavaScript vanilla pour une meilleure compatibilité
+- ⚖️ **Workflow de validation optimisé** : Interface compacte avec badges réduits (w-6→w-5, w-4)
+- 🔄 **Mise à jour dynamique** : Les badges d'aperçu se mettent à jour en temps réel sans rechargement
+- 🎯 **Modal de suppression refait** : Interface centrée, JavaScript vanilla, tous boutons fonctionnels
+- ✨ **UX améliorée** : Feedback immédiat avec toasts, transitions fluides
+- 🎨 **Design compact** : Réduction des tailles pour une interface plus épurée et moderne  
+- 🔧 **Stabilité renforcée** : JavaScript vanilla pour une meilleure compatibilité que Alpine.js
+- 🚀 **Optimisations FOUC** : Préchargement ressources, CSS critique, templates cachés
+- ⚡ **Performance améliorée** : Requêtes optimisées, dictionnaires pré-construits, cache mémoire
 
 **Version 2.2** (Août 2025)
 - 🗑️ **Suppression d'écarts** : Système de suppression avec popup de confirmation élégante
