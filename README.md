@@ -39,11 +39,14 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 
 ### 🔍 **Filtrage et Tri Avancés**
 - **Vue Personnalisée par Défaut**: Affichage automatique des écarts/événements de son service + déclarés + impliqués
-- **Filtrage Multi-Critères**: Service, déclarant (avec autocomplétion), type d'événement, source d'audit, statut
+- **Filtrage Hiérarchique des Services**: Les utilisateurs d'un service parent voient automatiquement les écarts de leurs services enfants
+- **Filtrage Utilisateur Étendu**: Recherche par déclarant ou impliqué (personnes présentes lors de l'observation)
+- **Filtrage Multi-Critères**: Service, déclarant/impliqué (avec autocomplétion), type d'événement, source d'audit, statut
 - **Filtrage par Type**: Cases à cocher pour afficher écarts et/ou événements (par défaut: écarts uniquement)
 - **Tri Cliquable**: Tri par colonnes avec indicateurs visuels (flèches) sur toutes les listes
 - **Interface Centrée**: Champs de filtres et boutons centrés pour une meilleure UX
 - **Pré-remplissage Intelligent**: Champs service/déclarant auto-remplis en vue personnalisée
+- **Suppression avec Redirection Intelligente**: Retour contextuel selon la page d'origine (liste écarts vs détail déclaration)
 
 ### 🔐 **Permissions et Sécurité**
 - **Contrôle d'Accès Granulaire**: Seuls le déclarant, SA et AD peuvent modifier un écart/événement

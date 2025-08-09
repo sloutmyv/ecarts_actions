@@ -35,6 +35,24 @@ def get_services_hierarchical_order():
     return services_ordered
 
 
+def get_service_and_descendants_ids(service_id):
+    """
+    Retourne la liste des IDs du service et de tous ses descendants.
+    Utilisé pour le filtrage hiérarchique.
+    """
+    try:
+        service = Service.objects.get(id=service_id)
+        service_ids = [service.id]
+        
+        # Récupérer tous les descendants
+        descendants = service.get_descendants()
+        service_ids.extend([descendant.id for descendant in descendants])
+        
+        return service_ids
+    except Service.DoesNotExist:
+        return [service_id]  # Retourner au moins l'ID original si le service n'existe pas
+
+
 @login_required
 def gap_list(request):
     """
@@ -81,9 +99,10 @@ def gap_list(request):
         # Vue personnalisée par défaut
         user_gaps_filter = Q(gap_report__declared_by=request.user)
         
-        # Ajouter les écarts du service de l'utilisateur
+        # Ajouter les écarts du service de l'utilisateur et de ses services descendants
         if request.user.service:
-            user_gaps_filter |= Q(gap_report__service=request.user.service)
+            user_service_ids = get_service_and_descendants_ids(request.user.service.id)
+            user_gaps_filter |= Q(gap_report__service_id__in=user_service_ids)
         
         # Ajouter les écarts où l'utilisateur est impliqué
         user_gaps_filter |= Q(gap_report__involved_users=request.user)
@@ -101,7 +120,9 @@ def gap_list(request):
     if selected_service and selected_service.strip() and selected_service != 'None':
         try:
             service_id = int(selected_service)
-            gaps = gaps.filter(gap_report__service_id=service_id)
+            # Récupérer l'ID du service et de tous ses descendants pour un filtrage hiérarchique
+            service_ids = get_service_and_descendants_ids(service_id)
+            gaps = gaps.filter(gap_report__service_id__in=service_ids)
         except (ValueError, TypeError):
             pass
     
@@ -125,15 +146,23 @@ def gap_list(request):
     if declared_by_id and declared_by_id.strip() and declared_by_id != 'None':
         try:
             user_id = int(declared_by_id)
-            gaps = gaps.filter(gap_report__declared_by_id=user_id)
+            # Filtrer les écarts où l'utilisateur est déclarant OU impliqué
+            gaps = gaps.filter(
+                Q(gap_report__declared_by_id=user_id) | 
+                Q(gap_report__involved_users__id=user_id)
+            ).distinct()  # Éviter les doublons dus aux relations ManyToMany
         except (ValueError, TypeError):
             pass
     elif declared_by_search and declared_by_search.strip():
+        # Filtrer les écarts où l'utilisateur est déclarant OU impliqué
         gaps = gaps.filter(
             Q(gap_report__declared_by__nom__icontains=declared_by_search) |
             Q(gap_report__declared_by__prenom__icontains=declared_by_search) |
-            Q(gap_report__declared_by__matricule__icontains=declared_by_search)
-        )
+            Q(gap_report__declared_by__matricule__icontains=declared_by_search) |
+            Q(gap_report__involved_users__nom__icontains=declared_by_search) |
+            Q(gap_report__involved_users__prenom__icontains=declared_by_search) |
+            Q(gap_report__involved_users__matricule__icontains=declared_by_search)
+        ).distinct()  # Éviter les doublons dus aux relations ManyToMany
     
     # Filtrage par type d'événement (écarts vs événements)
     if show_gaps and not show_events:
@@ -174,13 +203,22 @@ def gap_list(request):
     
     # Déterminer le service sélectionné pour l'affichage
     selected_service_name = None
+    selected_service_has_descendants = False
+    selected_service_descendants_count = 0
     if selected_service and selected_service.strip() and selected_service != 'None':
         try:
             service_id = int(selected_service)
             selected_service_obj = Service.objects.get(id=service_id)
             selected_service_name = selected_service_obj.get_chemin_hierarchique()
+            selected_service_descendants_count = selected_service_obj.get_descendants_count()
+            selected_service_has_descendants = selected_service_descendants_count > 0
         except (Service.DoesNotExist, ValueError, TypeError):
             pass
+    
+    # Informations sur le service de l'utilisateur pour la vue personnalisée
+    user_service_descendants_count = 0
+    if request.user.service:
+        user_service_descendants_count = request.user.service.get_descendants_count()
     
     context = {
         'gaps': visible_gaps,
@@ -189,6 +227,9 @@ def gap_list(request):
         'audit_sources': audit_sources,
         'selected_service': selected_service,
         'selected_service_name': selected_service_name,
+        'selected_service_has_descendants': selected_service_has_descendants,
+        'selected_service_descendants_count': selected_service_descendants_count,
+        'user_service_descendants_count': user_service_descendants_count,
         'selected_status': selected_status,
         'selected_gap_type': selected_gap_type,
         'selected_audit_source': selected_audit_source,
@@ -238,9 +279,10 @@ def gap_report_list(request):
         user_filter = Q(declared_by=request.user)  # Écarts qu'il a déclarés
         user_filter |= Q(involved_users=request.user)  # Écarts auxquels il est impliqué
         
-        # Si l'utilisateur a un service, inclure aussi les écarts de ce service
+        # Si l'utilisateur a un service, inclure aussi les écarts de ce service et ses descendants
         if request.user.service:
-            user_filter |= Q(service=request.user.service)
+            user_service_ids = get_service_and_descendants_ids(request.user.service.id)
+            user_filter |= Q(service_id__in=user_service_ids)
             selected_service = str(request.user.service.id)  # Pré-sélectionner le service dans le filtre
         
         gap_reports = gap_reports.filter(user_filter)
@@ -254,7 +296,8 @@ def gap_report_list(request):
     else:
         # Appliquer les filtres sélectionnés explicitement
         if selected_service:
-            gap_reports = gap_reports.filter(service_id=selected_service)
+            service_ids = get_service_and_descendants_ids(int(selected_service))
+            gap_reports = gap_reports.filter(service_id__in=service_ids)
         # Si selected_service est une chaîne vide (""), cela signifie "Toutes les entités"
         # Dans ce cas, on ne filtre pas par service (on garde tous les services)
         
@@ -262,26 +305,36 @@ def gap_report_list(request):
             # Si c'est un ID utilisateur (sélectionné via autocomplétion)
             declared_by_id = request.GET.get('declared_by_id')
             if declared_by_id:
-                gap_reports = gap_reports.filter(declared_by_id=declared_by_id)
+                # Filtrer les déclarations où l'utilisateur est déclarant OU impliqué
+                gap_reports = gap_reports.filter(
+                    Q(declared_by_id=declared_by_id) |
+                    Q(involved_users__id=declared_by_id)
+                ).distinct()  # Éviter les doublons dus aux relations ManyToMany
             else:
                 # Recherche textuelle dans nom, prénom ou matricule
                 search_terms = declared_by_search.split()
                 
                 # Si plusieurs mots, chercher les combinaisons nom+prénom
                 if len(search_terms) > 1:
-                    # Recherche "prénom nom" ou "nom prénom"
+                    # Recherche "prénom nom" ou "nom prénom" dans déclarants ET impliqués
                     gap_reports = gap_reports.filter(
                         Q(declared_by__nom__icontains=search_terms[0], declared_by__prenom__icontains=search_terms[1]) |
                         Q(declared_by__nom__icontains=search_terms[1], declared_by__prenom__icontains=search_terms[0]) |
-                        Q(declared_by__matricule__icontains=declared_by_search)
-                    )
+                        Q(declared_by__matricule__icontains=declared_by_search) |
+                        Q(involved_users__nom__icontains=search_terms[0], involved_users__prenom__icontains=search_terms[1]) |
+                        Q(involved_users__nom__icontains=search_terms[1], involved_users__prenom__icontains=search_terms[0]) |
+                        Q(involved_users__matricule__icontains=declared_by_search)
+                    ).distinct()  # Éviter les doublons dus aux relations ManyToMany
                 else:
-                    # Recherche simple dans un seul champ
+                    # Recherche simple dans un seul champ pour déclarants ET impliqués
                     gap_reports = gap_reports.filter(
                         Q(declared_by__nom__icontains=declared_by_search) |
                         Q(declared_by__prenom__icontains=declared_by_search) |
-                        Q(declared_by__matricule__icontains=declared_by_search)
-                    )
+                        Q(declared_by__matricule__icontains=declared_by_search) |
+                        Q(involved_users__nom__icontains=declared_by_search) |
+                        Q(involved_users__prenom__icontains=declared_by_search) |
+                        Q(involved_users__matricule__icontains=declared_by_search)
+                    ).distinct()  # Éviter les doublons dus aux relations ManyToMany
         
         if selected_audit_source:
             gap_reports = gap_reports.filter(audit_source_id=selected_audit_source)
@@ -729,10 +782,14 @@ def delete_gap(request, pk):
         from django.template.loader import render_to_string
         from django.middleware.csrf import get_token
         
+        # Récupérer le paramètre 'from' pour savoir d'où vient la demande
+        from_page = request.GET.get('from', 'detail')
+        
         notification_html = render_to_string('core/gaps/notification_confirm.html', {
             'message': message,
             'gap': gap,
-            'csrf_token': get_token(request)
+            'csrf_token': get_token(request),
+            'from_page': from_page
         })
         
         from django.http import HttpResponse
@@ -780,6 +837,9 @@ def delete_gap_confirm(request, pk):
     # Supprimer l'écart
     gap.delete()
     
+    # Déterminer où rediriger selon la page d'origine
+    from_page = request.GET.get('from', 'detail')
+    
     if is_last_gap:
         # Si c'était le dernier écart, supprimer aussi la déclaration
         
@@ -798,28 +858,40 @@ def delete_gap_confirm(request, pk):
         # Message de succès pour suppression complète
         messages.success(request, f'Écart "{gap_number}" et déclaration #{gap_report_id} supprimés définitivement avec succès.')
         
-        # Rediriger vers la liste des déclarations
+        # Rediriger selon la page d'origine
         if request.headers.get('HX-Request'):
             from django.http import HttpResponse
             response = HttpResponse('')
             response['HX-Trigger'] = 'gapReportDeleted'
-            response['HX-Redirect'] = '/gaps/declarations/'
+            if from_page == 'list':
+                response['HX-Redirect'] = '/gaps/'  # Liste des écarts
+            else:
+                response['HX-Redirect'] = '/gaps/declarations/'  # Liste des déclarations
             return response
         
-        return redirect('gaps:gap_report_list')
+        if from_page == 'list':
+            return redirect('gaps:gap_list')
+        else:
+            return redirect('gaps:gap_report_list')
     else:
         # Supprimer seulement l'écart
         messages.success(request, f'Écart "{gap_number}" supprimé définitivement avec succès.')
         
-        # Rediriger vers la déclaration
+        # Rediriger selon la page d'origine
         if request.headers.get('HX-Request'):
             from django.http import HttpResponse
             response = HttpResponse('')
             response['HX-Trigger'] = 'gapDeleted'
-            response['HX-Redirect'] = f'/gaps/declaration/{gap_report.pk}/'
+            if from_page == 'list':
+                response['HX-Redirect'] = '/gaps/'  # Liste des écarts
+            else:
+                response['HX-Redirect'] = f'/gaps/declaration/{gap_report.pk}/'  # Détail de la déclaration
             return response
         
-        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+        if from_page == 'list':
+            return redirect('gaps:gap_list')
+        else:
+            return redirect('gaps:gap_report_detail', pk=gap_report.pk)
 
 
 @login_required
