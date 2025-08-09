@@ -245,7 +245,7 @@
                         hx-target="#process-field"
                         hx-include="[name='audit_source']"
                         hx-trigger="change"
-                        onchange="loadGapTypes()"
+                        onchange="loadGapTypesReliable()"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Sélectionner une source</option>
                         {% for source in audit_sources %}
@@ -544,9 +544,12 @@
         // Si une source d'audit est pré-sélectionnée, charger les types d'écart
         const auditSourceSelect = document.getElementById('audit_source');
         if (auditSourceSelect && auditSourceSelect.value) {
-            loadGapTypes();
+            console.log('Source d\'audit pré-sélectionnée détectée:', auditSourceSelect.value);
+            loadGapTypesReliable();
+        } else {
+            console.log('Aucune source d\'audit pré-sélectionnée');
         }
-    }, 200);
+    }, 300);
     
     // Mettre à jour la date et heure de déclaration
     function updateCreationDateTime() {
@@ -617,8 +620,8 @@
     let gapIndex = 0;
     let gapTypesOptions = '<option value="">Sélectionner d\'abord une source d\'audit</option>';
     
-    // Charger les types d'écart selon la source d'audit
-    function loadGapTypes() {
+    // Charger les types d'écart selon la source d'audit (version fiable)
+    function loadGapTypesReliable() {
         const auditSourceSelect = document.getElementById('audit_source');
         
         if (!auditSourceSelect.value) {
@@ -627,28 +630,66 @@
             return;
         }
         
-        // Faire une requête AJAX pour récupérer les types d'écart
-        const url = '{% url "gaps:get_gap_types" %}' + '?audit_source_id=' + auditSourceSelect.value;
-        fetch(url)
-            .then(response => response.text())
+        // Afficher un indicateur de chargement
+        gapTypesOptions = '<option value="">Chargement des types...</option>';
+        updateAllGapTypeSelects();
+        
+        // Attendre un délai pour éviter les conflits avec HTMX
+        setTimeout(() => {
+            const url = '{% url "gaps:get_gap_types" %}' + '?audit_source_id=' + auditSourceSelect.value;
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau: ' + response.status);
+                }
+                return response.text();
+            })
             .then(html => {
                 gapTypesOptions = html;
                 updateAllGapTypeSelects();
+                console.log('Types d\'écart chargés avec succès pour la source:', auditSourceSelect.value);
             })
             .catch(error => {
                 console.error('Erreur lors du chargement des types d\'écart:', error);
-                gapTypesOptions = '<option value="">Erreur de chargement</option>';
+                gapTypesOptions = '<option value="">Erreur de chargement - Veuillez réessayer</option>';
                 updateAllGapTypeSelects();
+                
+                // Réessayer une fois après une seconde
+                setTimeout(() => {
+                    loadGapTypesReliable();
+                }, 1000);
             });
+        }, 200); // Délai pour éviter les conflits
+    }
+    
+    // Ancienne fonction gardée pour compatibilité
+    function loadGapTypes() {
+        loadGapTypesReliable();
     }
     
     // Mettre à jour tous les selects de types d'écart
     function updateAllGapTypeSelects() {
         const selects = document.querySelectorAll('.gap-type-select');
-        selects.forEach(select => {
+        console.log('Mise à jour de', selects.length, 'selects de types d\'écart');
+        
+        selects.forEach((select, index) => {
             const currentValue = select.value;
             select.innerHTML = gapTypesOptions;
-            if (currentValue) select.value = currentValue;
+            
+            // Restaurer la valeur précédente si elle existe toujours
+            if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
+                select.value = currentValue;
+                console.log('Valeur restaurée pour select', index, ':', currentValue);
+            } else if (currentValue) {
+                console.log('Valeur', currentValue, 'non trouvée dans les nouvelles options pour select', index);
+            }
         });
     }
     

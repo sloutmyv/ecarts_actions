@@ -19,10 +19,10 @@
                 
                 <div class="flex space-x-3">
                     <form method="post" 
-                          hx-post="{% url 'gaps:delete_gap_confirm' gap.pk %}"
+                          hx-post="{% url 'gaps:delete_gap_confirm' gap.pk %}?from={{ from_page }}"
                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                           hx-trigger="submit"
-                          hx-target="#modal-container"
+                          hx-target="body"
                           style="display: inline;">
                         {% csrf_token %}
                         <button type="submit" @click="open = false"
