@@ -27,8 +27,8 @@ class MatriculeAuthBackend(ModelBackend):
             User().set_password(password)
             return None
         
-        # Vérifier le mot de passe
-        if user.check_password(password) and self.user_can_authenticate(user):
+        # Vérifier le mot de passe et que l'utilisateur est actif
+        if user.check_password(password) and self.user_can_authenticate(user) and user.actif:
             return user
         
         return None
@@ -42,4 +42,4 @@ class MatriculeAuthBackend(ModelBackend):
         except User.DoesNotExist:
             return None
         
-        return user if self.user_can_authenticate(user) else None
+        return user if self.user_can_authenticate(user) and user.actif else None

@@ -69,11 +69,15 @@ def users_list(request):
     # Déterminer l'ordre inverse pour les liens de tri
     next_order = 'desc' if order == 'asc' else 'asc'
     
+    # Compter le nombre total d'utilisateurs actifs
+    total_utilisateurs_actifs = User.objects.filter(actif=True).count()
+    
     context = {
         'users': users,
         'services': services,
         'selected_service': service_filter,
         'page_title': 'Gestion des Utilisateurs',
+        'total_utilisateurs_actifs': total_utilisateurs_actifs,
         'current_sort': sort_by,
         'current_order': order,
         'next_order': next_order,
@@ -233,6 +237,23 @@ def user_delete(request, pk):
     # Empêcher la suppression de son propre compte
     if user_to_delete == request.user:
         message = 'Vous ne pouvez pas supprimer votre propre compte.'
+        if request.headers.get('HX-Request'):
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/users/notification_error.html', {
+                'message': message,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
+        else:
+            messages.error(request, message)
+    # Empêcher la suppression d'un utilisateur avec des déclarations d'écarts
+    elif not user_to_delete.can_be_deleted():
+        reason = user_to_delete.get_deletion_blocking_reason()
+        message = f'{reason}\n\nVous devez d\'abord transférer les déclarations vers un autre utilisateur actif.'
         if request.headers.get('HX-Request'):
             from django.template.loader import render_to_string
             from django.middleware.csrf import get_token

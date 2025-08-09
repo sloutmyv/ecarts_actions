@@ -110,5 +110,54 @@ class Service(TimestampedModel, CodedModel):
         return self.sous_services.filter(actif=True).exists()
     
     def can_be_deactivated(self):
-        """Vérifie si le service peut être désactivé (pas de sous-services actifs)."""
-        return not self.has_active_descendants()
+        """
+        Vérifie si le service peut être désactivé.
+        Un service ne peut pas être désactivé s'il a :
+        - Des sous-services actifs
+        - Des utilisateurs actifs associés
+        - Des déclarations d'écarts associées (GapReport)
+        """
+        # Vérifier les sous-services actifs
+        if self.has_active_descendants():
+            return False
+        
+        # Vérifier les utilisateurs actifs associés
+        from .users import User  # Import local pour éviter les imports circulaires
+        if User.objects.filter(service=self, actif=True).exists():
+            return False
+        
+        # Vérifier les déclarations d'écarts associées
+        from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        if GapReport.objects.filter(service=self).exists():
+            return False
+            
+        return True
+    
+    def get_deactivation_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle le service ne peut pas être désactivé.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        reasons = []
+        
+        # Vérifier les sous-services actifs
+        if self.has_active_descendants():
+            active_children_count = self.sous_services.filter(actif=True).count()
+            reasons.append(f"contient {active_children_count} sous-service(s) actif(s)")
+        
+        # Vérifier les utilisateurs actifs associés
+        from .users import User  # Import local pour éviter les imports circulaires
+        active_users_count = User.objects.filter(service=self, actif=True).count()
+        if active_users_count > 0:
+            reasons.append(f"a {active_users_count} utilisateur(s) actif(s) associé(s)")
+        
+        # Vérifier les déclarations d'écarts associées
+        from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        gap_reports_count = GapReport.objects.filter(service=self).count()
+        if gap_reports_count > 0:
+            reasons.append(f"est associé à {gap_reports_count} déclaration(s) d'écart(s)")
+        
+        if reasons:
+            return f"Le service ne peut pas être désactivé car il {' et '.join(reasons)}."
+        
+        return None

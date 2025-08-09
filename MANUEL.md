@@ -312,15 +312,35 @@ Direction Générale (DG)
     └── Contrôle de Gestion (CG)
 ```
 
-#### Gestion des activations/désactivations
+#### Gestion des activations/désactivations et validation de suppression
 - **Planification** : Désactivez d'abord les sous-services avant un service parent
 - **Communication** : Prévenez les utilisateurs concernés avant désactivation
 - **Temporaire** : Utilisez la désactivation pour les réorganisations temporaires
 - **Historique** : Ne supprimez que les services créés par erreur, désactivez sinon
+- **Validation renforcée** : Impossible de désactiver/supprimer un service avec utilisateurs actifs ou écarts
+- **Messages d'erreur centrés** : Notifications explicites avec guidance sur les actions requises
+- **Compteurs d'activité** : Badge bleu affichant le nombre de services actifs sur la page de gestion
 
 ## 👤 Gestion des Utilisateurs
 
 **Accès requis** : Super Administrateur ou Administrateur uniquement
+
+### 🔐 Sécurité Renforcée et Validation
+
+#### Système de validation de suppression complet
+- **Utilisateurs avec écarts** : Impossible de supprimer un utilisateur ayant des déclarations d'écarts associées
+- **Protection dans l'application** : Messages d'erreur centrés expliquant les contraintes
+- **Protection dans l'admin Django** : Validation aussi dans l'interface d'administration
+- **Guidance utilisateur** : Messages détaillés sur les actions requises (transfert d'écarts vers autre utilisateur)
+
+#### Authentification sécurisée
+- **Blocage des comptes inactifs** : Les utilisateurs désactivés ne peuvent plus se connecter
+- **Backend d'authentification modifié** : Vérification du statut `actif` lors de la connexion
+- **Déconnexion automatique** : Sessions interrompues pour les comptes désactivés
+
+#### Compteurs d'activité
+- **Badge en temps réel** : Affichage du nombre d'utilisateurs actifs sur la page de gestion
+- **Visibilité améliorée** : Badge vert indiquant "X actifs" dans le titre de la page
 
 ### Vue d'ensemble des Utilisateurs
 

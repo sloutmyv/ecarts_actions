@@ -22,10 +22,14 @@ def services_list(request):
     """
     # Afficher seulement les services actifs dans l'application principale
     services_racines = Service.objects.filter(parent=None, actif=True).order_by('nom')
+    
+    # Compter le nombre total de services actifs
+    total_services_actifs = Service.objects.filter(actif=True).count()
         
     context = {
         'services_racines': services_racines,
         'page_title': 'Gestion des Services',
+        'total_services_actifs': total_services_actifs,
         'include_inactive': False
     }
     return render(request, 'core/services/list.html', context)

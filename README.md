@@ -54,7 +54,7 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Filtrage Sécurisé**: Protection contre les injections avec validation des paramètres
 - **Gestion des Sessions**: Middleware pour suivi des modifications par utilisateur
 
-### 🎛️ **Gestion de l'Activation/Désactivation**
+### 🎛️ **Gestion de l'Activation/Désactivation et Sécurité**
 - **Services Actifs/Inactifs**: Désactivation des services sans suppression pour préserver l'historique
 - **Utilisateurs Actifs/Inactifs**: Blocage d'authentification des comptes inactifs avec conservation des données
 - **Contraintes Hiérarchiques**: Impossible de désactiver un service parent avec des sous-services actifs
@@ -63,6 +63,10 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Filtrage Intelligent**: Services/utilisateurs inactifs masqués des listes de sélection mais historique préservé
 - **Permissions Strictes**: Seuls Admin et Super Admin peuvent activer/désactiver services et utilisateurs
 - **Autocomplétion Filtrée**: Recherche utilisateur ne retourne que les comptes actifs
+- **Authentification Sécurisée**: Utilisateurs inactifs ne peuvent plus se connecter à l'application
+- **Validation de Suppression**: Impossible de supprimer services/utilisateurs avec dépendances actives
+- **Messages d'Erreur Centrés**: Interface utilisateur avec notifications centrées sur la page
+- **Compteurs Temps Réel**: Affichage du nombre d'éléments actifs sur les pages de gestion
 
 ### ⚖️ **Système de Workflow de Validation**
 - **Matrice Service × Source d'Audit × Niveau**: Affectation de valideurs avec dimension source d'audit intégrée
@@ -973,6 +977,29 @@ python manage.py loaddata backup.json
 ---
 
 ## 🆕 Changements récents
+
+### v2.5.0 - Système de Sécurité et Validation Renforcé (2025-08-09)
+
+#### 🔐 Sécurité de l'authentification
+- **Blocage utilisateurs inactifs**: Les comptes désactivés ne peuvent plus se connecter (backend d'authentification modifié)
+- **Validation renforcée**: Backend vérifie `user.actif` lors de l'authentification et des sessions
+
+#### 🛡️ Système de validation de suppression complet
+- **Services avec utilisateurs actifs**: Impossible de désactiver/supprimer un service ayant des utilisateurs actifs
+- **Services avec écarts**: Impossible de désactiver/supprimer un service ayant des déclarations d'écarts associées
+- **Utilisateurs avec écarts**: Impossible de supprimer un utilisateur ayant des déclarations d'écarts associées
+- **Protection hiérarchique**: Impossible de supprimer un service ayant des sous-services
+
+#### 🎯 Interface utilisateur améliorée
+- **Messages d'erreur centrés**: Notifications centrées sur la page avec overlay et styles modernes
+- **Compteurs d'éléments actifs**: Badges affichant le nombre de services/utilisateurs actifs sur les pages de gestion
+- **Guidance administrative**: Messages détaillés expliquant les actions requises avant suppression
+- **Validation temps réel**: Vérifications côté serveur avec retours utilisateur immédiats
+
+#### 🧹 Optimisation et nettoyage
+- **Suppression de fichiers inutiles**: Dossier `staticfiles/` et templates admin incorrects supprimés
+- **Templates simplifiés**: Suppression des éléments d'interface pour utilisateurs/services inactifs
+- **Performances améliorées**: Réduction de la taille du projet et optimisation des requêtes
 
 ### v2.4.0 - Interface Workflow Dropdown Minimaliste avec Gestion Sources d'Audit (2025-08-08)
 

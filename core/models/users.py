@@ -183,3 +183,25 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
     def is_active(self):
         """Property Django pour l'authentification - utilisateur inactif ne peut pas se connecter."""
         return self.actif
+    
+    def can_be_deleted(self):
+        """
+        Vérifie si l'utilisateur peut être supprimé.
+        Un utilisateur ne peut pas être supprimé s'il a :
+        - Des déclarations d'écarts associées (GapReport)
+        """
+        from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        return not GapReport.objects.filter(declared_by=self).exists()
+    
+    def get_deletion_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle l'utilisateur ne peut pas être supprimé.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        
+        gap_reports_count = GapReport.objects.filter(declared_by=self).count()
+        if gap_reports_count > 0:
+            return f"L'utilisateur ne peut pas être supprimé car il a déclaré {gap_reports_count} déclaration(s) d'écart(s)."
+        
+        return None

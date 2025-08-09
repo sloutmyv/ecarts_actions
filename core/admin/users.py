@@ -157,6 +157,70 @@ class UserAdmin(BaseUserAdmin):
         
         super().save_model(request, obj, form, change)
     
+    def delete_model(self, request, obj):
+        """
+        Validation personnalisée avant suppression.
+        Empêche la suppression d'un utilisateur avec des déclarations d'écarts.
+        """
+        # Empêcher la suppression de son propre compte
+        if obj == request.user:
+            messages.error(
+                request,
+                f"Impossible de supprimer votre propre compte '{obj.get_full_name()}'."
+            )
+            return  # Annuler la suppression
+        
+        # Vérifier les déclarations d'écarts associées
+        if not obj.can_be_deleted():
+            reason = obj.get_deletion_blocking_reason()
+            messages.error(
+                request,
+                f"{reason}\n\n"
+                f"Vous devez d'abord transférer les déclarations d'écarts vers un autre utilisateur actif "
+                f"avant de pouvoir supprimer cet utilisateur."
+            )
+            return  # Annuler la suppression
+        
+        # Si toutes les vérifications passent, procéder à la suppression
+        super().delete_model(request, obj)
+    
+    def delete_queryset(self, request, queryset):
+        """
+        Validation personnalisée pour suppression en lot.
+        Empêche la suppression des utilisateurs avec des contraintes.
+        """
+        blocked_users = []
+        deletable_users = []
+        
+        for user in queryset:
+            # Empêcher la suppression de son propre compte
+            if user == request.user:
+                blocked_users.append(f"{user.get_full_name()}: votre propre compte")
+                continue
+            
+            # Vérifier les déclarations d'écarts
+            if not user.can_be_deleted():
+                reason = user.get_deletion_blocking_reason()
+                blocked_users.append(f"{user.get_full_name()}: a des déclarations d'écarts associées")
+            else:
+                deletable_users.append(user)
+        
+        # Supprimer seulement les utilisateurs sans contraintes
+        if deletable_users:
+            deleted_count = len(deletable_users)
+            for user in deletable_users:
+                user.delete()
+            messages.success(request, f'{deleted_count} utilisateur(s) supprimé(s) avec succès.')
+        
+        # Afficher les utilisateurs bloqués
+        if blocked_users:
+            error_msg = "Impossible de supprimer les utilisateurs suivants:\n"
+            for blocked in blocked_users:
+                error_msg += f"• {blocked}\n"
+            error_msg += "\nPour les utilisateurs avec des déclarations d'écarts associées, "
+            error_msg += "vous devez d'abord transférer les déclarations vers d'autres utilisateurs actifs."
+            messages.error(request, error_msg)
+    
     def changelist_view(self, request, extra_context=None):
         """Ajoute le contexte pour les boutons import/export."""
         extra_context = extra_context or {}
