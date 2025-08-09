@@ -14,17 +14,17 @@ from core.forms import GapReportForm, GapForm, GapAttachmentForm
 
 
 def get_services_hierarchical_order():
-    """Retourne les services triés par ordre alphabétique hiérarchique."""
+    """Retourne les services actifs triés par ordre alphabétique hiérarchique."""
     services_ordered = []
     
-    # D'abord, récupérer tous les services racines triés par nom
-    services_racines = Service.objects.filter(parent__isnull=True).order_by('nom')
+    # D'abord, récupérer tous les services racines actifs triés par nom
+    services_racines = Service.objects.filter(parent__isnull=True, actif=True).order_by('nom')
     
     def add_service_and_children(service, level=0):
-        """Ajoute récursivement un service et ses enfants triés par nom."""
+        """Ajoute récursivement un service et ses enfants actifs triés par nom."""
         services_ordered.append(service)
-        # Récupérer les sous-services triés par nom
-        sous_services = service.sous_services.order_by('nom')
+        # Récupérer les sous-services actifs triés par nom
+        sous_services = service.sous_services.filter(actif=True).order_by('nom')
         for sous_service in sous_services:
             add_service_and_children(sous_service, level + 1)
     
@@ -957,16 +957,16 @@ def search_users(request):
     if len(query) < 1:
         return JsonResponse({'users': []})
     
-    # Si la requête est "all", retourner tous les utilisateurs (pour l'initialisation)
+    # Si la requête est "all", retourner tous les utilisateurs actifs (pour l'initialisation)
     if query.lower() == 'all':
-        users = User.objects.all().order_by('nom', 'prenom')[:100]  # Limiter à 100 utilisateurs
+        users = User.objects.filter(actif=True).order_by('nom', 'prenom')[:100]  # Limiter à 100 utilisateurs actifs
     else:
-        # Rechercher dans nom, prénom ou matricule
+        # Rechercher dans nom, prénom ou matricule parmi les utilisateurs actifs uniquement
         users = User.objects.filter(
             Q(nom__icontains=query) |
             Q(prenom__icontains=query) |
             Q(matricule__icontains=query)
-        ).order_by('nom', 'prenom')[:10]  # Limiter à 10 résultats
+        ).filter(actif=True).order_by('nom', 'prenom')[:10]  # Limiter à 10 résultats actifs
     
     users_data = []
     for user in users:

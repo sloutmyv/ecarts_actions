@@ -251,6 +251,48 @@ Les **Services** représentent l'organisation hiérarchique de votre entreprise 
    - Si confirmé, le service disparaît de la liste
    - Les utilisateurs liés sont automatiquement désaffectés
 
+### Activer/Désactiver un Service (Admin/SA uniquement)
+
+#### Système d'activation/désactivation
+
+L'application intègre un système de **soft deletion** qui permet de désactiver temporairement des services sans les supprimer définitivement.
+
+**Avantages** :
+- **Préservation de l'historique** : Les écarts liés au service restent consultables
+- **Masquage intelligent** : Services inactifs masqués des listes de sélection
+- **Réversibilité** : Un service inactif peut être réactivé à tout moment
+
+#### Comment activer/désactiver
+
+1. **Boutons d'activation** (Administrateurs uniquement)
+   - **Bouton orange "Désactiver"** : Pour les services actifs
+   - **Bouton vert "Activer"** : Pour les services inactifs
+
+2. **Contraintes hiérarchiques**
+   - **Impossible de désactiver** un service parent ayant des sous-services actifs
+   - **Message d'erreur** : "Impossible de désactiver ce service car il a des sous-services actifs"
+   - **Action requise** : Désactiver d'abord tous les sous-services actifs
+
+3. **Indicateurs visuels**
+   - **Services inactifs** : Affichés avec une opacity réduite (60%)
+   - **Badge rouge "INACTIF"** : Affiché sur les services désactivés
+   - **Interface admin** : Badges colorés (✓ ACTIF / ✗ INACTIF)
+
+#### Interface d'administration Django
+
+Pour les Super Administrateurs, l'interface Django propose :
+
+**Actions en lot** :
+- **"Activer les services sélectionnés"** : Active plusieurs services d'un coup
+- **"Désactiver les services sélectionnés"** : Désactive plusieurs services d'un coup
+
+**Badges visuels dans l'admin** :
+- ✅ **ACTIF** : Badge vert pour les services actifs
+- ❌ **INACTIF** : Badge rouge pour les services inactifs
+
+**Filtres** :
+- Possibilité de filtrer la liste par statut (actif/inactif)
+
 ### Bonnes pratiques
 
 #### Nomenclature des codes
@@ -269,6 +311,12 @@ Direction Générale (DG)
     ├── Comptabilité (COMPTA)
     └── Contrôle de Gestion (CG)
 ```
+
+#### Gestion des activations/désactivations
+- **Planification** : Désactivez d'abord les sous-services avant un service parent
+- **Communication** : Prévenez les utilisateurs concernés avant désactivation
+- **Temporaire** : Utilisez la désactivation pour les réorganisations temporaires
+- **Historique** : Ne supprimez que les services créés par erreur, désactivez sinon
 
 ## 👤 Gestion des Utilisateurs
 
@@ -433,6 +481,84 @@ La fonctionnalité d'export permet de sauvegarder la liste des utilisateurs au f
 - **Migration** : Transfert vers un autre système (avec adaptation)
 
 ⚠️ **Attention sécurité** : Le fichier d'export ne contient pas les mots de passe pour des raisons de sécurité.
+
+### Activer/Désactiver un Utilisateur (Admin/SA uniquement)
+
+#### Système d'activation/désactivation des utilisateurs
+
+Le système permet de **désactiver temporairement** des comptes utilisateurs sans les supprimer définitivement.
+
+**Avantages** :
+- **Blocage d'authentification** : Empêche immédiatement la connexion
+- **Préservation de l'historique** : Les déclarations et écarts restent consultables
+- **Réversibilité** : Un compte inactif peut être réactivé à tout moment
+
+#### Fonctionnement technique
+
+1. **Intégration avec Django Auth** :
+   - Le champ `actif` est lié à la propriété `is_active` de Django
+   - **Compte inactif** : Connexion automatiquement bloquée
+   - **Déconnexion immédiate** : L'utilisateur connecté est déconnecté
+
+2. **Contraintes de sécurité** :
+   - **Auto-protection** : Impossible de désactiver son propre compte
+   - **Message d'erreur** : "Vous ne pouvez pas désactiver votre propre compte"
+
+#### Comment activer/désactiver
+
+1. **Boutons d'activation** (Administrateurs uniquement)
+   - **Bouton orange avec icône "user-slash"** : Pour désactiver un utilisateur actif
+   - **Bouton vert avec icône "user-check"** : Pour activer un utilisateur inactif
+
+2. **Indicateurs visuels**
+   - **Colonne "Statut"** dans la liste :
+     - ✓ **Actif** : Badge vert
+     - ✗ **Inactif** : Badge rouge
+   - **Ligne utilisateur** : Opacity réduite (60%) + fond grisé pour les inactifs
+
+#### Interface d'administration Django
+
+Pour les Super Administrateurs, l'interface Django propose :
+
+**Actions en lot** :
+- **"Activer les utilisateurs sélectionnés"** : Active plusieurs comptes d'un coup
+- **"Désactiver les utilisateurs sélectionnés"** : Désactive plusieurs comptes d'un coup
+  - **Protection** : L'utilisateur effectuant l'action ne sera jamais désactivé
+
+**Badges visuels dans l'admin** :
+- ✅ **ACTIF** : Badge vert pour les comptes actifs
+- ❌ **INACTIF** : Badge rouge pour les comptes inactifs
+
+**Filtres** :
+- Possibilité de filtrer la liste par statut (actif/inactif)
+
+#### Effets de la désactivation
+
+**Sur l'authentification** :
+- **Connexion bloquée** : Impossible de se connecter
+- **Déconnexion automatique** : Si connecté, déconnexion immédiate
+- **Message d'erreur** : "Votre compte a été désactivé"
+
+**Sur les données** :
+- **Préservation totale** : Toutes les déclarations/écarts restent visibles
+- **Historique intact** : L'utilisateur reste visible comme déclarant/impliqué
+- **Recherche filtrée** : N'apparaît plus dans l'autocomplétion des utilisateurs actifs
+
+#### Bonnes pratiques
+
+**Quand désactiver** :
+- **Départ temporaire** : Congé longue durée, détachement
+- **Suspension disciplinaire** : Blocage temporaire d'accès
+- **Réorganisation** : Attente de réaffectation
+
+**Quand supprimer** :
+- **Départ définitif** : Démission, licenciement, retraite
+- **Compte créé par erreur** : Doublons, tests
+
+**Gestion des équipes** :
+- **Planification** : Prévenez l'équipe avant désactivation d'un responsable
+- **Transfert** : Réassignez les responsabilités avant désactivation
+- **Documentation** : Notez la raison de la désactivation
 
 #### Import des Utilisateurs
 

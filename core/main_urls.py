@@ -16,7 +16,7 @@ urlpatterns = [
     path('services/<int:pk>/', views.service_detail, name='service_detail'),
     path('services/<int:pk>/edit/', views.service_edit, name='service_edit'),
     path('services/<int:pk>/delete/', views.service_delete, name='service_delete'),
-    path('services/<int:pk>/delete-confirm/', views.service_delete_confirm, name='service_delete_confirm'),
+    path('services/<int:pk>/toggle-active/', views.service_toggle_active, name='service_toggle_active'),
     
     # URLs pour import/export JSON des services
     path('services/export-json/', views.export_services_json, name='export_services_json'),
@@ -31,6 +31,7 @@ urlpatterns = [
     path('users/<int:pk>/delete/', views.user_delete, name='user_delete'),
     path('users/<int:pk>/delete-confirm/', views.user_delete_confirm, name='user_delete_confirm'),
     path('users/<int:pk>/reset-password/', views.user_reset_password, name='user_reset_password'),
+    path('users/<int:pk>/toggle-active/', views.user_toggle_active, name='user_toggle_active'),
     
     # URLs pour import/export JSON des utilisateurs
     path('users/export-json/', views.export_users_json, name='export_users_json'),

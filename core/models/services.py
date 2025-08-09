@@ -12,6 +12,11 @@ class Service(TimestampedModel, CodedModel):
     Supporte une hiérarchie illimitée avec relations parent-enfant.
     """
     nom = models.CharField(max_length=100, verbose_name="Nom du service")
+    actif = models.BooleanField(
+        default=True, 
+        verbose_name="Service actif",
+        help_text="Un service inactif reste dans l'historique mais n'apparaît plus dans les listes de sélection"
+    )
     parent = models.ForeignKey(
         'self', 
         on_delete=models.CASCADE, 
@@ -91,3 +96,19 @@ class Service(TimestampedModel, CodedModel):
     def is_racine(self):
         """Vérifie si le service est un service racine (sans parent)."""
         return self.parent is None
+    
+    def get_active_descendants(self):
+        """Retourne tous les descendants actifs dans la hiérarchie."""
+        descendants = []
+        for sous_service in self.sous_services.filter(actif=True):
+            descendants.append(sous_service)
+            descendants.extend(sous_service.get_active_descendants())
+        return descendants
+    
+    def has_active_descendants(self):
+        """Vérifie si le service a des descendants actifs."""
+        return self.sous_services.filter(actif=True).exists()
+    
+    def can_be_deactivated(self):
+        """Vérifie si le service peut être désactivé (pas de sous-services actifs)."""
+        return not self.has_active_descendants()

@@ -6,21 +6,31 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import user_passes_test
 from django.urls import reverse
 from django.db import transaction
 from datetime import datetime
 import json
-from ..models import Service
+from ..models import Service, GapReport
 
 
 def services_list(request):
     """
     Vue liste des services avec affichage hiérarchique.
+    Affiche tous les services (actifs et inactifs) pour l'administration.
     """
-    services_racines = Service.objects.filter(parent=None).order_by('nom')
+    # Pour l'admin, afficher tous les services (actifs et inactifs)
+    include_inactive = request.user.droits in ['AD', 'SA']
+    
+    if include_inactive:
+        services_racines = Service.objects.filter(parent=None).order_by('nom')
+    else:
+        services_racines = Service.objects.filter(parent=None, actif=True).order_by('nom')
+        
     context = {
         'services_racines': services_racines,
-        'page_title': 'Gestion des Services'
+        'page_title': 'Gestion des Services',
+        'include_inactive': include_inactive
     }
     return render(request, 'core/services/list.html', context)
 
@@ -72,7 +82,8 @@ def service_create(request):
             if request.headers.get('HX-Request'):
                 return JsonResponse({'success': False, 'error': str(e)})
     
-    services = Service.objects.select_related('parent').order_by('nom')
+    # Seuls les services actifs peuvent être parents
+    services = Service.objects.filter(actif=True).select_related('parent').order_by('nom')
     context = {
         'services': services,
         'page_title': 'Créer un Service'
@@ -118,7 +129,8 @@ def service_edit(request, pk):
             if request.headers.get('HX-Request'):
                 return JsonResponse({'success': False, 'error': str(e)})
     
-    services = Service.objects.exclude(pk=service.pk).select_related('parent').order_by('nom')
+    # Seuls les services actifs peuvent être parents (sauf le service lui-même)
+    services = Service.objects.filter(actif=True).exclude(pk=service.pk).select_related('parent').order_by('nom')
     context = {
         'service': service,
         'services': services,
@@ -134,7 +146,11 @@ def service_edit(request, pk):
 def service_delete(request, pk):
     """
     Vue suppression d'un service.
-    Vérifie qu'il n'y a pas de sous-services et d'utilisateurs liés avant suppression.
+    Bloque la suppression si le service contient :
+    - Des sous-services
+    - Des déclarations d'écarts (GapReport) 
+    - Des utilisateurs associés
+    Seuls les services sans aucune dépendance peuvent être supprimés.
     """
     service = get_object_or_404(Service, pk=pk)
     
@@ -154,17 +170,34 @@ def service_delete(request, pk):
             return response
         else:
             messages.error(request, message)
+    # Vérifier s'il y a des déclarations d'écarts liées au service
+    elif GapReport.objects.filter(service=service).exists():
+        nb_declarations = GapReport.objects.filter(service=service).count()
+        message = f'Impossible de supprimer le service "{service.nom}" car il est référencé par {nb_declarations} déclaration(s) d\'écarts. Vous devez d\'abord traiter ou supprimer ces déclarations.'
+        if request.headers.get('HX-Request'):
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/services/notification_error.html', {
+                'message': message,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
+        else:
+            messages.error(request, message)
     # Vérifier s'il y a des utilisateurs liés au service
     elif service.utilisateurs.exists():
         utilisateurs_lies = service.utilisateurs.all()
         nb_utilisateurs = utilisateurs_lies.count()
         
-        message = f'Attention ! Le service "{service.nom}" est actuellement affecté à {nb_utilisateurs} utilisateur(s). En supprimant ce service, ces utilisateurs ne seront plus affectés à aucun service.'
+        message = f'Impossible de supprimer le service "{service.nom}" car il est actuellement affecté à {nb_utilisateurs} utilisateur(s). Vous devez d\'abord réaffecter ces utilisateurs à un autre service.'
         
         if request.headers.get('HX-Request'):
             from django.template.loader import render_to_string
             from django.middleware.csrf import get_token
-            notification_html = render_to_string('core/services/notification_warning.html', {
+            notification_html = render_to_string('core/services/notification_error.html', {
                 'message': message,
                 'service': service,
                 'utilisateurs_lies': utilisateurs_lies,
@@ -175,7 +208,7 @@ def service_delete(request, pk):
             response['HX-Reswap'] = 'innerHTML'
             return response
         else:
-            messages.warning(request, message)
+            messages.error(request, message)
     else:
         # Service sans utilisateurs ni sous-services - demander confirmation simple
         message = f'Êtes-vous sûr de vouloir supprimer le service "{service.nom}" ?'
@@ -201,33 +234,60 @@ def service_delete(request, pk):
     return redirect('services_list')
 
 
+def is_admin_or_superadmin(user):
+    """Vérifie que l'utilisateur est admin ou super admin."""
+    return user.is_authenticated and user.droits in ['AD', 'SA']
+
+
+@user_passes_test(is_admin_or_superadmin)
 @require_POST
-def service_delete_confirm(request, pk):
+def service_toggle_active(request, pk):
     """
-    Confirmation définitive de suppression d'un service avec utilisateurs liés.
+    Active/désactive un service.
+    Accessible uniquement aux admin et super admin.
     """
-    print(f"DEBUG: service_delete_confirm appelée pour service pk={pk}")
     service = get_object_or_404(Service, pk=pk)
-    print(f"DEBUG: Service trouvé: {service.nom}")
     
-    # Supprimer le service (les utilisateurs liés auront leur service mis à None automatiquement)
-    nom_service = service.nom
-    service.delete()
-    print(f"DEBUG: Service {nom_service} supprimé")
-    
-    message = f'Le service "{nom_service}" a été supprimé avec succès. Les utilisateurs précédemment affectés à ce service ne sont plus rattachés à aucun service.'
-    
-    if request.headers.get('HX-Request'):
-        print("DEBUG: Requête HTMX détectée")
-        # Pour HTMX, recharger la liste des services
-        response = HttpResponse('')
-        response['HX-Trigger'] = 'serviceDeleted'
-        return response
+    if service.actif and not service.can_be_deactivated():
+        # Le service ne peut pas être désactivé car il a des sous-services actifs
+        message = f'Impossible de désactiver le service "{service.nom}" car il contient des sous-services actifs. Vous devez d\'abord désactiver tous les sous-services.'
+        messages.error(request, message)
+        
+        if request.headers.get('HX-Request'):
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/services/notification_error.html', {
+                'message': message,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
     else:
-        print("DEBUG: Requête non-HTMX")
-        messages.success(request, message)
+        # Changer le statut
+        service.actif = not service.actif
+        service.save()
+        
+        action = "activé" if service.actif else "désactivé"
+        messages.success(request, f'Le service "{service.nom}" a été {action} avec succès.')
+        
+        if request.headers.get('HX-Request'):
+            # Recharger la page pour mettre à jour l'affichage
+            response = HttpResponse('')
+            response['HX-Refresh'] = 'true'
+            return response
     
     return redirect('services_list')
+
+
+# @require_POST
+# def service_delete_confirm(request, pk):
+#     """
+#     Fonction obsolète : la suppression de services avec utilisateurs associés est maintenant bloquée
+#     au lieu de demander une confirmation. Cette fonction n'est plus utilisée.
+#     """
+#     pass
 
 
 @staff_member_required

@@ -26,9 +26,17 @@ def user_can_manage_users(user):
 def users_list(request):
     """
     Vue liste des utilisateurs avec filtrage par service et tri.
+    Affiche tous les utilisateurs (actifs et inactifs) pour l'administration.
     """
-    users = User.objects.select_related('service')
-    services = Service.objects.all().order_by('nom')
+    # Pour l'admin, afficher tous les utilisateurs (actifs et inactifs)
+    include_inactive = request.user.droits in ['AD', 'SA']
+    
+    if include_inactive:
+        users = User.objects.select_related('service')
+    else:
+        users = User.objects.filter(actif=True).select_related('service')
+        
+    services = Service.objects.filter(actif=True).order_by('nom')  # Seuls services actifs dans les filtres
     
     # Filtrage par service si spécifié
     service_filter = request.GET.get('service')
@@ -73,6 +81,7 @@ def users_list(request):
         'current_sort': sort_by,
         'current_order': order,
         'next_order': next_order,
+        'include_inactive': include_inactive,
     }
     return render(request, 'core/users/list.html', context)
 
@@ -143,7 +152,8 @@ def user_create(request):
             if request.headers.get('HX-Request'):
                 return JsonResponse({'success': False, 'error': str(e)})
     
-    services = Service.objects.all().order_by('nom')
+    # Seuls les services actifs peuvent être assignés aux utilisateurs
+    services = Service.objects.filter(actif=True).order_by('nom')
     context = {
         'services': services,
         'droits_choices': User.DROITS_CHOICES,
@@ -198,7 +208,8 @@ def user_edit(request, pk):
             if request.headers.get('HX-Request'):
                 return JsonResponse({'success': False, 'error': str(e)})
     
-    services = Service.objects.all().order_by('nom')
+    # Seuls les services actifs peuvent être assignés aux utilisateurs
+    services = Service.objects.filter(actif=True).order_by('nom')
     context = {
         'user_to_edit': user_to_edit,
         'services': services,
@@ -328,6 +339,49 @@ def user_reset_password(request, pk):
 
 @login_required
 @user_passes_test(user_can_manage_users)
+@require_POST
+def user_toggle_active(request, pk):
+    """
+    Active/désactive un utilisateur.
+    Accessible uniquement aux admin et super admin.
+    """
+    user_to_toggle = get_object_or_404(User, pk=pk)
+    
+    # Empêcher la désactivation de son propre compte
+    if user_to_toggle == request.user and user_to_toggle.actif:
+        message = 'Vous ne pouvez pas désactiver votre propre compte.'
+        messages.error(request, message)
+        
+        if request.headers.get('HX-Request'):
+            from django.template.loader import render_to_string
+            from django.middleware.csrf import get_token
+            notification_html = render_to_string('core/users/notification_error.html', {
+                'message': message,
+                'csrf_token': get_token(request)
+            })
+            response = HttpResponse(notification_html)
+            response['HX-Retarget'] = '#modal-container'
+            response['HX-Reswap'] = 'innerHTML'
+            return response
+    else:
+        # Changer le statut
+        user_to_toggle.actif = not user_to_toggle.actif
+        user_to_toggle.save()
+        
+        action = "activé" if user_to_toggle.actif else "désactivé"
+        messages.success(request, f'L\'utilisateur "{user_to_toggle.get_full_name()}" a été {action} avec succès.')
+        
+        if request.headers.get('HX-Request'):
+            # Recharger la page pour mettre à jour l'affichage
+            response = HttpResponse('')
+            response['HX-Refresh'] = 'true'
+            return response
+    
+    return redirect('users_list')
+
+
+@login_required
+@user_passes_test(user_can_manage_users)
 def export_users_json(request):
     """
     Export tous les utilisateurs au format JSON.
@@ -348,6 +402,7 @@ def export_users_json(request):
             'droits': user.droits,
             'service_id': user.service.id if user.service else None,
             'service_code': user.service.code if user.service else None,
+            'actif': user.actif,
             'must_change_password': user.must_change_password,
             'is_staff': user.is_staff,
             'is_superuser': user.is_superuser,

@@ -95,6 +95,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
         related_name='utilisateurs',
         verbose_name="Service"
     )
+    actif = models.BooleanField(
+        default=True,
+        verbose_name="Utilisateur actif",
+        help_text="Un utilisateur inactif ne peut plus se connecter mais reste dans l'historique"
+    )
     
     # Champs pour Django Auth
     is_staff = models.BooleanField(default=False, verbose_name="Membre du staff")
@@ -169,3 +174,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
         if self.service:
             return self.service.get_chemin_hierarchique()
         return "Aucun service"
+    
+    def is_active(self):
+        """Surcharge pour intégrer le champ actif dans l'authentification Django."""
+        return self.actif
+    
+    @property
+    def is_active(self):
+        """Property Django pour l'authentification - utilisateur inactif ne peut pas se connecter."""
+        return self.actif

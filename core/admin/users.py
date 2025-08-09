@@ -4,6 +4,7 @@ Configuration de l'administration Django pour les utilisateurs.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth import get_user_model
+from django.contrib import messages
 from django.utils.html import format_html
 from django.urls import reverse
 
@@ -18,12 +19,13 @@ class UserAdmin(BaseUserAdmin):
     
     # Affichage dans la liste
     list_display = (
-        'matricule', 'get_full_name', 'email', 'droits_badge', 'service_link', 
+        'matricule', 'get_full_name', 'email', 'get_actif_display', 'droits_badge', 'service_link', 
         'must_change_password', 'created_at'
     )
-    list_filter = ('droits', 'must_change_password', 'service', 'created_at')
+    list_filter = ('actif', 'droits', 'must_change_password', 'service', 'created_at')
     search_fields = ('matricule', 'nom', 'prenom', 'email')
-    ordering = ('nom', 'prenom')
+    ordering = ('-actif', 'nom', 'prenom')  # Utilisateurs actifs en premier
+    actions = ['activer_utilisateurs', 'desactiver_utilisateurs']
     
     # Affichage détaillé
     fieldsets = (
@@ -31,7 +33,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('matricule', 'nom', 'prenom', 'email')
         }),
         ('Droits et permissions', {
-            'fields': ('droits', 'service', 'is_staff', 'is_superuser')
+            'fields': ('droits', 'service', 'actif', 'is_staff', 'is_superuser')
         }),
         ('Mot de passe', {
             'fields': ('password', 'must_change_password')
@@ -49,7 +51,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('matricule', 'nom', 'prenom')
         }),
         ('Informations optionnelles', {
-            'fields': ('email', 'droits', 'service')
+            'fields': ('email', 'droits', 'service', 'actif')
         }),
         ('Mot de passe', {
             'description': 'Le mot de passe sera automatiquement défini à "azerty" et devra être changé lors de la première connexion.',
@@ -63,6 +65,19 @@ class UserAdmin(BaseUserAdmin):
     
     # Filtres personnalisés
     list_per_page = 25
+    
+    def get_actif_display(self, obj):
+        """Affiche le statut actif avec badge coloré."""
+        if obj.actif:
+            return format_html(
+                '<span style="background: #d4edda; color: #155724; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✓ ACTIF</span>'
+            )
+        else:
+            return format_html(
+                '<span style="background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✗ INACTIF</span>'
+            )
+    get_actif_display.short_description = 'Statut'
+    get_actif_display.admin_order_field = 'actif'
     
     def droits_badge(self, obj):
         """Affiche un badge coloré pour les droits."""
@@ -88,6 +103,46 @@ class UserAdmin(BaseUserAdmin):
         return format_html('<span style="color: #6b7280; font-style: italic;">Aucun service</span>')
     service_link.short_description = 'Service'
     service_link.admin_order_field = 'service__nom'
+    
+    def activer_utilisateurs(self, request, queryset):
+        """Action pour activer les utilisateurs sélectionnés."""
+        updated_count = 0
+        for user in queryset:
+            if not user.actif:
+                user.actif = True
+                user.save()
+                updated_count += 1
+        
+        if updated_count:
+            messages.success(request, f'{updated_count} utilisateur(s) activé(s) avec succès.')
+        else:
+            messages.info(request, 'Aucun utilisateur à activer (tous déjà actifs).')
+    activer_utilisateurs.short_description = "Activer les utilisateurs sélectionnés"
+    
+    def desactiver_utilisateurs(self, request, queryset):
+        """Action pour désactiver les utilisateurs sélectionnés."""
+        updated_count = 0
+        blocked_users = []
+        
+        for user in queryset:
+            if user.actif:
+                # Empêcher la désactivation de son propre compte
+                if user == request.user:
+                    blocked_users.append(f"{user.get_full_name()} (votre propre compte)")
+                else:
+                    user.actif = False
+                    user.save()
+                    updated_count += 1
+        
+        if updated_count:
+            messages.success(request, f'{updated_count} utilisateur(s) désactivé(s) avec succès.')
+        
+        if blocked_users:
+            messages.warning(request, f'Impossible de désactiver: {", ".join(blocked_users)}')
+        
+        if not updated_count and not blocked_users:
+            messages.info(request, 'Aucun utilisateur à désactiver (tous déjà inactifs).')
+    desactiver_utilisateurs.short_description = "Désactiver les utilisateurs sélectionnés"
     
     def get_queryset(self, request):
         """Optimise les requêtes avec select_related."""

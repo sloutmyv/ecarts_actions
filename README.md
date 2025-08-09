@@ -54,6 +54,16 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Filtrage Sécurisé**: Protection contre les injections avec validation des paramètres
 - **Gestion des Sessions**: Middleware pour suivi des modifications par utilisateur
 
+### 🎛️ **Gestion de l'Activation/Désactivation**
+- **Services Actifs/Inactifs**: Désactivation des services sans suppression pour préserver l'historique
+- **Utilisateurs Actifs/Inactifs**: Blocage d'authentification des comptes inactifs avec conservation des données
+- **Contraintes Hiérarchiques**: Impossible de désactiver un service parent avec des sous-services actifs
+- **Protection Personnelle**: Impossible de désactiver son propre compte utilisateur
+- **Interface Administrative**: Badges visuels (✓ ACTIF / ✗ INACTIF) et actions en lot dans l'admin Django
+- **Filtrage Intelligent**: Services/utilisateurs inactifs masqués des listes de sélection mais historique préservé
+- **Permissions Strictes**: Seuls Admin et Super Admin peuvent activer/désactiver services et utilisateurs
+- **Autocomplétion Filtrée**: Recherche utilisateur ne retourne que les comptes actifs
+
 ### ⚖️ **Système de Workflow de Validation**
 - **Matrice Service × Source d'Audit × Niveau**: Affectation de valideurs avec dimension source d'audit intégrée
 - **Interface Dropdown Minimaliste**: Navigation service → sources d'audit pour assignation simplifiée

@@ -352,12 +352,12 @@ def search_users(request):
                 'users': []
             })
         
-        # Recherche optimisée avec select_related
+        # Recherche optimisée avec select_related - utilisateurs actifs uniquement
         users = User.objects.filter(
             models.Q(matricule__icontains=query) |
             models.Q(nom__icontains=query) |
             models.Q(prenom__icontains=query)
-        ).select_related('service').order_by('nom', 'prenom')[:10]
+        ).filter(actif=True).select_related('service').order_by('nom', 'prenom')[:10]
         
         users_data = [
             {
