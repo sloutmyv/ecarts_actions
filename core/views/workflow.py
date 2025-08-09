@@ -34,9 +34,10 @@ def workflow_management(request):
         sort_by = 'nom'
         order_field = sort_by if sort_order == 'asc' else f'-{sort_by}'
     
-    # Récupérer les services avec optimisation des requêtes
+    # Récupérer les services actifs avec optimisation des requêtes
     services_feuilles = Service.objects.filter(
-        sous_services__isnull=True
+        sous_services__isnull=True,
+        actif=True  # Seuls les services actifs
     ).prefetch_related(
         Prefetch(
             'validateurs',
@@ -47,7 +48,7 @@ def workflow_management(request):
     ).order_by(order_field)
     
     # Récupérer tous les utilisateurs actifs et toutes les sources d'audit
-    validateurs = User.objects.all().order_by('nom', 'prenom')
+    validateurs = User.objects.filter(actif=True).order_by('nom', 'prenom')  # Seuls les utilisateurs actifs
     audit_sources = AuditSource.objects.all().order_by('name')
     
     # Créer une structure optimisée Service × Source d'audit avec leurs validateurs
@@ -389,7 +390,7 @@ def service_detail_api(request, service_id):
     """
     try:
         service = get_object_or_404(
-            Service.objects.prefetch_related(
+            Service.objects.filter(actif=True).prefetch_related(  # Service doit être actif
                 Prefetch(
                     'validateurs',
                     queryset=ValidateurService.objects.filter(actif=True).select_related(

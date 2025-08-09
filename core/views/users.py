@@ -26,15 +26,11 @@ def user_can_manage_users(user):
 def users_list(request):
     """
     Vue liste des utilisateurs avec filtrage par service et tri.
-    Affiche tous les utilisateurs (actifs et inactifs) pour l'administration.
+    Affiche seulement les utilisateurs actifs dans l'application principale.
+    Les utilisateurs inactifs ne sont visibles que dans l'admin Django.
     """
-    # Pour l'admin, afficher tous les utilisateurs (actifs et inactifs)
-    include_inactive = request.user.droits in ['AD', 'SA']
-    
-    if include_inactive:
-        users = User.objects.select_related('service')
-    else:
-        users = User.objects.filter(actif=True).select_related('service')
+    # Afficher seulement les utilisateurs actifs dans l'application principale
+    users = User.objects.filter(actif=True).select_related('service')
         
     services = Service.objects.filter(actif=True).order_by('nom')  # Seuls services actifs dans les filtres
     
@@ -81,7 +77,6 @@ def users_list(request):
         'current_sort': sort_by,
         'current_order': order,
         'next_order': next_order,
-        'include_inactive': include_inactive,
     }
     return render(request, 'core/users/list.html', context)
 
@@ -91,8 +86,9 @@ def users_list(request):
 def user_detail(request, pk):
     """
     Vue détail d'un utilisateur.
+    Ne permet d'accéder qu'aux utilisateurs actifs.
     """
-    user = get_object_or_404(User, pk=pk)
+    user = get_object_or_404(User, pk=pk, actif=True)  # Utilisateur doit être actif
     context = {
         'user_detail': user,  # Renommé pour éviter le conflit avec request.user
         'page_title': f'Détail - {user.get_full_name()}'
@@ -171,8 +167,9 @@ def user_edit(request, pk):
     """
     Vue modification d'un utilisateur existant.
     Supporte les requêtes HTMX pour affichage en modal.
+    Ne permet d'éditer que les utilisateurs actifs.
     """
-    user_to_edit = get_object_or_404(User, pk=pk)
+    user_to_edit = get_object_or_404(User, pk=pk, actif=True)  # Utilisateur doit être actif pour être éditable
     
     if request.method == 'POST':
         try:
@@ -229,8 +226,9 @@ def user_delete(request, pk):
     """
     Vue suppression d'un utilisateur.
     Affiche une modale de confirmation avant suppression.
+    Ne permet de supprimer que les utilisateurs actifs.
     """
-    user_to_delete = get_object_or_404(User, pk=pk)
+    user_to_delete = get_object_or_404(User, pk=pk, actif=True)  # Utilisateur doit être actif pour être supprimable
     
     # Empêcher la suppression de son propre compte
     if user_to_delete == request.user:
@@ -337,47 +335,9 @@ def user_reset_password(request, pk):
     return redirect('users_list')
 
 
-@login_required
-@user_passes_test(user_can_manage_users)
-@require_POST
-def user_toggle_active(request, pk):
-    """
-    Active/désactive un utilisateur.
-    Accessible uniquement aux admin et super admin.
-    """
-    user_to_toggle = get_object_or_404(User, pk=pk)
-    
-    # Empêcher la désactivation de son propre compte
-    if user_to_toggle == request.user and user_to_toggle.actif:
-        message = 'Vous ne pouvez pas désactiver votre propre compte.'
-        messages.error(request, message)
-        
-        if request.headers.get('HX-Request'):
-            from django.template.loader import render_to_string
-            from django.middleware.csrf import get_token
-            notification_html = render_to_string('core/users/notification_error.html', {
-                'message': message,
-                'csrf_token': get_token(request)
-            })
-            response = HttpResponse(notification_html)
-            response['HX-Retarget'] = '#modal-container'
-            response['HX-Reswap'] = 'innerHTML'
-            return response
-    else:
-        # Changer le statut
-        user_to_toggle.actif = not user_to_toggle.actif
-        user_to_toggle.save()
-        
-        action = "activé" if user_to_toggle.actif else "désactivé"
-        messages.success(request, f'L\'utilisateur "{user_to_toggle.get_full_name()}" a été {action} avec succès.')
-        
-        if request.headers.get('HX-Request'):
-            # Recharger la page pour mettre à jour l'affichage
-            response = HttpResponse('')
-            response['HX-Refresh'] = 'true'
-            return response
-    
-    return redirect('users_list')
+# La fonction user_toggle_active a été supprimée car les utilisateurs inactifs 
+# ne doivent plus être visibles dans l'application principale.
+# L'activation/désactivation se fait uniquement via l'admin Django.
 
 
 @login_required

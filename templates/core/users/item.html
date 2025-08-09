@@ -1,4 +1,4 @@
-<tr class="hover:bg-gray-50 transition-colors {% if not user_item.actif %}opacity-60 bg-gray-25{% endif %}">
+<tr class="hover:bg-gray-50 transition-colors">
     <td class="px-6 py-4 whitespace-nowrap">
         <div class="flex items-center">
             <div class="flex-shrink-0 h-10 w-10">
@@ -44,17 +44,7 @@
             <span class="text-sm text-gray-400 italic">Non renseigné</span>
         {% endif %}
     </td>
-    <td class="px-6 py-4 whitespace-nowrap">
-        {% if user_item.actif %}
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            ✓ Actif
-        </span>
-        {% else %}
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            ✗ Inactif
-        </span>
-        {% endif %}
-    </td>
+    <!-- Colonne Statut supprimée car seuls les utilisateurs actifs sont affichés -->
     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div class="flex items-center justify-end gap-1">
             <!-- Bouton Voir -->
@@ -84,27 +74,7 @@
                 {% include 'core/users/icons.html' with icon_name="key" class="w-4 h-4" %}
             </button>
 
-            <!-- Bouton Activer/Désactiver (Admin et Super Admin uniquement) -->
-            {% if request.user.droits == 'AD' or request.user.droits == 'SA' %}
-            <button 
-                hx-post="{% url 'user_toggle_active' user_item.pk %}"
-                hx-trigger="click"
-                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                title="{% if user_item.actif %}Désactiver{% else %}Activer{% endif %} l'utilisateur"
-                class="p-2 text-gray-400 hover:text-{% if user_item.actif %}orange{% else %}green{% endif %}-600 hover:bg-{% if user_item.actif %}orange{% else %}green{% endif %}-50 rounded-lg transition-colors">
-                {% if user_item.actif %}
-                    <!-- Icône désactiver (user-slash) -->
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"/>
-                    </svg>
-                {% else %}
-                    <!-- Icône activer (user-check) -->
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                {% endif %}
-            </button>
-            {% endif %}
+            <!-- Les boutons d'activation/désactivation ont été supprimés car seuls les utilisateurs actifs sont affichés -->
 
             <!-- Bouton Supprimer -->
             {% if user_item != request.user %}

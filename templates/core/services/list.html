@@ -30,7 +30,7 @@
         {% if services_racines %}
             <div class="divide-y divide-gray-200">
                 {% for service in services_racines %}
-                    {% include 'core/services/item.html' with service=service level=0 include_inactive=include_inactive %}
+                    {% include 'core/services/item.html' with service=service level=0 %}
                 {% endfor %}
             </div>
         {% else %}

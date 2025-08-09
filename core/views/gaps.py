@@ -41,7 +41,7 @@ def get_service_and_descendants_ids(service_id):
     Utilisé pour le filtrage hiérarchique.
     """
     try:
-        service = Service.objects.get(id=service_id)
+        service = Service.objects.get(id=service_id, actif=True)  # Service doit être actif
         service_ids = [service.id]
         
         # Récupérer tous les descendants
@@ -208,7 +208,7 @@ def gap_list(request):
     if selected_service and selected_service.strip() and selected_service != 'None':
         try:
             service_id = int(selected_service)
-            selected_service_obj = Service.objects.get(id=service_id)
+            selected_service_obj = Service.objects.get(id=service_id, actif=True)  # Service doit être actif
             selected_service_name = selected_service_obj.get_chemin_hierarchique()
             selected_service_descendants_count = selected_service_obj.get_descendants_count()
             selected_service_has_descendants = selected_service_descendants_count > 0
@@ -351,7 +351,7 @@ def gap_report_list(request):
     if selected_service:
         try:
             from core.models import Service
-            service_obj = Service.objects.get(id=selected_service)
+            service_obj = Service.objects.get(id=selected_service, actif=True)  # Service doit être actif
             selected_service_name = service_obj.nom
         except (Service.DoesNotExist, ValueError):
             pass
@@ -529,7 +529,7 @@ def gap_report_create(request):
     services = get_services_hierarchical_order()
     audit_sources = AuditSource.objects.all().order_by('name')
     processes = Process.objects.filter(is_active=True).order_by('code')
-    users = User.objects.all().order_by('nom', 'prenom')
+    users = User.objects.filter(actif=True).order_by('nom', 'prenom')  # Seuls les utilisateurs actifs
     gap_types = GapType.objects.all().order_by('audit_source__name', 'name')
     
     context = {

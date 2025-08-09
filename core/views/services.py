@@ -17,20 +17,16 @@ from ..models import Service, GapReport
 def services_list(request):
     """
     Vue liste des services avec affichage hiérarchique.
-    Affiche tous les services (actifs et inactifs) pour l'administration.
+    Affiche seulement les services actifs dans l'application principale.
+    Les services inactifs ne sont visibles que dans l'admin Django.
     """
-    # Pour l'admin, afficher tous les services (actifs et inactifs)
-    include_inactive = request.user.droits in ['AD', 'SA']
-    
-    if include_inactive:
-        services_racines = Service.objects.filter(parent=None).order_by('nom')
-    else:
-        services_racines = Service.objects.filter(parent=None, actif=True).order_by('nom')
+    # Afficher seulement les services actifs dans l'application principale
+    services_racines = Service.objects.filter(parent=None, actif=True).order_by('nom')
         
     context = {
         'services_racines': services_racines,
         'page_title': 'Gestion des Services',
-        'include_inactive': include_inactive
+        'include_inactive': False
     }
     return render(request, 'core/services/list.html', context)
 
@@ -38,9 +34,10 @@ def services_list(request):
 def service_detail(request, pk):
     """
     Vue détail d'un service avec ses sous-services.
+    Affiche seulement les sous-services actifs.
     """
-    service = get_object_or_404(Service, pk=pk)
-    sous_services = service.sous_services.order_by('nom')
+    service = get_object_or_404(Service, pk=pk, actif=True)  # Service principal doit être actif
+    sous_services = service.sous_services.filter(actif=True).order_by('nom')  # Sous-services actifs seulement
     context = {
         'service': service,
         'sous_services': sous_services,
@@ -98,8 +95,9 @@ def service_edit(request, pk):
     """
     Vue modification d'un service existant.
     Supporte les requêtes HTMX pour affichage en modal.
+    Ne permet d'éditer que les services actifs.
     """
-    service = get_object_or_404(Service, pk=pk)
+    service = get_object_or_404(Service, pk=pk, actif=True)  # Service doit être actif pour être éditable
     
     if request.method == 'POST':
         try:
@@ -150,9 +148,9 @@ def service_delete(request, pk):
     - Des sous-services
     - Des déclarations d'écarts (GapReport) 
     - Des utilisateurs associés
-    Seuls les services sans aucune dépendance peuvent être supprimés.
+    Seuls les services actifs sans aucune dépendance peuvent être supprimés.
     """
-    service = get_object_or_404(Service, pk=pk)
+    service = get_object_or_404(Service, pk=pk, actif=True)  # Service doit être actif pour être supprimable
     
     # Vérifier s'il y a des sous-services
     if service.sous_services.exists():
@@ -239,46 +237,9 @@ def is_admin_or_superadmin(user):
     return user.is_authenticated and user.droits in ['AD', 'SA']
 
 
-@user_passes_test(is_admin_or_superadmin)
-@require_POST
-def service_toggle_active(request, pk):
-    """
-    Active/désactive un service.
-    Accessible uniquement aux admin et super admin.
-    """
-    service = get_object_or_404(Service, pk=pk)
-    
-    if service.actif and not service.can_be_deactivated():
-        # Le service ne peut pas être désactivé car il a des sous-services actifs
-        message = f'Impossible de désactiver le service "{service.nom}" car il contient des sous-services actifs. Vous devez d\'abord désactiver tous les sous-services.'
-        messages.error(request, message)
-        
-        if request.headers.get('HX-Request'):
-            from django.template.loader import render_to_string
-            from django.middleware.csrf import get_token
-            notification_html = render_to_string('core/services/notification_error.html', {
-                'message': message,
-                'csrf_token': get_token(request)
-            })
-            response = HttpResponse(notification_html)
-            response['HX-Retarget'] = '#modal-container'
-            response['HX-Reswap'] = 'innerHTML'
-            return response
-    else:
-        # Changer le statut
-        service.actif = not service.actif
-        service.save()
-        
-        action = "activé" if service.actif else "désactivé"
-        messages.success(request, f'Le service "{service.nom}" a été {action} avec succès.')
-        
-        if request.headers.get('HX-Request'):
-            # Recharger la page pour mettre à jour l'affichage
-            response = HttpResponse('')
-            response['HX-Refresh'] = 'true'
-            return response
-    
-    return redirect('services_list')
+# La fonction service_toggle_active a été supprimée car les services inactifs 
+# ne doivent plus être visibles dans l'application principale.
+# L'activation/désactivation se fait uniquement via l'admin Django.
 
 
 # @require_POST
