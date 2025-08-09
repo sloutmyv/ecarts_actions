@@ -129,6 +129,10 @@ class UserAdmin(BaseUserAdmin):
                 # Empêcher la désactivation de son propre compte
                 if user == request.user:
                     blocked_users.append(f"{user.get_full_name()} (votre propre compte)")
+                # Vérifier les contraintes de validateur
+                elif not user.can_be_deactivated():
+                    reason = user.get_deactivation_blocking_reason()
+                    blocked_users.append(f"{user.get_full_name()}: {reason}")
                 else:
                     user.actif = False
                     user.save()
@@ -138,7 +142,13 @@ class UserAdmin(BaseUserAdmin):
             messages.success(request, f'{updated_count} utilisateur(s) désactivé(s) avec succès.')
         
         if blocked_users:
-            messages.warning(request, f'Impossible de désactiver: {", ".join(blocked_users)}')
+            error_msg = "Impossible de désactiver les utilisateurs suivants:\n"
+            for blocked in blocked_users:
+                error_msg += f"• {blocked}\n"
+            error_msg += "\nActions requises avant désactivation:"
+            error_msg += "\n• Pour les rôles de validateur: retirer l'utilisateur du workflow de validation"
+            error_msg += "\n• Pour les déclarations d'écarts: transférer vers d'autres utilisateurs actifs"
+            messages.error(request, error_msg)
         
         if not updated_count and not blocked_users:
             messages.info(request, 'Aucun utilisateur à désactiver (tous déjà inactifs).')
@@ -154,6 +164,30 @@ class UserAdmin(BaseUserAdmin):
         if not change and not obj.password:
             obj.set_password('azerty')
             obj.must_change_password = True
+        
+        # Si on modifie un utilisateur existant et qu'on essaie de le désactiver
+        if change and 'actif' in form.changed_data:
+            # Si on essaie de passer l'utilisateur à inactif
+            if not obj.actif:
+                # Empêcher la désactivation de son propre compte
+                if obj == request.user:
+                    messages.error(
+                        request,
+                        f"Impossible de désactiver votre propre compte '{obj.get_full_name()}'."
+                    )
+                    # Rétablir le statut actif
+                    obj.actif = True
+                elif not obj.can_be_deactivated():
+                    reason = obj.get_deactivation_blocking_reason()
+                    messages.error(
+                        request,
+                        f"{reason}\n\n"
+                        f"Actions requises avant désactivation:\n"
+                        f"• Retirer l'utilisateur du workflow de validation\n"
+                        f"• Ou transférer ses rôles vers d'autres utilisateurs"
+                    )
+                    # Rétablir le statut actif
+                    obj.actif = True
         
         super().save_model(request, obj, form, change)
     
@@ -198,10 +232,10 @@ class UserAdmin(BaseUserAdmin):
                 blocked_users.append(f"{user.get_full_name()}: votre propre compte")
                 continue
             
-            # Vérifier les déclarations d'écarts
+            # Vérifier les contraintes (déclarations d'écarts et rôles de validateur)
             if not user.can_be_deleted():
                 reason = user.get_deletion_blocking_reason()
-                blocked_users.append(f"{user.get_full_name()}: a des déclarations d'écarts associées")
+                blocked_users.append(f"{user.get_full_name()}: {reason}")
             else:
                 deletable_users.append(user)
         
@@ -217,8 +251,9 @@ class UserAdmin(BaseUserAdmin):
             error_msg = "Impossible de supprimer les utilisateurs suivants:\n"
             for blocked in blocked_users:
                 error_msg += f"• {blocked}\n"
-            error_msg += "\nPour les utilisateurs avec des déclarations d'écarts associées, "
-            error_msg += "vous devez d'abord transférer les déclarations vers d'autres utilisateurs actifs."
+            error_msg += "\nActions requises avant suppression:"
+            error_msg += "\n• Pour les rôles de validateur: retirer l'utilisateur du workflow de validation"
+            error_msg += "\n• Pour les déclarations d'écarts: transférer vers d'autres utilisateurs actifs"
             messages.error(request, error_msg)
     
     def changelist_view(self, request, extra_context=None):

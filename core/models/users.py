@@ -189,9 +189,44 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
         Vérifie si l'utilisateur peut être supprimé.
         Un utilisateur ne peut pas être supprimé s'il a :
         - Des déclarations d'écarts associées (GapReport)
+        - Des rôles de validateur dans le workflow (ValidateurService)
         """
         from .gaps import GapReport  # Import local pour éviter les imports circulaires
-        return not GapReport.objects.filter(declared_by=self).exists()
+        from .workflow import ValidateurService  # Import local pour éviter les imports circulaires
+        
+        # Vérifier les déclarations d'écarts
+        if GapReport.objects.filter(declared_by=self).exists():
+            return False
+            
+        # Vérifier les rôles de validateur
+        if ValidateurService.objects.filter(validateur=self, actif=True).exists():
+            return False
+            
+        return True
+    
+    def can_be_deactivated(self):
+        """
+        Vérifie si l'utilisateur peut être désactivé.
+        Un utilisateur ne peut pas être désactivé s'il a :
+        - Des rôles de validateur actifs dans le workflow (ValidateurService)
+        """
+        from .workflow import ValidateurService  # Import local pour éviter les imports circulaires
+        
+        # Vérifier les rôles de validateur
+        return not ValidateurService.objects.filter(validateur=self, actif=True).exists()
+    
+    def get_deactivation_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle l'utilisateur ne peut pas être désactivé.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        from .workflow import ValidateurService  # Import local pour éviter les imports circulaires
+        
+        validator_roles_count = ValidateurService.objects.filter(validateur=self, actif=True).count()
+        if validator_roles_count > 0:
+            return f"L'utilisateur ne peut pas être désactivé car il est validateur pour {validator_roles_count} combinaison(s) service/source d'audit/niveau."
+        
+        return None
     
     def get_deletion_blocking_reason(self):
         """
@@ -199,9 +234,21 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
         Utilisé pour afficher des messages d'erreur informatifs.
         """
         from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        from .workflow import ValidateurService  # Import local pour éviter les imports circulaires
         
+        reasons = []
+        
+        # Vérifier les déclarations d'écarts
         gap_reports_count = GapReport.objects.filter(declared_by=self).count()
         if gap_reports_count > 0:
-            return f"L'utilisateur ne peut pas être supprimé car il a déclaré {gap_reports_count} déclaration(s) d'écart(s)."
+            reasons.append(f"a déclaré {gap_reports_count} déclaration(s) d'écart(s)")
+        
+        # Vérifier les rôles de validateur
+        validator_roles_count = ValidateurService.objects.filter(validateur=self, actif=True).count()
+        if validator_roles_count > 0:
+            reasons.append(f"est validateur pour {validator_roles_count} combinaison(s) service/source d'audit/niveau")
+        
+        if reasons:
+            return f"L'utilisateur ne peut pas être supprimé car il {' et '.join(reasons)}."
         
         return None

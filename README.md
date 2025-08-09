@@ -64,7 +64,8 @@ EcartsActions est une application web moderne de **gestion d'écarts et d'action
 - **Permissions Strictes**: Seuls Admin et Super Admin peuvent activer/désactiver services et utilisateurs
 - **Autocomplétion Filtrée**: Recherche utilisateur ne retourne que les comptes actifs
 - **Authentification Sécurisée**: Utilisateurs inactifs ne peuvent plus se connecter à l'application
-- **Validation de Suppression**: Impossible de supprimer services/utilisateurs avec dépendances actives
+- **Validation de Suppression Complète**: Impossible de supprimer services/utilisateurs avec dépendances actives (écarts, validateurs)
+- **Protection des Validateurs**: Utilisateurs validateurs de workflow protégés contre suppression/désactivation
 - **Messages d'Erreur Centrés**: Interface utilisateur avec notifications centrées sur la page
 - **Compteurs Temps Réel**: Affichage du nombre d'éléments actifs sur les pages de gestion
 
@@ -988,6 +989,7 @@ python manage.py loaddata backup.json
 - **Services avec utilisateurs actifs**: Impossible de désactiver/supprimer un service ayant des utilisateurs actifs
 - **Services avec écarts**: Impossible de désactiver/supprimer un service ayant des déclarations d'écarts associées
 - **Utilisateurs avec écarts**: Impossible de supprimer un utilisateur ayant des déclarations d'écarts associées
+- **Utilisateurs validateurs**: Impossible de supprimer/désactiver un utilisateur ayant des rôles de validateur actifs dans le workflow
 - **Protection hiérarchique**: Impossible de supprimer un service ayant des sous-services
 
 #### 🎯 Interface utilisateur améliorée
