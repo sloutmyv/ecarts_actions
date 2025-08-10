@@ -979,6 +979,20 @@ python manage.py loaddata backup.json
 
 ## 🆕 Changements récents
 
+### v2.5.1 - Corrections Interface et Suppression Services (2025-08-10)
+
+#### 🐛 Corrections critiques
+- **Suppression de services fonctionnelle** : Correction du problème UnboundLocalError dans la suppression des services
+- **Template de confirmation corrigé** : Réparation de l'URL service_delete_confirm manquante
+- **Interface validateurs optimisée** : Suppression de la colonne "Rôles de Validation" redondante, ajout de la colonne Email manquante
+- **Import des modules nettoyé** : Imports render_to_string et get_token déplacés au niveau global pour éviter les erreurs de scope
+
+#### 🎯 Améliorations UX
+- **Liste validateurs simplifiée** : Colonnes optimales (Utilisateur, Matricule, Droits, Service, Email, Nb Rôles, Actions)
+- **Suppression services fluide** : Système à deux étapes (confirmation → suppression) avec modales cohérentes
+- **Gestion d'erreur robuste** : Messages d'erreur clairs pour contraintes de suppression (sous-services, utilisateurs, écarts)
+- **Interface épurée** : Suppression du détail verbose des rôles au profit du nombre de rôles plus concis
+
 ### v2.5.0 - Système de Sécurité et Validation Renforcé (2025-08-09)
 
 #### 🔐 Sécurité de l'authentification

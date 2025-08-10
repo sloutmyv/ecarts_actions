@@ -35,6 +35,11 @@ Ce manuel s'adresse aux :
 - **Utilisateurs (US)** : Accès aux fonctionnalités principales + modification de leurs propres déclarations uniquement
 - **Gestionnaires IT** : Responsables de la configuration technique, filtres avancés et maintenance système
 
+### 🆕 Corrections récentes (v2.5.1 - 2025-08-10)
+- **✅ Suppression de services** : Le problème avec le bouton de suppression des services est maintenant corrigé
+- **✅ Interface validateurs** : Liste optimisée avec colonnes pertinentes (ajout Email, suppression détail des rôles)
+- **✅ Gestion d'erreurs** : Messages d'erreur plus clairs lors des opérations de suppression avec contraintes
+
 ## 🆕 Nouveautés - Système d'Événements et d'Écarts
 
 ### Évolution Conceptuelle

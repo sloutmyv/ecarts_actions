@@ -9,6 +9,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import user_passes_test
 from django.urls import reverse
 from django.db import transaction
+from django.template.loader import render_to_string
+from django.middleware.csrf import get_token
 from datetime import datetime
 import json
 from ..models import Service, GapReport
@@ -156,12 +158,24 @@ def service_delete(request, pk):
     """
     service = get_object_or_404(Service, pk=pk, actif=True)  # Service doit être actif pour être supprimable
     
+    # Si c'est une confirmation (deuxième étape), procéder à la suppression directement
+    if request.POST.get('confirmed') == 'yes':
+        nom_service = service.nom
+        service.delete()
+        messages.success(request, f'Le service "{nom_service}" a été supprimé avec succès.')
+        
+        if request.headers.get('HX-Request'):
+            response = HttpResponse()
+            response['HX-Redirect'] = reverse('services_list')
+            return response
+        return redirect('services_list')
+    
+    # Première étape : vérifier les contraintes et demander confirmation si nécessaire
+    
     # Vérifier s'il y a des sous-services
     if service.sous_services.exists():
         message = f'Impossible de supprimer "{service.nom}" car il contient des sous-services.'
         if request.headers.get('HX-Request'):
-            from django.template.loader import render_to_string
-            from django.middleware.csrf import get_token
             notification_html = render_to_string('core/services/notification_error.html', {
                 'message': message,
                 'csrf_token': get_token(request)
@@ -177,8 +191,6 @@ def service_delete(request, pk):
         nb_declarations = GapReport.objects.filter(service=service).count()
         message = f'Impossible de supprimer le service "{service.nom}" car il est référencé par {nb_declarations} déclaration(s) d\'écarts. Vous devez d\'abord traiter ou supprimer ces déclarations.'
         if request.headers.get('HX-Request'):
-            from django.template.loader import render_to_string
-            from django.middleware.csrf import get_token
             notification_html = render_to_string('core/services/notification_error.html', {
                 'message': message,
                 'csrf_token': get_token(request)
@@ -197,8 +209,6 @@ def service_delete(request, pk):
         message = f'Impossible de supprimer le service "{service.nom}" car il est actuellement affecté à {nb_utilisateurs} utilisateur(s). Vous devez d\'abord réaffecter ces utilisateurs à un autre service.'
         
         if request.headers.get('HX-Request'):
-            from django.template.loader import render_to_string
-            from django.middleware.csrf import get_token
             notification_html = render_to_string('core/services/notification_error.html', {
                 'message': message,
                 'service': service,
@@ -212,12 +222,10 @@ def service_delete(request, pk):
         else:
             messages.error(request, message)
     else:
-        # Service sans utilisateurs ni sous-services - demander confirmation simple
+        # Service sans contraintes - demander confirmation simple
         message = f'Êtes-vous sûr de vouloir supprimer le service "{service.nom}" ?'
         
         if request.headers.get('HX-Request'):
-            from django.template.loader import render_to_string
-            from django.middleware.csrf import get_token
             notification_html = render_to_string('core/services/notification_confirm.html', {
                 'message': message,
                 'service': service,

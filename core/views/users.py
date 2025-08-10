@@ -11,7 +11,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from datetime import datetime
 import json
-from ..models import Service
+from ..models import Service, ValidateurService, AuditSource
 
 User = get_user_model()
 
@@ -25,25 +25,49 @@ def user_can_manage_users(user):
 @user_passes_test(user_can_manage_users)
 def users_list(request):
     """
-    Vue liste des utilisateurs avec filtrage par service et tri.
-    Affiche seulement les utilisateurs actifs dans l'application principale.
-    Les utilisateurs inactifs ne sont visibles que dans l'admin Django.
+    Vue liste des utilisateurs avec filtrage par service, type (validateur/tous) et tri.
+    Affiche tous les utilisateurs actifs par défaut avec option de filtrer sur les validateurs.
     """
-    # Afficher seulement les utilisateurs actifs dans l'application principale
+    # Filtrage par type d'utilisateur (validateur ou tous)
+    user_type_filter = request.GET.get('user_type', 'all')  # 'all' ou 'validators'
+    
+    # Base query pour tous les utilisateurs actifs
     users = User.objects.filter(actif=True).select_related('service')
-        
-    services = Service.objects.filter(actif=True).order_by('nom')  # Seuls services actifs dans les filtres
+    
+    # Si filtre validateur activé, ne garder que les utilisateurs validateurs
+    if user_type_filter == 'validators':
+        validateur_user_ids = ValidateurService.objects.values_list('validateur_id', flat=True).distinct()
+        users = users.filter(id__in=validateur_user_ids)
+    
+    services = Service.objects.filter(actif=True).order_by('nom')
+    audit_sources = AuditSource.objects.all().order_by('name')
     
     # Filtrage par service si spécifié
     service_filter = request.GET.get('service')
     if service_filter:
-        users = users.filter(service_id=service_filter)
+        if user_type_filter == 'validators':
+            # Pour les validateurs, filtrer par service de validation
+            validateur_ids_for_service = ValidateurService.objects.filter(
+                service_id=service_filter
+            ).values_list('validateur_id', flat=True)
+            users = users.filter(id__in=validateur_ids_for_service)
+        else:
+            # Pour tous les utilisateurs, filtrer par service d'appartenance
+            users = users.filter(service_id=service_filter)
+    
+    # Filtrage par source d'audit (seulement pour les validateurs)
+    audit_source_filter = request.GET.get('audit_source')
+    if audit_source_filter and user_type_filter == 'validators':
+        validateur_ids_for_audit = ValidateurService.objects.filter(
+            audit_source_id=audit_source_filter
+        ).values_list('validateur_id', flat=True)
+        users = users.filter(id__in=validateur_ids_for_audit)
     
     # Gestion du tri
-    sort_by = request.GET.get('sort', 'nom')  # Tri par défaut par nom
-    order = request.GET.get('order', 'asc')   # Ordre par défaut croissant
+    sort_by = request.GET.get('sort', 'nom')
+    order = request.GET.get('order', 'asc')
     
-    # Définir les champs de tri autorisés et leurs correspondances
+    # Définir les champs de tri autorisés
     sort_fields = {
         'nom': 'nom',
         'prenom': 'prenom', 
@@ -53,31 +77,67 @@ def users_list(request):
         'droits': 'droits'
     }
     
-    # Vérifier que le champ de tri est autorisé
+    # Appliquer le tri pour les champs standards
     if sort_by in sort_fields:
         sort_field = sort_fields[sort_by]
-        
-        # Appliquer l'ordre (croissant ou décroissant)
         if order == 'desc':
             sort_field = '-' + sort_field
-            
-        users = users.order_by(sort_field, 'nom', 'prenom')  # Tri secondaire par nom/prénom
+        users = users.order_by(sort_field, 'nom', 'prenom')
     else:
-        # Tri par défaut
         users = users.order_by('nom', 'prenom')
     
-    # Déterminer l'ordre inverse pour les liens de tri
+    # Enrichir avec les informations de validation pour l'affichage
+    users_data = []
+    for user in users:
+        validateur_roles = ValidateurService.objects.filter(
+            validateur=user
+        ).select_related('service', 'audit_source').order_by('service__nom', 'audit_source__name', 'niveau')
+        
+        # Préparer le résumé des rôles
+        roles_summary = ""
+        total_roles = 0
+        if validateur_roles.exists():
+            roles_by_service = {}
+            for role in validateur_roles:
+                service_name = role.service.nom
+                if service_name not in roles_by_service:
+                    roles_by_service[service_name] = []
+                roles_by_service[service_name].append(f"{role.audit_source.name} (N{role.niveau})")
+            
+            roles_list = []
+            for service_name, role_list in roles_by_service.items():
+                roles_list.append(f"{service_name}: {', '.join(role_list)}")
+            roles_summary = '; '.join(roles_list)
+            total_roles = validateur_roles.count()
+        
+        users_data.append({
+            'user': user,
+            'roles_summary': roles_summary,
+            'total_roles': total_roles,
+            'is_validator': total_roles > 0
+        })
+    
+    # Tri spécial pour le nombre de rôles
+    if sort_by == 'total_roles':
+        reverse_order = order == 'desc'
+        users_data.sort(key=lambda x: x['total_roles'], reverse=reverse_order)
+    
     next_order = 'desc' if order == 'asc' else 'asc'
     
-    # Compter le nombre total d'utilisateurs actifs
-    total_utilisateurs_actifs = User.objects.filter(actif=True).count()
+    # Statistiques
+    total_users = len(users_data)
+    total_validators = len([u for u in users_data if u['is_validator']])
     
     context = {
-        'users': users,
+        'users_data': users_data,
         'services': services,
+        'audit_sources': audit_sources,
         'selected_service': service_filter,
+        'selected_audit_source': audit_source_filter,
+        'user_type_filter': user_type_filter,
         'page_title': 'Gestion des Utilisateurs',
-        'total_utilisateurs_actifs': total_utilisateurs_actifs,
+        'total_users': total_users,
+        'total_validators': total_validators,
         'current_sort': sort_by,
         'current_order': order,
         'next_order': next_order,
@@ -90,12 +150,33 @@ def users_list(request):
 def user_detail(request, pk):
     """
     Vue détail d'un utilisateur.
-    Ne permet d'accéder qu'aux utilisateurs actifs.
+    Affiche les informations de l'utilisateur et ses rôles de validateur s'il en a.
     """
-    user = get_object_or_404(User, pk=pk, actif=True)  # Utilisateur doit être actif
+    user = get_object_or_404(User, pk=pk, actif=True)
+    
+    # Récupérer tous les rôles de validateur de cet utilisateur
+    validateur_roles = ValidateurService.objects.filter(
+        validateur=user
+    ).select_related('service', 'audit_source').order_by('service__nom', 'audit_source__name', 'niveau')
+    
+    # Organiser les rôles par service pour l'affichage
+    roles_by_service = {}
+    for role in validateur_roles:
+        service_name = role.service.nom
+        if service_name not in roles_by_service:
+            roles_by_service[service_name] = []
+        roles_by_service[service_name].append(role)
+    
+    # Déterminer le titre selon le statut de validateur
+    is_validator = validateur_roles.exists()
+    page_title = f"{'Validateur' if is_validator else 'Utilisateur'} - {user.get_full_name()}"
+    
     context = {
-        'user_detail': user,  # Renommé pour éviter le conflit avec request.user
-        'page_title': f'Détail - {user.get_full_name()}'
+        'user_detail': user,
+        'validateur_roles': validateur_roles,
+        'roles_by_service': roles_by_service,
+        'is_validator': is_validator,
+        'page_title': page_title
     }
     return render(request, 'core/users/detail.html', context)
 

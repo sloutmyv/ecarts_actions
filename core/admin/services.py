@@ -140,43 +140,15 @@ class ServiceAdmin(admin.ModelAdmin):
     def delete_model(self, request, obj):
         """
         Validation personnalisée avant suppression.
-        Empêche la suppression d'un service avec des utilisateurs actifs associés.
+        Empêche la suppression d'un service avec des contraintes actives.
         """
-        from ..models.users import User
-        from ..models.gaps import GapReport
-        
-        # Vérifier les utilisateurs actifs associés
-        active_users_count = User.objects.filter(service=obj, actif=True).count()
-        if active_users_count > 0:
+        if not obj.can_be_deleted():
+            reason = obj.get_deletion_blocking_reason()
             messages.error(
                 request,
-                f"Impossible de supprimer le service '{obj.nom}': "
-                f"il a {active_users_count} utilisateur(s) actif(s) associé(s).\n\n"
-                f"Vous devez d'abord transférer ces utilisateurs vers un autre service "
-                f"ou les désactiver avant de pouvoir supprimer le service."
-            )
-            return  # Annuler la suppression
-        
-        # Vérifier les déclarations d'écarts associées
-        gap_reports_count = GapReport.objects.filter(service=obj).count()
-        if gap_reports_count > 0:
-            messages.error(
-                request,
-                f"Impossible de supprimer le service '{obj.nom}': "
-                f"il est associé à {gap_reports_count} déclaration(s) d'écart(s).\n\n"
-                f"Vous devez d'abord transférer ces écarts vers un autre service actif "
-                f"avant de pouvoir supprimer le service."
-            )
-            return  # Annuler la suppression
-        
-        # Vérifier les sous-services
-        if obj.sous_services.exists():
-            children_count = obj.sous_services.count()
-            messages.error(
-                request,
-                f"Impossible de supprimer le service '{obj.nom}': "
-                f"il contient {children_count} sous-service(s).\n\n"
-                f"Vous devez d'abord supprimer ou déplacer tous les sous-services."
+                f"Impossible de supprimer le service '{obj.nom}': {reason}\n\n"
+                f"Vous devez d'abord résoudre ces contraintes avant de pouvoir supprimer le service. "
+                f"Pour les rôles de validateur, utilisez la <a href='/workflow/'>gestion du workflow</a>."
             )
             return  # Annuler la suppression
         
@@ -188,34 +160,17 @@ class ServiceAdmin(admin.ModelAdmin):
         Validation personnalisée pour suppression en lot.
         Empêche la suppression des services avec des contraintes.
         """
-        from ..models.users import User
-        from ..models.gaps import GapReport
-        
         blocked_services = []
         deletable_services = []
         
         for service in queryset:
-            reasons = []
-            
-            # Vérifier les utilisateurs actifs
-            active_users_count = User.objects.filter(service=service, actif=True).count()
-            if active_users_count > 0:
-                reasons.append(f"{active_users_count} utilisateur(s) actif(s)")
-            
-            # Vérifier les écarts
-            gap_reports_count = GapReport.objects.filter(service=service).count()
-            if gap_reports_count > 0:
-                reasons.append(f"{gap_reports_count} déclaration(s) d'écart(s)")
-            
-            # Vérifier les sous-services
-            if service.sous_services.exists():
-                children_count = service.sous_services.count()
-                reasons.append(f"{children_count} sous-service(s)")
-            
-            if reasons:
-                blocked_services.append(f"{service.nom}: {', '.join(reasons)}")
-            else:
+            if service.can_be_deleted():
                 deletable_services.append(service)
+            else:
+                reason = service.get_deletion_blocking_reason()
+                blocked_services.append(f"{service.nom}: {reason}")
+        
+        # Afficher les messages d'information
         
         # Supprimer seulement les services sans contraintes
         if deletable_services:

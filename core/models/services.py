@@ -161,3 +161,68 @@ class Service(TimestampedModel, CodedModel):
             return f"Le service ne peut pas être désactivé car il {' et '.join(reasons)}."
         
         return None
+
+    def can_be_deleted(self):
+        """
+        Vérifie si le service peut être supprimé définitivement.
+        Un service ne peut pas être supprimé s'il a :
+        - Des utilisateurs actifs associés
+        - Des déclarations d'écarts associées (GapReport)  
+        - Des rôles de validateur associés (ValidateurService)
+        - Des sous-services
+        """
+        # Vérifier les utilisateurs actifs associés
+        from .users import User  # Import local pour éviter les imports circulaires
+        if User.objects.filter(service=self, actif=True).exists():
+            return False
+        
+        # Vérifier les déclarations d'écarts associées
+        from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        if GapReport.objects.filter(service=self).exists():
+            return False
+        
+        # Vérifier les rôles de validateur associés
+        from .workflow import ValidateurService  # Import local pour éviter les imports circulaires
+        if ValidateurService.objects.filter(service=self).exists():
+            return False
+            
+        # Vérifier les sous-services
+        if self.sous_services.exists():
+            return False
+            
+        return True
+    
+    def get_deletion_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle le service ne peut pas être supprimé.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        reasons = []
+        
+        # Vérifier les utilisateurs actifs associés
+        from .users import User  # Import local pour éviter les imports circulaires
+        active_users_count = User.objects.filter(service=self, actif=True).count()
+        if active_users_count > 0:
+            reasons.append(f"a {active_users_count} utilisateur(s) actif(s) associé(s)")
+        
+        # Vérifier les déclarations d'écarts associées
+        from .gaps import GapReport  # Import local pour éviter les imports circulaires
+        gap_reports_count = GapReport.objects.filter(service=self).count()
+        if gap_reports_count > 0:
+            reasons.append(f"est associé à {gap_reports_count} déclaration(s) d'écart(s)")
+        
+        # Vérifier les rôles de validateur associés
+        from .workflow import ValidateurService  # Import local pour éviter les imports circulaires
+        validateurs_count = ValidateurService.objects.filter(service=self).count()
+        if validateurs_count > 0:
+            reasons.append(f"a {validateurs_count} rôle(s) de validateur assigné(s)")
+        
+        # Vérifier les sous-services
+        if self.sous_services.exists():
+            children_count = self.sous_services.count()
+            reasons.append(f"contient {children_count} sous-service(s)")
+        
+        if reasons:
+            return f"Le service ne peut pas être supprimé car il {' et '.join(reasons)}."
+        
+        return None

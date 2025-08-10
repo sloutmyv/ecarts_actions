@@ -16,8 +16,9 @@
             <p class="text-sm text-orange-700 mb-4">{{ message }}</p>
             
             <div class="flex space-x-3">
-                <form method="post" action="{% url 'service_delete_confirm' service.pk %}" style="display: inline;">
+                <form method="post" action="{% url 'service_delete' service.pk %}" style="display: inline;">
                     {% csrf_token %}
+                    <input type="hidden" name="confirmed" value="yes">
                     <button 
                         type="submit"
                         @click="open = false"
