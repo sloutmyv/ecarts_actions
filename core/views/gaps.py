@@ -6,11 +6,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.db.models import Q
+from django.views.decorators.cache import cache_page
+from django.db.models import Q, Prefetch
+from django.core.cache import cache
 from datetime import datetime
 
 from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, User, GapReportAttachment, GapAttachment, HistoriqueModification
 from core.forms import GapReportForm, GapForm, GapAttachmentForm
+from core.utils.cache import get_cached_services, get_cached_gap_types, get_cached_audit_sources, cache_key_for_user
+from core.utils.pagination import paginate_queryset, get_page_range
 
 
 def get_services_hierarchical_order():
@@ -57,6 +61,7 @@ def get_service_and_descendants_ids(service_id):
 def gap_list(request):
     """
     Liste de tous les écarts individuels avec filtrage avancé et tri.
+    Optimisée avec cache et pagination pour 400+ utilisateurs.
     """
     # Récupération des paramètres de filtrage
     selected_service = request.GET.get('service')
@@ -79,9 +84,14 @@ def gap_list(request):
     sort_by = request.GET.get('sort', 'created_at')
     sort_order = request.GET.get('order', 'desc')
     
-    # Construction de la requête de base
+    # Construction de la requête de base optimisée
     gaps = Gap.objects.select_related(
-        'gap_report__audit_source', 'gap_report__service', 'gap_report__declared_by', 'gap_type'
+        'gap_report__audit_source', 
+        'gap_report__service', 
+        'gap_report__declared_by', 
+        'gap_type'
+    ).prefetch_related(
+        Prefetch('gap_report__involved_users', queryset=User.objects.only('id', 'nom', 'prenom'))
     )
     
     # Vue par défaut : écarts du service de l'utilisateur + déclarés par lui + impliqués
@@ -190,16 +200,19 @@ def gap_list(request):
     else:
         gaps = gaps.order_by('-created_at')
     
+    # Appliquer la pagination AVANT le filtrage de visibilité pour optimiser les performances
+    page_obj, is_paginated = paginate_queryset(request, gaps, per_page=25)
+    
     # Filtrer les écarts selon la visibilité pour l'utilisateur connecté
     visible_gaps = []
-    for gap in gaps:
+    for gap in page_obj:
         if gap.is_visible_to_user(request.user):
             visible_gaps.append(gap)
     
-    # Récupérer les données pour les filtres
-    services = get_services_hierarchical_order()
-    gap_types = GapType.objects.all().order_by('audit_source__name', 'name')
-    audit_sources = AuditSource.objects.all().order_by('name')
+    # Récupérer les données pour les filtres depuis le cache
+    services = get_cached_services()
+    gap_types = get_cached_gap_types()  
+    audit_sources = get_cached_audit_sources()
     
     # Déterminer le service sélectionné pour l'affichage
     selected_service_name = None
@@ -208,7 +221,13 @@ def gap_list(request):
     if selected_service and selected_service.strip() and selected_service != 'None':
         try:
             service_id = int(selected_service)
-            selected_service_obj = Service.objects.get(id=service_id, actif=True)  # Service doit être actif
+            # Chercher dans le cache d'abord
+            cache_key = f"service:{service_id}"
+            selected_service_obj = cache.get(cache_key)
+            if not selected_service_obj:
+                selected_service_obj = Service.objects.get(id=service_id, actif=True)
+                cache.set(cache_key, selected_service_obj, 300)  # 5 minutes
+            
             selected_service_name = selected_service_obj.get_chemin_hierarchique()
             selected_service_descendants_count = selected_service_obj.get_descendants_count()
             selected_service_has_descendants = selected_service_descendants_count > 0
@@ -220,8 +239,14 @@ def gap_list(request):
     if request.user.service:
         user_service_descendants_count = request.user.service.get_descendants_count()
     
+    # Informations de pagination
+    pagination_info = get_page_range(page_obj) if is_paginated else {}
+    
     context = {
         'gaps': visible_gaps,
+        'page_obj': page_obj,
+        'is_paginated': is_paginated,
+        'pagination_info': pagination_info,
         'services': services,
         'gap_types': gap_types,
         'audit_sources': audit_sources,
@@ -251,6 +276,7 @@ def gap_report_list(request):
     """
     Liste des Déclarations d'évenements avec filtres.
     Par défaut, filtre selon les informations de l'utilisateur connecté.
+    Optimisée avec cache et pagination pour 400+ utilisateurs.
     """
     # Récupérer les paramètres de filtrage
     selected_service = request.GET.get('service')
@@ -258,10 +284,16 @@ def gap_report_list(request):
     selected_audit_source = request.GET.get('audit_source')
     show_all = request.GET.get('show_all', False)  # Paramètre pour afficher tout
     
-    # Base queryset
+    # Base queryset optimisé
     gap_reports = GapReport.objects.select_related(
-        'audit_source', 'service', 'process', 'declared_by'
-    ).prefetch_related('gaps')
+        'audit_source', 
+        'service', 
+        'process', 
+        'declared_by'
+    ).prefetch_related(
+        Prefetch('gaps', queryset=Gap.objects.select_related('gap_type')),
+        Prefetch('involved_users', queryset=User.objects.only('id', 'nom', 'prenom'))
+    )
     
     # Vérifier si l'utilisateur a soumis le formulaire de filtrage
     form_submitted = 'service' in request.GET or 'declared_by_search' in request.GET or 'audit_source' in request.GET
@@ -342,22 +374,36 @@ def gap_report_list(request):
     # Supprimer les doublons et ordonner
     gap_reports = gap_reports.distinct().order_by('-observation_date', '-created_at')
     
-    # Récupérer les données pour les filtres
-    services = get_services_hierarchical_order()
-    audit_sources = AuditSource.objects.all().order_by('name')
+    # Appliquer la pagination
+    page_obj, is_paginated = paginate_queryset(request, gap_reports, per_page=20)
+    
+    # Récupérer les données pour les filtres depuis le cache
+    services = get_cached_services()
+    audit_sources = get_cached_audit_sources()
     
     # Récupérer le nom du service sélectionné pour l'affichage
     selected_service_name = None
     if selected_service:
         try:
-            from core.models import Service
-            service_obj = Service.objects.get(id=selected_service, actif=True)  # Service doit être actif
+            # Chercher dans le cache d'abord
+            cache_key = f"service:{selected_service}"
+            service_obj = cache.get(cache_key)
+            if not service_obj:
+                from core.models import Service
+                service_obj = Service.objects.get(id=selected_service, actif=True)
+                cache.set(cache_key, service_obj, 300)  # 5 minutes
             selected_service_name = service_obj.nom
         except (Service.DoesNotExist, ValueError):
             pass
     
+    # Informations de pagination
+    pagination_info = get_page_range(page_obj) if is_paginated else {}
+    
     context = {
-        'gap_reports': gap_reports,
+        'gap_reports': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': is_paginated,
+        'pagination_info': pagination_info,
         'services': services,
         'audit_sources': audit_sources,
         'selected_service': selected_service,
@@ -895,18 +941,26 @@ def delete_gap_confirm(request, pk):
 
 
 @login_required
+@cache_page(300)  # Cache pendant 5 minutes
 def get_gap_types(request):
     """
     API HTMX pour récupérer les types d'écart selon la source d'audit sélectionnée.
+    Optimisée avec cache pour les performances.
     """
     audit_source_id = request.GET.get('audit_source_id')
     
     if audit_source_id:
-        gap_types = GapType.objects.filter(
-            audit_source_id=audit_source_id
-        ).order_by('name')
+        # Utiliser le cache pour les types d'écart
+        cache_key = f"gap_types:audit_source:{audit_source_id}"
+        gap_types = cache.get(cache_key)
+        
+        if gap_types is None:
+            gap_types = list(GapType.objects.filter(
+                audit_source_id=audit_source_id
+            ).order_by('name'))
+            cache.set(cache_key, gap_types, 1800)  # 30 minutes
     else:
-        gap_types = GapType.objects.none()
+        gap_types = []
     
     # Retourner directement les options HTML
     options_html = '<option value="">Sélectionner un type d\'écart</option>'

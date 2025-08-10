@@ -157,10 +157,23 @@ def _generate_change_description(changes, action, model_name):
 def store_pre_save_data(sender, instance, **kwargs):
     """
     Stocke les données avant modification pour comparaison.
+    Optimisé pour réduire les requêtes en environnement concurrent.
     """
     if instance.pk:  # Modification d'un objet existant
         try:
-            old_instance = sender.objects.get(pk=instance.pk)
+            # Optimisation : utiliser only() pour récupérer seulement les champs nécessaires
+            fields_to_track = []
+            if sender == GapReport:
+                fields_to_track = [
+                    'audit_source', 'source_reference', 'service', 'process',
+                    'location', 'observation_date', 'declared_by'
+                ]
+            elif sender == Gap:
+                fields_to_track = [
+                    'gap_type', 'description', 'status', 'gap_number'
+                ]
+            
+            old_instance = sender.objects.only(*fields_to_track).get(pk=instance.pk)
             _thread_locals.__dict__[f'pre_save_{sender.__name__}_{instance.pk}'] = _serialize_model_instance(old_instance, for_json=False)
         except sender.DoesNotExist:
             pass

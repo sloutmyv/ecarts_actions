@@ -209,3 +209,6 @@ __marimo__/
 # SPECIFIC  
 JSON/
 media/
+logs/
+staticfiles/
+.DS_Store

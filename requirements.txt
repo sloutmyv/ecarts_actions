@@ -1,2 +1,16 @@
 Django==5.2.4
 django-compressor==4.5.1
+
+# Base de données PostgreSQL
+psycopg2-binary==2.9.9
+
+# Cache et sessions Redis
+redis==5.0.1
+django-redis==5.4.0
+
+# Pool de connexions PostgreSQL
+django-db-geventpool==4.0.1
+
+# Monitoring et performance
+django-extensions==3.2.3
+django-debug-toolbar==4.2.0

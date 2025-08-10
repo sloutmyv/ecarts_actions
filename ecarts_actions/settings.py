@@ -41,6 +41,13 @@ INSTALLED_APPS = [
     'core',
 ]
 
+# Ajout d'outils de monitoring pour le développement
+if DEBUG:
+    INSTALLED_APPS += [
+        'debug_toolbar',
+        'django_extensions',
+    ]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -52,6 +59,12 @@ MIDDLEWARE = [
     'core.middleware.HistoriqueMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Ajout du middleware Debug Toolbar pour le développement
+if DEBUG:
+    MIDDLEWARE = [
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    ] + MIDDLEWARE
 
 ROOT_URLCONF = 'ecarts_actions.urls'
 
@@ -76,12 +89,37 @@ WSGI_APPLICATION = 'ecarts_actions.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+
+# Configuration PostgreSQL avec pool de connexions pour production
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'ecarts_actions'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            'MAX_CONNS': 20,  # Pool maximum de connexions
+            'MIN_CONNS': 5,   # Pool minimum de connexions
+        },
+        'CONN_MAX_AGE': 300,  # Garder les connexions 5 minutes
+        'CONN_HEALTH_CHECKS': True,  # Vérifier la santé des connexions
+        'TEST': {
+            'NAME': 'test_ecarts_actions',
+        },
     }
 }
+
+# Configuration SQLite pour développement local (fallback)
+if DEBUG and not os.environ.get('USE_POSTGRESQL'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -157,8 +195,56 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# Cache configuration with Redis for production
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 100,
+                'retry_on_timeout': True,
+            },
+        },
+        'KEY_PREFIX': 'ecarts_actions',
+        'TIMEOUT': 300,  # 5 minutes par défaut
+    },
+    'sessions': {
+        'BACKEND': 'django_redis.cache.RedisCache', 
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/2'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 50,
+                'retry_on_timeout': True,
+            },
+        },
+        'KEY_PREFIX': 'ecarts_sessions',
+        'TIMEOUT': 86400,  # 24 heures pour les sessions
+    },
+    'templates': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/3'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 30,
+                'retry_on_timeout': True,
+            },
+        },
+        'KEY_PREFIX': 'ecarts_templates',
+        'TIMEOUT': 3600,  # 1 heure pour les templates
+    }
+}
+
+# Configuration des sessions Redis pour production
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'sessions'
+SESSION_COOKIE_AGE = 86400  # 24 heures
+
 # Performance optimizations for development
-if DEBUG:
+if DEBUG and not os.environ.get('USE_REDIS'):
     # Cache templates in memory pour éviter le rechargement constant
     TEMPLATES[0]['APP_DIRS'] = False  # Désactiver APP_DIRS quand on utilise des loaders
     TEMPLATES[0]['OPTIONS']['loaders'] = [
@@ -180,3 +266,132 @@ if DEBUG:
             }
         }
     }
+    # Garder les sessions en base pour le développement
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+else:
+    # Configuration des templates cachés pour la production
+    TEMPLATES[0]['APP_DIRS'] = False
+    TEMPLATES[0]['OPTIONS']['loaders'] = [
+        ('django.template.loaders.cached.Loader', [
+            'django.template.loaders.filesystem.Loader',
+            'django.template.loaders.app_directories.Loader',
+        ]),
+    ]
+
+# Créer le dossier logs s'il n'existe pas
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+# Configuration de logging pour la production et le monitoring
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+        'performance': {
+            'format': '{asctime} - {name} - {levelname} - {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'file': {
+            'level': 'INFO',
+            'filters': ['require_debug_false'],
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
+        },
+        'performance': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'performance.log'),
+            'formatter': 'performance',
+        },
+        'db_queries': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['db_queries'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'ecarts_actions.performance': {
+            'handlers': ['performance'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# Configuration Debug Toolbar pour le développement
+if DEBUG:
+    INTERNAL_IPS = [
+        '127.0.0.1',
+        'localhost',
+    ]
+    
+    # Configuration Debug Toolbar
+    DEBUG_TOOLBAR_CONFIG = {
+        'SHOW_TOOLBAR_CALLBACK': lambda request: True,
+    }
+    
+    DEBUG_TOOLBAR_PANELS = [
+        'debug_toolbar.panels.history.HistoryPanel',
+        'debug_toolbar.panels.versions.VersionsPanel',
+        'debug_toolbar.panels.timer.TimerPanel',
+        'debug_toolbar.panels.settings.SettingsPanel',
+        'debug_toolbar.panels.headers.HeadersPanel',
+        'debug_toolbar.panels.request.RequestPanel',
+        'debug_toolbar.panels.sql.SQLPanel',
+        'debug_toolbar.panels.staticfiles.StaticFilesPanel',
+        'debug_toolbar.panels.templates.TemplatesPanel',
+        'debug_toolbar.panels.cache.CachePanel',
+        'debug_toolbar.panels.signals.SignalsPanel',
+        'debug_toolbar.panels.logging.LoggingPanel',
+        'debug_toolbar.panels.redirects.RedirectsPanel',
+        'debug_toolbar.panels.profiling.ProfilingPanel',
+    ]
+
+# Performance monitoring en production
+if not DEBUG:
+    # Configuration pour monitorer les requêtes lentes
+    SLOW_QUERY_THRESHOLD = 1.0  # Secondes
+    
+    # Middleware de monitoring personnalisé
+    MIDDLEWARE.append('core.middleware.PerformanceMonitoringMiddleware')

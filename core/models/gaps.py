@@ -33,6 +33,10 @@ class AuditSource(TimestampedModel):
         verbose_name = "3.1 Source d'audit"
         verbose_name_plural = "3.1 Sources d'audit"
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['requires_process']),
+        ]
 
     def __str__(self):
         return self.name
@@ -63,6 +67,11 @@ class Process(CodedModel, TimestampedModel):
         verbose_name = "3.2 Processus SMI"
         verbose_name_plural = "3.2 Processus SMI"
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['code']),
+            models.Index(fields=['is_active']),
+        ]
 
     def __str__(self):
         return self.name
@@ -99,6 +108,11 @@ class GapType(TimestampedModel):
         verbose_name = "3.3 Type d'événement"
         verbose_name_plural = "3.3 Types d'événement"
         ordering = ['audit_source__name', 'name']
+        indexes = [
+            models.Index(fields=['audit_source', 'name']),
+            models.Index(fields=['is_gap']),
+            models.Index(fields=['audit_source', 'is_gap']),
+        ]
 
     def __str__(self):
         return f"{self.audit_source.name} - {self.name}"
@@ -159,6 +173,14 @@ class GapReport(TimestampedModel):
         verbose_name = "3. Déclaration d'écart"
         verbose_name_plural = "3. Déclarations d'évenements"
         ordering = ['-observation_date', '-created_at']
+        indexes = [
+            models.Index(fields=['-observation_date', '-created_at']),
+            models.Index(fields=['audit_source', '-observation_date']),
+            models.Index(fields=['service', '-observation_date']),
+            models.Index(fields=['declared_by', '-observation_date']),
+            models.Index(fields=['process', '-observation_date']),
+            models.Index(fields=['audit_source', 'service', '-observation_date']),
+        ]
 
     def clean(self):
         """
@@ -234,6 +256,15 @@ class Gap(TimestampedModel):
         verbose_name = "3.4 Écart"
         verbose_name_plural = "3.4 Écarts"
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['gap_report', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['gap_type', '-created_at']),
+            models.Index(fields=['gap_number']),
+            models.Index(fields=['gap_report', 'status']),
+            models.Index(fields=['gap_type', 'status']),
+        ]
 
     def clean(self):
         """
@@ -255,33 +286,81 @@ class Gap(TimestampedModel):
         """
         Génère automatiquement un numéro d'écart si non fourni.
         Format: [ID_DECLARATION].[NUMERO_ECART]
+        Optimisé pour les accès concurrents avec retry automatique.
         """
         if not self.gap_number and self.gap_report_id:
-            # Utiliser une transaction pour éviter les conflits de concurrence
-            from django.db import transaction
-            with transaction.atomic():
-                # Verrouiller la table pour éviter les conditions de course
-                existing_gaps = Gap.objects.select_for_update().filter(
-                    gap_report_id=self.gap_report_id
-                ).order_by('gap_number')
-                
-                # Trouver le prochain numéro disponible
-                next_gap_number = 1
-                for gap in existing_gaps:
-                    # Extraire le numéro d'écart à partir du gap_number (format: "ID.NUMERO")
-                    try:
-                        gap_num = int(gap.gap_number.split('.')[-1])
-                        if gap_num == next_gap_number:
-                            next_gap_number += 1
-                        elif gap_num > next_gap_number:
-                            # On a trouvé un "trou" dans la numérotation
-                            break
-                    except (ValueError, IndexError):
-                        # Si le format n'est pas standard, ignorer
-                        continue
-                
-                # Format: ID_DECLARATION.NUMERO_ECART
-                self.gap_number = f'{self.gap_report_id}.{next_gap_number}'
+            # Utiliser une transaction pour éviter les conflits de concurrence avec retry
+            from django.db import transaction, IntegrityError
+            import time
+            import random
+            
+            max_retries = 3
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    with transaction.atomic():
+                        # Utiliser NOWAIT pour éviter les blocages longs en cas de forte concurrence
+                        existing_gaps = Gap.objects.select_for_update(nowait=True).filter(
+                            gap_report_id=self.gap_report_id
+                        ).order_by('gap_number')
+                        
+                        # Optimisation : utiliser une requête directe pour obtenir le max
+                        from django.db.models import Max
+                        max_number_result = Gap.objects.filter(
+                            gap_report_id=self.gap_report_id
+                        ).aggregate(Max('gap_number'))
+                        
+                        # Extraire le numéro maximum existant
+                        next_gap_number = 1
+                        if max_number_result['gap_number__max']:
+                            try:
+                                last_number = max_number_result['gap_number__max'].split('.')[-1]
+                                next_gap_number = int(last_number) + 1
+                            except (ValueError, IndexError):
+                                # Si extraction échoue, utiliser l'ancienne méthode
+                                for gap in existing_gaps:
+                                    try:
+                                        gap_num = int(gap.gap_number.split('.')[-1])
+                                        if gap_num >= next_gap_number:
+                                            next_gap_number = gap_num + 1
+                                    except (ValueError, IndexError):
+                                        continue
+                        
+                        # Format: ID_DECLARATION.NUMERO_ECART
+                        self.gap_number = f'{self.gap_report_id}.{next_gap_number}'
+                        break  # Sortir de la boucle si succès
+                        
+                except IntegrityError:
+                    # En cas de conflit, retry avec backoff exponentiel + jitter
+                    retry_count += 1
+                    if retry_count >= max_retries:
+                        raise  # Re-lancer l'erreur si toutes les tentatives ont échoué
+                    
+                    # Attendre avant de réessayer (backoff exponentiel avec jitter)
+                    sleep_time = (2 ** retry_count) + random.uniform(0, 1)
+                    time.sleep(min(sleep_time, 5))  # Maximum 5 secondes
+                    
+                except Exception:
+                    # Pour toute autre exception, utiliser l'ancienne méthode en fallback
+                    with transaction.atomic():
+                        existing_gaps = Gap.objects.select_for_update().filter(
+                            gap_report_id=self.gap_report_id
+                        ).order_by('gap_number')
+                        
+                        next_gap_number = 1
+                        for gap in existing_gaps:
+                            try:
+                                gap_num = int(gap.gap_number.split('.')[-1])
+                                if gap_num == next_gap_number:
+                                    next_gap_number += 1
+                                elif gap_num > next_gap_number:
+                                    break
+                            except (ValueError, IndexError):
+                                continue
+                        
+                        self.gap_number = f'{self.gap_report_id}.{next_gap_number}'
+                    break
         
         super().save(*args, **kwargs)
 
