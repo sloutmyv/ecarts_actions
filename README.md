@@ -732,6 +732,31 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.7.0 - Validation de Statut Restrictive et Historique Complet (2025-08-11)
+
+#### 🔒 Sécurité et Permissions Renforcées
+- **Validation niveau maximum uniquement** : Seuls les validateurs du niveau le plus élevé peuvent modifier le statut des écarts
+- **Contrôle d'accès granulaire** : Validation du niveau de l'utilisateur par rapport au niveau maximum configuré pour chaque service/source d'audit
+- **Messages d'erreur contextuels** : Distinction claire entre "pas validateur" et "niveau insuffisant"
+- **Protection administrative maintenue** : Super Administrateurs et Administrateurs conservent tous les droits
+
+#### 📊 Historique des Validations Enrichi
+- **Changements de statut tracés** : Les modifications directes de statut apparaissent dans l'historique des validations
+- **Distinction visuelle** : Interface adaptée pour distinguer validations classiques et changements directs
+- **Commentaires automatiques** : Génération automatique de commentaires explicites pour les changements directs
+- **Mapping intelligent** : Correspondance automatique statut → action de validation (retained → approved, rejected → rejected, closed → approved)
+
+#### 🎯 Améliorations UX/UI
+- **Template amélioré** : Affichage "a modifié le statut directement" pour les changements directs vs "a approuvé/rejeté"
+- **Historique unifié** : Un seul endroit pour voir toutes les actions de validation, directes ou via workflow
+- **Niveau de validation visible** : Affichage du niveau de validation dans tous les cas
+- **Gestion des conflits** : Utilisation d'update_or_create pour éviter les doublons par niveau
+
+#### 🔧 Améliorations Techniques
+- **Logique centralisée** : Même règle de validation appliquée dans gap_detail et change_gap_status
+- **Transactions atomiques** : Création simultanée de l'historique général et de validation
+- **Optimisation des requêtes** : Utilisation d'agregation Max() pour déterminer les niveaux
+
 ### v2.6.0 - Architecture Épurée et Documentation Consolidée (2025-08-10)
 
 #### 🧹 Nettoyage des fichiers

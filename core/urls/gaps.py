@@ -18,6 +18,7 @@ urlpatterns = [
     
     # Écarts individuels
     path('declaration/<int:gap_report_pk>/gap/new/', gaps.gap_create, name='gap_create'),
+    path('gap/<int:pk>/', gaps.gap_detail, name='gap_detail'),
     path('gap/<int:pk>/edit/', gaps.gap_edit, name='gap_edit'),
     
     # API HTMX

@@ -273,8 +273,19 @@
                                 </span>
                                 
                                 <!-- Boutons d'action -->
+                                <!-- Bouton Voir le détail (accessible à tous) -->
+                                <a href="{% url 'gaps:gap_detail' gap.pk %}" 
+                                   title="Voir le détail de l'écart"
+                                   class="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                </a>
+                                
                                 {% if gap_report.declared_by == user or user.droits == 'SA' or user.droits == 'AD' %}
-                                    <!-- Bouton Modifier -->
+                                    <!-- Bouton Modifier (seulement si écart modifiable) -->
+                                    {% if gap.status == 'declared' or gap.status == 'cancelled' or user.droits == 'SA' or user.droits == 'AD' %}
                                     <a href="{% url 'gaps:gap_edit' gap.pk %}" 
                                        title="Modifier l'écart{% if gap_report.declared_by != user %} (Administrateur){% endif %}"
                                        class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -282,17 +293,34 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
                                     </a>
-                                    
-                                    <!-- Bouton Supprimer (SA/AD uniquement) -->
-                                    {% if user.droits == 'SA' or user.droits == 'AD' %}
-                                    <button type="button"
-                                            onclick="deleteGapWithHtmx({{ gap.pk }}, '{{ gap.gap_number }}')"
-                                            title="Supprimer l'écart (Administrateur)"
-                                            class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                    {% else %}
+                                    <!-- Bouton désactivé avec info-bulle -->
+                                    <div class="p-2 text-gray-300 cursor-not-allowed" title="Impossible de modifier un écart {{ gap.get_status_display|lower }}">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
-                                    </button>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Bouton Supprimer (SA/AD uniquement, et seulement si écart modifiable) -->
+                                    {% if user.droits == 'SA' or user.droits == 'AD' %}
+                                        {% if gap.status == 'declared' or gap.status == 'cancelled' %}
+                                        <button type="button"
+                                                onclick="deleteGapWithHtmx({{ gap.pk }}, '{{ gap.gap_number }}')"
+                                                title="Supprimer l'écart (Administrateur)"
+                                                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                        {% else %}
+                                        <!-- Bouton suppression désactivé -->
+                                        <div class="p-2 text-gray-300 cursor-not-allowed" title="Impossible de supprimer un écart {{ gap.get_status_display|lower }}">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </div>
+                                        {% endif %}
                                     {% endif %}
                                 {% else %}
                                     <div class="p-2 text-gray-300" title="Lecture seule">

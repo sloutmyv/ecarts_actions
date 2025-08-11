@@ -715,6 +715,12 @@ def gap_edit(request, pk):
         messages.error(request, 'Vous ne pouvez modifier que les écarts de vos propres déclarations.')
         return redirect('gaps:gap_report_detail', pk=gap.gap_report.pk)
     
+    # Vérifier que l'écart peut être modifié (seulement statuts 'declared' et 'cancelled', sauf pour les administrateurs)
+    if gap.status not in ['declared', 'cancelled'] and request.user.droits not in ['SA', 'AD']:
+        status_display = gap.get_status_display()
+        messages.error(request, f'Vous ne pouvez pas modifier un écart ayant le statut "{status_display}". Seuls les écarts déclarés ou annulés peuvent être modifiés.')
+        return redirect('gaps:gap_report_detail', pk=gap.gap_report.pk)
+    
     if request.method == 'POST':
         form = GapForm(request.POST, instance=gap, gap_report=gap.gap_report, user=request.user)
         if form.is_valid():
@@ -803,6 +809,12 @@ def delete_gap(request, pk):
         messages.error(request, 'Vous n\'avez pas les droits nécessaires pour supprimer un écart.')
         return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     
+    # Vérifier que l'écart peut être supprimé (seulement statuts 'declared' et 'cancelled')
+    if gap.status not in ['declared', 'cancelled']:
+        status_display = gap.get_status_display()
+        messages.error(request, f'Impossible de supprimer un écart ayant le statut "{status_display}". Seuls les écarts déclarés ou annulés peuvent être supprimés.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+    
     # Vérifier si c'est le dernier écart de la déclaration
     total_gaps = gap_report.gaps.count()
     is_last_gap = total_gaps == 1
@@ -861,6 +873,12 @@ def delete_gap_confirm(request, pk):
     # Vérifier que l'utilisateur connecté est un administrateur
     if request.user.droits not in ['SA', 'AD']:
         messages.error(request, 'Vous n\'avez pas les droits nécessaires pour supprimer un écart.')
+        return redirect('gaps:gap_report_detail', pk=gap_report.pk)
+    
+    # Vérifier que l'écart peut être supprimé (seulement statuts 'declared' et 'cancelled')
+    if gap.status not in ['declared', 'cancelled']:
+        status_display = gap.get_status_display()
+        messages.error(request, f'Impossible de supprimer un écart ayant le statut "{status_display}". Seuls les écarts déclarés ou annulés peuvent être supprimés.')
         return redirect('gaps:gap_report_detail', pk=gap_report.pk)
     
     # Vérifier si c'est le dernier écart de la déclaration
@@ -1073,3 +1091,89 @@ def delete_attachment(request, attachment_id):
             'success': False,
             'error': f'Erreur lors de la suppression : {str(e)}'
         }, status=500)
+
+
+@login_required
+def gap_detail(request, pk):
+    """
+    Vue détaillée d'un écart avec options de validation si l'utilisateur est validateur.
+    """
+    gap = get_object_or_404(
+        Gap.objects.select_related(
+            'gap_report__audit_source', 
+            'gap_report__service', 
+            'gap_report__declared_by', 
+            'gap_type'
+        ).prefetch_related('attachments'),
+        pk=pk
+    )
+    
+    # Marquer les notifications liées à cet écart comme lues pour l'utilisateur actuel
+    from ..models import Notification
+    from django.utils import timezone
+    notifications_to_mark = Notification.objects.filter(
+        user=request.user,
+        gap=gap,
+        is_read=False
+    )
+    notifications_to_mark.update(is_read=True, read_at=timezone.now())
+    
+    # Vérifier si l'utilisateur peut valider cet écart
+    can_validate = False
+    if gap.status == 'declared' and gap.gap_type.is_gap:
+        from ..services.validation_service import ValidationService
+        pending_gaps = ValidationService.get_pending_validations(request.user)
+        can_validate = gap in pending_gaps
+    
+    # Vérifier si l'utilisateur peut modifier le statut de cet écart
+    can_change_status = False
+    if request.user.droits in ['SA', 'AD']:
+        can_change_status = True
+    else:
+        # Vérifier si l'utilisateur est validateur du niveau le plus élevé pour ce service/source d'audit
+        from ..models.workflow import ValidateurService
+        from django.db.models import Max
+        
+        validator_assignments = ValidateurService.get_services_validateur(
+            request.user, actif_seulement=True
+        ).filter(
+            service=gap.gap_report.service,
+            audit_source=gap.gap_report.audit_source
+        )
+        
+        if validator_assignments.exists():
+            # Récupérer le niveau maximum pour cette combinaison service/source d'audit
+            max_level = ValidateurService.get_validateurs_service(
+                service=gap.gap_report.service,
+                audit_source=gap.gap_report.audit_source,
+                actif_seulement=True
+            ).aggregate(max_niveau=Max('niveau'))['max_niveau']
+            
+            # Vérifier si l'utilisateur est validateur au niveau maximum
+            user_max_level = validator_assignments.aggregate(
+                user_max_niveau=Max('niveau')
+            )['user_max_niveau']
+            
+            # L'utilisateur peut modifier seulement s'il est au niveau maximum
+            if user_max_level == max_level:
+                can_change_status = True
+    
+    # Récupérer l'historique des validations pour cet écart
+    validations = []
+    if hasattr(gap, 'validations'):
+        validations = gap.validations.select_related('validator').order_by('level', 'validated_at')
+    
+    # Récupérer l'historique des modifications
+    historique = HistoriqueModification.objects.filter(
+        Q(gap=gap) | Q(gap_report=gap.gap_report)
+    ).select_related('utilisateur').order_by('-created_at')[:10]
+    
+    context = {
+        'gap': gap,
+        'can_validate': can_validate,
+        'can_change_status': can_change_status,
+        'validations': validations,
+        'historique': historique,
+    }
+    
+    return render(request, 'core/gaps/gap_detail.html', context)

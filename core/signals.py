@@ -216,7 +216,7 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Gap)
 def log_gap_changes(sender, instance, created, **kwargs):
     """
-    Enregistre les modifications des événements.
+    Enregistre les modifications des événements et déclenche les notifications de validation.
     """
     user = get_current_user()
     if not user:
@@ -231,6 +231,35 @@ def log_gap_changes(sender, instance, created, **kwargs):
             description=_generate_change_description({}, 'creation', 'événement'),
             donnees_apres=_serialize_model_instance(instance, for_json=True)
         )
+        
+        # Si c'est un écart (is_gap=True) en statut déclaré, créer une notification de validation
+        if instance.gap_type.is_gap and instance.status == 'declared':
+            from .services.validation_service import ValidationService
+            ValidationService.create_gap_notification(instance)
+        
+        # Créer une notification pour le déclarant sur la création de l'écart
+        if hasattr(instance, 'gap_report') and instance.gap_report and instance.gap_report.declared_by != user:
+            from .models.notifications import Notification
+            Notification.objects.create(
+                user=instance.gap_report.declared_by,
+                gap=instance,
+                type='gap_created',
+                title=f"Écart {instance.gap_number} créé",
+                message=f"Votre écart {instance.gap_number} ({instance.gap_type.name}) a été créé avec succès.",
+                priority='normal'
+            )
+        elif hasattr(instance, 'gap_report') and instance.gap_report and instance.gap_report.declared_by == user:
+            # Auto-notification pour le créateur
+            from .models.notifications import Notification
+            Notification.objects.create(
+                user=user,
+                gap=instance,
+                type='gap_created',
+                title=f"Écart {instance.gap_number} créé",
+                message=f"Votre écart {instance.gap_number} ({instance.gap_type.name}) a été créé avec succès.",
+                priority='normal'
+            )
+            
     else:
         # Modification
         old_data = getattr(_thread_locals, f'pre_save_{sender.__name__}_{instance.pk}', None)
@@ -250,6 +279,41 @@ def log_gap_changes(sender, instance, created, **kwargs):
                 donnees_avant=_convert_data_for_json(old_data),
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
+            
+            # Créer une notification pour le déclarant sur la modification de l'écart
+            if hasattr(instance, 'gap_report') and instance.gap_report and instance.gap_report.declared_by:
+                from .models.notifications import Notification
+                
+                # Déterminer le type de notification selon le changement
+                if 'status' in changes:
+                    old_status = changes['status']['avant']
+                    new_status = changes['status']['apres']
+                    
+                    if new_status == 'retained':
+                        notification_type = 'gap_retained'
+                        title = f"Écart {instance.gap_number} retenu"
+                        message = f"Votre écart {instance.gap_number} a été validé et retenu."
+                    elif new_status == 'rejected':
+                        notification_type = 'gap_rejected'
+                        title = f"Écart {instance.gap_number} rejeté"
+                        message = f"Votre écart {instance.gap_number} a été rejeté."
+                    else:
+                        notification_type = 'gap_modified'
+                        title = f"Écart {instance.gap_number} modifié"
+                        message = f"Le statut de votre écart {instance.gap_number} a été modifié : {old_status} → {new_status}."
+                else:
+                    notification_type = 'gap_modified'
+                    title = f"Écart {instance.gap_number} modifié"
+                    message = f"Votre écart {instance.gap_number} a été modifié."
+                
+                Notification.objects.create(
+                    user=instance.gap_report.declared_by,
+                    gap=instance,
+                    type=notification_type,
+                    title=title,
+                    message=message,
+                    priority='normal'
+                )
 
 
 @receiver(post_delete, sender=GapReport)
@@ -296,3 +360,16 @@ def log_gap_deletion(sender, instance, **kwargs):
         description=_generate_change_description({}, 'suppression', 'événement'),
         donnees_avant=_serialize_model_instance(instance, for_json=True)
     )
+    
+    # Créer une notification pour le déclarant sur la suppression de l'écart
+    if hasattr(instance, 'gap_report') and instance.gap_report and instance.gap_report.declared_by:
+        from .models.notifications import Notification
+        
+        Notification.objects.create(
+            user=instance.gap_report.declared_by,
+            gap=None,  # L'écart est supprimé, pas de référence
+            type='gap_deleted',
+            title=f"Écart {instance.gap_number} supprimé",
+            message=f"Votre écart {instance.gap_number} ({instance.gap_type.name}) a été supprimé.",
+            priority='normal'
+        )

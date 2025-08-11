@@ -1,6 +1,6 @@
 from django.urls import path, include
 from . import views
-from .views import auth
+from .views import auth, validation
 
 urlpatterns = [
     # URLs d'authentification
@@ -49,4 +49,11 @@ urlpatterns = [
     path('workflow/search-users/', views.search_users, name='search_users'),
     path('workflow/service/<int:service_id>/detail/', views.service_detail_api, name='service_detail_api'),
     path('workflow/niveau/<int:service_id>/<int:audit_source_id>/<int:niveau>/', views.get_niveau_partial, name='get_niveau_partial'),
+    
+    # URLs pour la validation des écarts
+    path('validation/gap/<int:gap_id>/', validation.validate_gap, name='validate_gap'),
+    path('validation/gap/<int:gap_id>/change-status/', validation.change_gap_status, name='change_gap_status'),
+    path('validation/pending/', validation.pending_validations, name='pending_validations'),
+    path('notifications/', validation.notifications_list, name='notifications_list'),
+    path('notifications/<int:notification_id>/mark-read/', validation.mark_notification_read, name='mark_notification_read'),
 ]

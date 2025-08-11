@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}Détail de l'écart {{ gap.gap_number }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- En-tête -->
+    <div class="md:flex md:items-center md:justify-between mb-6">
+        <div class="min-w-0 flex-1">
+            <nav class="flex" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-4">
+                    <li>
+                        <div class="flex items-center">
+                            <a href="{% url 'dashboard' %}" class="text-gray-400 hover:text-gray-500">
+                                <svg class="flex-shrink-0 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                </svg>
+                                <span class="sr-only">Retour</span>
+                            </a>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                            </svg>
+                            <span class="ml-4 text-sm font-medium text-gray-500">Tableau de bord</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Écart {{ gap.gap_number }}
+            </h1>
+        </div>
+        
+        <!-- Actions disponibles -->
+        <div class="mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 md:ml-4 md:mt-0">
+        
+        <!-- Actions de validation si l'utilisateur peut valider -->
+        {% if can_validate %}
+        <div class="flex space-x-3">
+            <form method="post" action="{% url 'validate_gap' gap.id %}" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approved">
+                <textarea name="comment" placeholder="Commentaire (optionnel)" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm mb-2 mr-2"></textarea>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    Approuver
+                </button>
+            </form>
+            
+            <form method="post" action="{% url 'validate_gap' gap.id %}" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="rejected">
+                <textarea name="comment" placeholder="Raison du rejet" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm mb-2" required></textarea>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Rejeter
+                </button>
+            </form>
+        </div>
+        {% endif %}
+        
+        <!-- Bouton pour changer le statut si l'utilisateur peut le modifier -->
+        {% if can_change_status %}
+        <div>
+            <a href="{% url 'change_gap_status' gap.id %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Modifier le statut
+            </a>
+        </div>
+        {% endif %}
+        
+        </div>
+    </div>
+
+    <!-- Informations de l'écart -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Détails de l'écart -->
+        <div class="lg:col-span-2">
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Informations de l'écart</h2>
+                
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Numéro d'écart</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-mono">{{ gap.gap_number }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Type d'écart</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ gap.gap_type.name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Statut</dt>
+                        <dd class="mt-1">
+                            {% if gap.status == 'declared' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    Déclaré
+                                </span>
+                            {% elif gap.status == 'retained' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Retenu
+                                </span>
+                            {% elif gap.status == 'rejected' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Non retenu
+                                </span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Service</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ gap.gap_report.service.nom }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Source d'audit</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ gap.gap_report.audit_source.name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Déclaré par</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ gap.gap_report.declared_by.get_full_name|default:gap.gap_report.declared_by.matricule }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Déclaration</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            <a href="{% url 'gaps:gap_report_detail' gap.gap_report.pk %}" 
+                               class="inline-flex items-center text-blue-600 hover:text-blue-500">
+                                Voir la déclaration complète
+                                <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </dd>
+                    </div>
+                </dl>
+                
+                <div class="mt-4">
+                    <dt class="text-sm font-medium text-gray-500">Description</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ gap.description|linebreaksbr }}</dd>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Historique des validations -->
+        <div>
+            {% if validations %}
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Historique des validations</h3>
+                <div class="space-y-3">
+                    {% for validation in validations %}
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            {% if validation.action == 'approved' %}
+                            <div class="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            {% else %}
+                            <div class="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="h-3 w-3 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm">
+                                <span class="font-medium text-gray-900">{{ validation.validator.get_full_name|default:validation.validator.matricule }}</span>
+                                <span class="text-gray-500">
+                                    {% if "Changement de statut direct" in validation.comment %}
+                                        a modifié le statut directement
+                                    {% else %}
+                                        a {% if validation.action == 'approved' %}approuvé{% else %}rejeté{% endif %} 
+                                    {% endif %}
+                                    (Niveau {{ validation.level }})
+                                </span>
+                            </div>
+                            {% if validation.comment %}
+                            <div class="mt-1 text-sm text-gray-600">{{ validation.comment }}</div>
+                            {% endif %}
+                            <div class="mt-1 text-xs text-gray-400">{{ validation.validated_at|date:"d/m/Y H:i" }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Pièces jointes -->
+            {% if gap.attachments.exists %}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Pièces jointes</h3>
+                <div class="space-y-2">
+                    {% for attachment in gap.attachments.all %}
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div class="flex items-center space-x-2">
+                            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-sm text-gray-900">{{ attachment.description|default:attachment.file.name }}</span>
+                        </div>
+                        <a href="{{ attachment.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-500">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Historique des modifications (réservé aux administrateurs) -->
+    {% if historique and user.droits == 'SA' or user.droits == 'AD' %}
+    <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Historique des modifications</h3>
+        {% include 'core/gaps/partials/historique_log.html' with historique=historique %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

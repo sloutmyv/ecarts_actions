@@ -75,3 +75,28 @@ def niveau_bg_class(niveau):
         3: 'bg-purple-100 text-purple-800',
     }
     return classes.get(niveau, 'bg-gray-100 text-gray-800')
+
+
+@register.filter
+def is_validator_for_gap(user, gap):
+    """
+    Détermine si un utilisateur peut valider un écart donné.
+    
+    Usage: {{ user|is_validator_for_gap:gap }}
+    """
+    # Administrateurs peuvent toujours valider
+    if user.droits in ['SA', 'AD']:
+        return True
+    
+    # Vérifier si l'utilisateur est validateur pour ce service/source d'audit
+    try:
+        from core.models.workflow import ValidateurService
+        validator_assignments = ValidateurService.get_services_validateur(
+            user, actif_seulement=True
+        ).filter(
+            service=gap.gap_report.service,
+            audit_source=gap.gap_report.audit_source
+        )
+        return validator_assignments.exists()
+    except Exception:
+        return False

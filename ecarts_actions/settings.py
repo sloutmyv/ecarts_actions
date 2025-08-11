@@ -328,12 +328,6 @@ LOGGING = {
             'filename': os.path.join(BASE_DIR, 'logs', 'performance.log'),
             'formatter': 'performance',
         },
-        'db_queries': {
-            'level': 'DEBUG',
-            'filters': ['require_debug_true'],
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
     },
     'loggers': {
         'django': {
@@ -342,8 +336,8 @@ LOGGING = {
             'propagate': True,
         },
         'django.db.backends': {
-            'handlers': ['db_queries'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'handlers': [],  # Removed db_queries handler to stop SQL logs in terminal
+            'level': 'INFO',
             'propagate': False,
         },
         'ecarts_actions.performance': {
