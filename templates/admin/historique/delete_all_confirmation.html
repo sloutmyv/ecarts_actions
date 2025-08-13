@@ -1,0 +1,155 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .warning-box {
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #f7fafc;
+        }
+        .danger-box {
+            background-color: #742a2a;
+            border: 1px solid #c53030;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #fed7d7;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .stats-table th, .stats-table td {
+            border: 1px solid #4a5568;
+            padding: 8px 12px;
+            text-align: left;
+            color: #f7fafc;
+        }
+        .stats-table th {
+            background-color: #1a202c;
+            font-weight: bold;
+        }
+        .confirm-button {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .cancel-button {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .confirm-button:hover {
+            background-color: #c82333;
+        }
+        .cancel-button:hover {
+            background-color: #5a6268;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="danger-box">
+        <h2>⚠️ ATTENTION - Action irréversible !</h2>
+        <p><strong>Vous êtes sur le point de supprimer TOUT l'historique de modifications de la base de données.</strong></p>
+        <p>Cette action ne peut pas être annulée et supprimera définitivement l'historique de tous les événements et déclarations.</p>
+    </div>
+
+    <div class="warning-box">
+        <h3>📊 Statistiques actuelles</h3>
+        <p><strong>Total des entrées d'historique : {{ total_count }}</strong></p>
+        
+        {% if action_stats %}
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Type d'action</th>
+                    <th>Nombre</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stat in action_stats %}
+                <tr>
+                    <td>{{ stat.action }}</td>
+                    <td><strong>{{ stat.count }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    <div class="warning-box">
+        <h3>🔥 Conséquences de cette action</h3>
+        <ul>
+            <li>❌ <strong>{{ total_count }} entrées d'historique</strong> seront définitivement supprimées</li>
+            <li>📝 Tout l'historique des modifications d'événements sera perdu</li>
+            <li>🔍 Les traces d'audit des actions utilisateurs seront effacées</li>
+            <li>⚠️ L'historique des créations, modifications et suppressions sera supprimé</li>
+            <li>📊 Cette action sera enregistrée dans les logs d'administration</li>
+        </ul>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="confirm" value="1">
+        
+        <h3>Pour confirmer cette suppression, tapez "SUPPRIMER HISTORIQUE" ci-dessous :</h3>
+        <input type="text" id="confirmation-text" placeholder="Tapez: SUPPRIMER HISTORIQUE" 
+               style="padding: 8px; font-size: 16px; width: 350px; margin: 10px 0;">
+        
+        <br><br>
+        
+        <button type="submit" class="confirm-button" id="confirm-btn" disabled>
+            🗑️ CONFIRMER LA SUPPRESSION DE {{ total_count }} ENTRÉES
+        </button>
+        
+        <a href="{% url 'admin:core_historiquemodification_changelist' %}" class="cancel-button">
+            ❌ Annuler
+        </a>
+    </form>
+
+    <script>
+        document.getElementById('confirmation-text').addEventListener('input', function(e) {
+            const confirmBtn = document.getElementById('confirm-btn');
+            if (e.target.value === 'SUPPRIMER HISTORIQUE') {
+                confirmBtn.disabled = false;
+                confirmBtn.style.backgroundColor = '#dc3545';
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.style.backgroundColor = '#6c757d';
+            }
+        });
+        
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const confirmText = document.getElementById('confirmation-text').value;
+            if (confirmText !== 'SUPPRIMER HISTORIQUE') {
+                e.preventDefault();
+                alert('Vous devez taper "SUPPRIMER HISTORIQUE" pour confirmer.');
+                return false;
+            }
+            
+            return confirm('Êtes-vous ABSOLUMENT SÛR de vouloir supprimer tout l\'historique ? Cette action est IRRÉVERSIBLE !');
+        });
+    </script>
+</div>
+{% endblock %}

@@ -81,15 +81,6 @@
                                             </svg>
                                             <span>{{ entry.created_at|date:"d/m/Y à H:i" }}</span>
                                         </span>
-                                        {% if entry.objet_type == 'gap' %}
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                            Écart
-                                        </span>
-                                        {% else %}
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                            Déclaration
-                                        </span>
-                                        {% endif %}
                                     </div>
                                 </div>
                                 

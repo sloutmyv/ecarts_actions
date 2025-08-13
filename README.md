@@ -776,6 +776,33 @@ python manage.py clearsessions
 - **Variables d'environnement clarifiées** : Configuration simplifiée avec `.env.example`
 - **Commandes de maintenance consolidées** : Backup, monitoring, surveillance dans une section dédiée
 
+### v2.8.0 - Interface d'Administration Enrichie et Suppression de Masse (2025-08-13)
+
+#### 🗑️ Suppression de masse sécurisée
+- **Suppression de toutes les notifications** : Bouton de suppression de masse avec confirmation multi-niveaux
+- **Suppression de tout l'historique** : Fonctionnalité équivalente pour l'historique des modifications
+- **Interface de confirmation robuste** : Page de confirmation avec statistiques détaillées et saisie manuelle obligatoire
+- **Protection par mot-clé** : Saisie de "SUPPRIMER TOUT" ou "SUPPRIMER HISTORIQUE" obligatoire pour confirmer
+- **Double confirmation JavaScript** : Protection supplémentaire avec confirmation navigateur
+
+#### 🎨 Design cohérent et accessible
+- **Boutons stylisés** : Boutons de suppression de masse avec style Django standard mais couleur rouge
+- **Thème sombre adapté** : Couleurs optimisées pour la lisibilité dans l'interface d'administration
+- **Statistiques visuelles** : Tableaux détaillés montrant le nombre d'éléments par type/action avant suppression
+- **Messages d'état clairs** : Feedback utilisateur avec compteurs précis et détails de suppression
+
+#### 🔒 Sécurité administrative renforcée
+- **Boutons "Ajouter" désactivés** : Empêche la création manuelle de notifications et d'historique (générés automatiquement)
+- **Permissions granulaires** : Seuls les superutilisateurs peuvent effectuer les suppressions de masse
+- **Logging administratif** : Enregistrement détaillé des suppressions massives dans les logs Django
+- **URLs personnalisées** : Routes dédiées `/delete_all/` pour chaque type de suppression
+
+#### 🛠️ Améliorations techniques
+- **Templates personnalisés** : `change_list.html` et `delete_all_confirmation.html` pour chaque modèle
+- **Méthodes admin étendues** : `get_urls()` et vues personnalisées pour gérer les suppressions de masse
+- **Gestion des erreurs** : Protection contre les suppressions sur données vides avec messages informatifs
+- **Architecture modulaire** : Organisation des templates dans `admin/notifications/` et `admin/historique/`
+
 ### v2.5.1 - Corrections Interface et Suppression Services (2025-08-10)
 
 #### 🐛 Corrections critiques

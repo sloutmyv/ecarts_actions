@@ -36,7 +36,7 @@ class ValidationService:
                 user=validator.validateur,
                 gap=gap,
                 type='validation_request',
-                title=f"Nouvel écart à valider - {gap.gap_number}",
+                title=f"{gap.gap_number} - Nouvel événement à valider",
                 message=f"Un nouvel écart ({gap.gap_number}) a été déclaré par {gap.gap_report.declared_by.get_full_name()} "
                        f"et nécessite votre validation (Niveau 1).\n\n"
                        f"Service: {gap.gap_report.service.nom}\n"
@@ -92,9 +92,9 @@ class ValidationService:
                     user=gap.gap_report.declared_by,
                     gap=gap,
                     type='gap_rejected',
-                    title=f"Écart rejeté - {gap.gap_number}",
-                    message=f"Votre écart {gap.gap_number} a été rejeté au niveau {level} par {validator.get_full_name()}.\n"
-                           f"Commentaire: {comment}" if comment else f"Votre écart {gap.gap_number} a été rejeté au niveau {level} par {validator.get_full_name()}.",
+                    title=f"{gap.gap_number} - Événement rejeté",
+                    message=f"Votre événement {gap.gap_number} a été rejeté au niveau {level} par {validator.get_full_name()}.\n"
+                           f"Commentaire: {comment}" if comment else f"Votre événement {gap.gap_number} a été rejeté au niveau {level} par {validator.get_full_name()}.",
                     priority='high'
                 )
                 
@@ -103,8 +103,8 @@ class ValidationService:
                     user=validator,
                     gap=gap,
                     type='validation_completed',
-                    title=f"Validation effectuée - {gap.gap_number}",
-                    message=f"Vous avez rejeté l'écart {gap.gap_number}. Le déclarant a été notifié.",
+                    title=f"{gap.gap_number} - Traitement effectué : Non retenu",
+                    message=f"Vous avez rejeté l'événement {gap.gap_number}. Le déclarant a été notifié.",
                     priority='normal'
                 )
                 return True
@@ -126,8 +126,8 @@ class ValidationService:
                         user=gap.gap_report.declared_by,
                         gap=gap,
                         type='gap_retained',
-                        title=f"Écart retenu - {gap.gap_number}",
-                        message=f"Votre écart {gap.gap_number} a été retenu après validation complète par {validator.get_full_name()}.",
+                        title=f"{gap.gap_number} - Événement retenu",
+                        message=f"Votre événement {gap.gap_number} a été retenu après validation complète par {validator.get_full_name()}.",
                         priority='high'
                     )
                     
@@ -136,8 +136,8 @@ class ValidationService:
                         user=validator,
                         gap=gap,
                         type='validation_completed',
-                        title=f"Validation effectuée - {gap.gap_number}",
-                        message=f"Vous avez approuvé l'écart {gap.gap_number}. L'écart est maintenant retenu et le déclarant a été notifié.",
+                        title=f"{gap.gap_number} - Traitement effectué : Retenu",
+                        message=f"Vous avez approuvé l'événement {gap.gap_number}. L'événement est maintenant retenu et le déclarant a été notifié.",
                         priority='normal'
                     )
                     return True
@@ -153,8 +153,8 @@ class ValidationService:
                         user=validator,
                         gap=gap,
                         type='validation_completed',
-                        title=f"Validation effectuée - {gap.gap_number}",
-                        message=f"Vous avez approuvé l'écart {gap.gap_number}. Il passe maintenant au niveau {next_level}.",
+                        title=f"{gap.gap_number} - Traitement effectué : Approuvé",
+                        message=f"Vous avez approuvé l'événement {gap.gap_number}. Il passe maintenant au niveau {next_level}.",
                         priority='normal'
                     )
                     
@@ -171,7 +171,7 @@ class ValidationService:
                             user=next_validator.validateur,
                             gap=gap,
                             type='validation_request',
-                            title=f"Écart à valider (Niveau {next_level}) - {gap.gap_number}",
+                            title=f"{gap.gap_number} - Événement à valider (Niveau {next_level})",
                             message=f"L'écart {gap.gap_number} a été approuvé au niveau {level} par {validator.get_full_name()} "
                                    f"et nécessite maintenant votre validation (Niveau {next_level}).\n\n"
                                    f"Service: {gap.gap_report.service.nom}\n"

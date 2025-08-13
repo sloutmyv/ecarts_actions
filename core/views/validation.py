@@ -46,7 +46,8 @@ def validate_gap(request, gap_id):
                     comment=comment
                 )
                 
-                # Forcer le marquage comme lues de toutes les notifications de validation pour cet écart et ce validateur
+                # Marquer comme lues toutes les notifications de validation pour cet écart et ce validateur
+                # uniquement APRÈS une validation réussie
                 from django.utils import timezone
                 updated_notifications = Notification.objects.filter(
                     user=request.user,
@@ -57,7 +58,6 @@ def validate_gap(request, gap_id):
                     is_read=True,
                     read_at=timezone.now()
                 )
-                print(f"DEBUG validate_gap: Marqué {updated_notifications} notifications comme lues pour {request.user} sur écart {gap.gap_number}")
                 
                 # Marquer aussi toutes les autres notifications non lues pour ce gap et cet utilisateur
                 all_updated = Notification.objects.filter(
@@ -68,7 +68,6 @@ def validate_gap(request, gap_id):
                     is_read=True,
                     read_at=timezone.now()
                 )
-                print(f"DEBUG validate_gap: Marqué {all_updated} notifications supplémentaires pour cet écart")
                 
                 # Messages de succès
                 if action == 'approved':
@@ -125,6 +124,7 @@ def notifications_list(request):
 def mark_notification_read(request, notification_id):
     """
     Marque une notification comme lue via AJAX.
+    Les notifications de validation ne peuvent pas être marquées comme lues manuellement.
     """
     try:
         notification = get_object_or_404(
@@ -132,6 +132,14 @@ def mark_notification_read(request, notification_id):
             id=notification_id, 
             user=request.user
         )
+        
+        # Empêcher le marquage manuel des notifications de validation
+        if notification.type == 'validation_request':
+            return JsonResponse({
+                'success': False,
+                'message': 'Les notifications de validation ne peuvent être marquées comme lues qu\'en effectuant la validation.'
+            }, status=403)
+        
         notification.mark_as_read()
         
         return JsonResponse({
@@ -264,20 +272,7 @@ def change_gap_status(request, gap_id):
                 gap.status = new_status
                 gap.save(update_fields=['status', 'updated_at'])
                 
-                # Créer une entrée dans l'historique
-                from ..models.gaps import HistoriqueModification
-                HistoriqueModification.objects.create(
-                    gap=gap,
-                    gap_report=gap.gap_report,
-                    action='changement_statut',
-                    objet_type='gap',
-                    objet_id=gap.id,
-                    objet_repr=gap.gap_number,
-                    utilisateur=request.user,
-                    description=f"Changement de statut de '{dict(status_choices)[old_status]}' vers '{gap.get_status_display()}'",
-                    donnees_avant={'status': old_status},
-                    donnees_apres={'status': new_status, 'comment': comment}
-                )
+                # L'historique est automatiquement créé par le signal post_save
                 
                 # Créer une entrée dans l'historique des validations pour les changements de statut directs
                 if new_status in ['retained', 'rejected', 'closed']:
@@ -322,8 +317,8 @@ def change_gap_status(request, gap_id):
                         user=gap.gap_report.declared_by,
                         gap=gap,
                         type='gap_status_changed',
-                        title=f"Statut modifié - {gap.gap_number}",
-                        message=f"Le statut de votre écart {gap.gap_number} a été modifié vers '{gap.get_status_display()}' par {request.user.get_full_name()}."
+                        title=f"{gap.gap_number} - Statut modifié",
+                        message=f"Le statut de votre événement {gap.gap_number} a été modifié vers '{gap.get_status_display()}' par {request.user.get_full_name()}."
                                 f"{f' Commentaire: {comment}' if comment else ''}",
                         priority='normal'
                     )

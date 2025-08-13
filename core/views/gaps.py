@@ -1109,12 +1109,15 @@ def gap_detail(request, pk):
     )
     
     # Marquer les notifications liées à cet écart comme lues pour l'utilisateur actuel
+    # SAUF les notifications de validation qui doivent rester visibles jusqu'à la validation effective
     from ..models import Notification
     from django.utils import timezone
     notifications_to_mark = Notification.objects.filter(
         user=request.user,
         gap=gap,
         is_read=False
+    ).exclude(
+        type='validation_request'  # Ne pas marquer automatiquement les notifications de validation comme lues
     )
     notifications_to_mark.update(is_read=True, read_at=timezone.now())
     

@@ -104,13 +104,27 @@ def _get_field_changes(old_data, new_instance):
     return changes
 
 
-def _generate_change_description(changes, action, model_name):
+def _generate_change_description(changes, action, model_name, instance=None):
     """
     Génère une description lisible des changements.
     """
     if action == 'creation':
+        # Cas spécial pour la création d'écarts et déclarations
+        if instance:
+            from .models.gaps import Gap, GapReport
+            if isinstance(instance, Gap):
+                return f"Création de l'événement {instance.gap_number}"
+            elif isinstance(instance, GapReport):
+                return f"Création de déclaration d'événement {instance.id}"
         return f"Création de {model_name.lower()}"
     elif action == 'suppression':
+        # Cas spécial pour la suppression d'écarts et déclarations
+        if instance:
+            from .models.gaps import Gap, GapReport
+            if isinstance(instance, Gap):
+                return f"Suppression de l'événement {instance.gap_number}"
+            elif isinstance(instance, GapReport):
+                return f"Suppression de déclaration d'événement {instance.id}"
         return f"Suppression de {model_name.lower()}"
     elif not changes:
         return f"Modification de {model_name.lower()} (aucun changement détecté)"
@@ -147,7 +161,43 @@ def _generate_change_description(changes, action, model_name):
         elif hasattr(new_val, 'strftime'):  # datetime objects
             new_val = new_val.strftime('%d/%m/%Y %H:%M')
             
-        descriptions.append(f"{field_label}: '{old_val}' → '{new_val}'")
+        # Cas spécial pour les changements de statut des écarts
+        if field_name == 'status' and action == 'changement_statut':
+            # Importer Gap ici pour éviter les imports circulaires  
+            from .models.gaps import Gap
+            if instance and isinstance(instance, Gap):
+                # Traduire les valeurs en français
+                status_translations = {
+                    'declared': 'Déclaré',
+                    'cancelled': 'Annulé', 
+                    'retained': 'Retenu',
+                    'rejected': 'Non retenu',
+                    'closed': 'Clos'
+                }
+                old_val_fr = status_translations.get(old_val, old_val)
+                new_val_fr = status_translations.get(new_val, new_val)
+                descriptions.append(f"Changement de statut de l'événement {instance.gap_number} de '{old_val_fr}' vers '{new_val_fr}'")
+            else:
+                descriptions.append(f"Changement de statut de '{old_val}' vers '{new_val}'")
+        else:
+            descriptions.append(f"{field_label}: '{old_val}' → '{new_val}'")
+    
+    # Pour les changements de statut d'écart, retourner directement la description
+    if action == 'changement_statut':
+        # Si on a une description personnalisée pour l'écart, l'utiliser directement
+        if len(descriptions) == 1 and descriptions[0].startswith('Changement de statut de l\'événement'):
+            return descriptions[0]
+        # Sinon, utiliser le format générique
+        elif len(descriptions) == 1:
+            return descriptions[0]
+    
+    # Cas spécial pour les modifications d'écarts et déclarations
+    if instance:
+        from .models.gaps import Gap, GapReport
+        if isinstance(instance, Gap):
+            return f"Modification de l'événement {instance.gap_number} - " + ', '.join(descriptions)
+        elif isinstance(instance, GapReport):
+            return f"Modification de déclaration d'événement {instance.id} - " + ', '.join(descriptions)
     
     return f"Modification de {model_name.lower()} - " + ', '.join(descriptions)
 
@@ -194,7 +244,7 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
             objet=instance,
             action='creation',
             utilisateur=user,
-            description=_generate_change_description({}, 'creation', 'déclaration d\'événement'),
+            description=_generate_change_description({}, 'creation', 'déclaration d\'événement', instance),
             donnees_apres=_serialize_model_instance(instance, for_json=True)
         )
     else:
@@ -207,7 +257,7 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
                 objet=instance,
                 action='modification',
                 utilisateur=user,
-                description=_generate_change_description(changes, 'modification', 'déclaration d\'événement'),
+                description=_generate_change_description(changes, 'modification', 'déclaration d\'événement', instance),
                 donnees_avant=_convert_data_for_json(old_data),
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
@@ -228,7 +278,7 @@ def log_gap_changes(sender, instance, created, **kwargs):
             objet=instance,
             action='creation',
             utilisateur=user,
-            description=_generate_change_description({}, 'creation', 'événement'),
+            description=_generate_change_description({}, 'creation', 'événement', instance),
             donnees_apres=_serialize_model_instance(instance, for_json=True)
         )
         
@@ -244,8 +294,8 @@ def log_gap_changes(sender, instance, created, **kwargs):
                 user=instance.gap_report.declared_by,
                 gap=instance,
                 type='gap_created',
-                title=f"Écart {instance.gap_number} créé",
-                message=f"Votre écart {instance.gap_number} ({instance.gap_type.name}) a été créé avec succès.",
+                title=f"{instance.gap_number} - Événement créé",
+                message=f"Votre événement {instance.gap_number} ({instance.gap_type.name}) a été créé avec succès.",
                 priority='normal'
             )
         elif hasattr(instance, 'gap_report') and instance.gap_report and instance.gap_report.declared_by == user:
@@ -255,8 +305,8 @@ def log_gap_changes(sender, instance, created, **kwargs):
                 user=user,
                 gap=instance,
                 type='gap_created',
-                title=f"Écart {instance.gap_number} créé",
-                message=f"Votre écart {instance.gap_number} ({instance.gap_type.name}) a été créé avec succès.",
+                title=f"{instance.gap_number} - Événement créé",
+                message=f"Votre événement {instance.gap_number} ({instance.gap_type.name}) a été créé avec succès.",
                 priority='normal'
             )
             
@@ -275,7 +325,7 @@ def log_gap_changes(sender, instance, created, **kwargs):
                 objet=instance,
                 action=action,
                 utilisateur=user,
-                description=_generate_change_description(changes, action, 'événement'),
+                description=_generate_change_description(changes, action, 'événement', instance),
                 donnees_avant=_convert_data_for_json(old_data),
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
@@ -292,11 +342,11 @@ def log_gap_changes(sender, instance, created, **kwargs):
                     if new_status == 'retained':
                         notification_type = 'gap_retained'
                         title = f"Écart {instance.gap_number} retenu"
-                        message = f"Votre écart {instance.gap_number} a été validé et retenu."
+                        message = f"Votre événement {instance.gap_number} a été validé et retenu."
                     elif new_status == 'rejected':
                         notification_type = 'gap_rejected'
                         title = f"Écart {instance.gap_number} rejeté"
-                        message = f"Votre écart {instance.gap_number} a été rejeté."
+                        message = f"Votre événement {instance.gap_number} a été rejeté."
                     else:
                         notification_type = 'gap_modified'
                         title = f"Écart {instance.gap_number} modifié"
@@ -304,7 +354,7 @@ def log_gap_changes(sender, instance, created, **kwargs):
                 else:
                     notification_type = 'gap_modified'
                     title = f"Écart {instance.gap_number} modifié"
-                    message = f"Votre écart {instance.gap_number} a été modifié."
+                    message = f"Votre événement {instance.gap_number} a été modifié."
                 
                 Notification.objects.create(
                     user=instance.gap_report.declared_by,
@@ -334,7 +384,7 @@ def log_gap_report_deletion(sender, instance, **kwargs):
         objet_id=instance.id,
         objet_repr=str(instance),
         utilisateur=user,
-        description=_generate_change_description({}, 'suppression', 'déclaration d\'événement'),
+        description=_generate_change_description({}, 'suppression', 'déclaration d\'événement', instance),
         donnees_avant=_serialize_model_instance(instance, for_json=True)
     )
 
@@ -351,13 +401,13 @@ def log_gap_deletion(sender, instance, **kwargs):
     # Pour les suppressions, on crée une entrée spéciale car l'objet n'existe plus
     HistoriqueModification.objects.create(
         gap_report=instance.gap_report,  # On garde la référence à la déclaration
-        gap=None,  # L'écart est supprimé
+        gap=None,  # L'événement est supprimé
         action='suppression',
         objet_type='gap',
         objet_id=instance.id,
         objet_repr=str(instance),
         utilisateur=user,
-        description=_generate_change_description({}, 'suppression', 'événement'),
+        description=_generate_change_description({}, 'suppression', 'événement', instance),
         donnees_avant=_serialize_model_instance(instance, for_json=True)
     )
     
@@ -367,9 +417,9 @@ def log_gap_deletion(sender, instance, **kwargs):
         
         Notification.objects.create(
             user=instance.gap_report.declared_by,
-            gap=None,  # L'écart est supprimé, pas de référence
+            gap=None,  # L'événement est supprimé, pas de référence
             type='gap_deleted',
-            title=f"Écart {instance.gap_number} supprimé",
-            message=f"Votre écart {instance.gap_number} ({instance.gap_type.name}) a été supprimé.",
+            title=f"{instance.gap_number} - Événement supprimé",
+            message=f"Votre événement {instance.gap_number} ({instance.gap_type.name}) a été supprimé.",
             priority='normal'
         )
