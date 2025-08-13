@@ -13,7 +13,7 @@ class ServiceAdmin(admin.ModelAdmin):
     Configuration de l'interface d'administration pour le modèle Service.
     """
     list_display = [
-        'code', 'nom', 'get_actif_display', 'get_parent_display', 'get_niveau_display'
+        'code', 'nom', 'actif', 'get_parent_display', 'get_niveau_display'
     ]
     list_filter = ['actif', 'parent']
     search_fields = ['nom', 'code']
@@ -30,17 +30,6 @@ class ServiceAdmin(admin.ModelAdmin):
         }),
     )
     
-    def get_actif_display(self, obj):
-        """Affiche le statut actif avec badge coloré."""
-        if obj.actif:
-            return format_html(
-                '<span style="background: #d4edda; color: #155724; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✓ ACTIF</span>'
-            )
-        else:
-            return format_html(
-                '<span style="background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✗ INACTIF</span>'
-            )
-    get_actif_display.short_description = 'Statut'
     
     def get_parent_display(self, obj):
         """Affiche le service parent de manière lisible."""

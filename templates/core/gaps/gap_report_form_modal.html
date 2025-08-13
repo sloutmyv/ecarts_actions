@@ -643,7 +643,11 @@
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Content-Type': 'application/x-www-form-urlencoded',
-                }
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                cache: 'no-store'
             })
             .then(response => {
                 if (!response.ok) {
@@ -654,7 +658,6 @@
             .then(html => {
                 gapTypesOptions = html;
                 updateAllGapTypeSelects();
-                console.log('Types d\'écart chargés avec succès pour la source:', auditSourceSelect.value);
             })
             .catch(error => {
                 console.error('Erreur lors du chargement des types d\'écart:', error);

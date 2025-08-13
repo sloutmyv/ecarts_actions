@@ -19,7 +19,7 @@ class UserAdmin(BaseUserAdmin):
     
     # Affichage dans la liste
     list_display = (
-        'matricule', 'get_full_name', 'email', 'get_actif_display', 'droits_badge', 'service_link', 
+        'matricule', 'get_full_name', 'email', 'actif', 'droits_badge', 'service_link', 
         'must_change_password', 'created_at'
     )
     list_filter = ('actif', 'droits', 'must_change_password', 'service', 'created_at')
@@ -66,18 +66,6 @@ class UserAdmin(BaseUserAdmin):
     # Filtres personnalisés
     list_per_page = 25
     
-    def get_actif_display(self, obj):
-        """Affiche le statut actif avec badge coloré."""
-        if obj.actif:
-            return format_html(
-                '<span style="background: #d4edda; color: #155724; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✓ ACTIF</span>'
-            )
-        else:
-            return format_html(
-                '<span style="background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✗ INACTIF</span>'
-            )
-    get_actif_display.short_description = 'Statut'
-    get_actif_display.admin_order_field = 'actif'
     
     def droits_badge(self, obj):
         """Affiche un badge coloré pour les droits."""

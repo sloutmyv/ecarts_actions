@@ -143,7 +143,7 @@ def get_cached_gap_types():
     
     if gap_types is None:
         from core.models import GapType
-        gap_types = list(GapType.objects.all().order_by('audit_source__name', 'name'))
+        gap_types = list(GapType.objects.filter(is_active=True).order_by('audit_source__name', 'name'))
         cache.set(cache_key, gap_types, 1800)  # 30 minutes
     
     return gap_types
@@ -159,7 +159,7 @@ def get_cached_audit_sources():
     
     if audit_sources is None:
         from core.models import AuditSource
-        audit_sources = list(AuditSource.objects.all().order_by('name'))
+        audit_sources = list(AuditSource.objects.filter(is_active=True).order_by('name'))
         cache.set(cache_key, audit_sources, 3600)  # 1 heure
     
     return audit_sources
@@ -170,8 +170,14 @@ def invalidate_reference_data_cache():
     Invalide le cache des données de référence (services, types d'écarts, sources d'audit).
     À appeler quand ces données sont modifiées via l'admin.
     """
+    # Vider les caches principaux
     cache.delete_many([
         "services:hierarchical_list",
         "gap_types:all", 
         "audit_sources:all"
     ])
+    
+    # Vider aussi tous les caches par audit_source
+    # Note: En l'absence d'une méthode pour lister toutes les clés, on vide tout le cache
+    # pour s'assurer que les caches gap_types:audit_source:* sont supprimés
+    cache.clear()

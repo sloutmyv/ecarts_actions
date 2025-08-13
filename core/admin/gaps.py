@@ -9,22 +9,23 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib import messages
+from django.utils.html import format_html
 from core.models import AuditSource, Process, GapType, GapReport, Gap, GapReportAttachment, GapAttachment, HistoriqueModification
 
 
 @admin.register(AuditSource)
 class AuditSourceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'requires_process', 'created_at']
-    list_filter = ['requires_process', 'created_at']
+    list_display = ['name', 'is_active', 'requires_process', 'created_at']
+    list_filter = ['is_active', 'requires_process', 'created_at']
     search_fields = ['name', 'description']
-    ordering = ['name']
+    ordering = ['-is_active', 'name']
     
     fieldsets = (
         (None, {
             'fields': ('name', 'description')
         }),
         ('Configuration', {
-            'fields': ('requires_process',)
+            'fields': ('is_active', 'requires_process')
         }),
     )
     
@@ -61,17 +62,17 @@ class ProcessAdmin(admin.ModelAdmin):
 
 @admin.register(GapType)
 class GapTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'audit_source', 'is_gap', 'created_at']
-    list_filter = ['audit_source', 'is_gap', 'created_at']
+    list_display = ['name', 'audit_source', 'is_active', 'is_gap', 'created_at']
+    list_filter = ['audit_source', 'is_active', 'is_gap', 'created_at']
     search_fields = ['name', 'description', 'audit_source__name']
-    ordering = ['audit_source__name', 'name']
+    ordering = ['-is_active', 'audit_source__name', 'name']
     
     fieldsets = (
         (None, {
             'fields': ('name', 'audit_source', 'description')
         }),
         ('Configuration', {
-            'fields': ('is_gap',)
+            'fields': ('is_active', 'is_gap')
         }),
     )
     

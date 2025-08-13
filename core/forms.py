@@ -61,7 +61,7 @@ class GapReportForm(forms.ModelForm):
         self.fields['observation_date'].input_formats = ['%Y-%m-%dT%H:%M']
         
         # Définir les choix disponibles
-        self.fields['audit_source'].queryset = AuditSource.objects.all().order_by('name')
+        self.fields['audit_source'].queryset = AuditSource.objects.filter(is_active=True).order_by('name')
         
         # Utiliser le tri hiérarchique pour les services
         from core.views.gaps import get_services_hierarchical_order
@@ -174,7 +174,8 @@ class GapForm(forms.ModelForm):
         # Filtrer les types d'écart selon la source d'audit
         if self.gap_report and hasattr(self.gap_report, 'audit_source'):
             self.fields['gap_type'].queryset = GapType.objects.filter(
-                audit_source=self.gap_report.audit_source
+                audit_source=self.gap_report.audit_source,
+                is_active=True
             )
         else:
             self.fields['gap_type'].queryset = GapType.objects.none()

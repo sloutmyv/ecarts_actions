@@ -573,10 +573,10 @@ def gap_report_create(request):
     
     # GET request - afficher le formulaire
     services = get_services_hierarchical_order()
-    audit_sources = AuditSource.objects.all().order_by('name')
+    audit_sources = AuditSource.objects.filter(is_active=True).order_by('name')
     processes = Process.objects.filter(is_active=True).order_by('code')
     users = User.objects.filter(actif=True).order_by('nom', 'prenom')  # Seuls les utilisateurs actifs
-    gap_types = GapType.objects.all().order_by('audit_source__name', 'name')
+    gap_types = GapType.objects.filter(is_active=True).order_by('audit_source__name', 'name')
     
     context = {
         'services': services,
@@ -974,7 +974,8 @@ def get_gap_types(request):
         
         if gap_types is None:
             gap_types = list(GapType.objects.filter(
-                audit_source_id=audit_source_id
+                audit_source_id=audit_source_id,
+                is_active=True
             ).order_by('name'))
             cache.set(cache_key, gap_types, 1800)  # 30 minutes
     else:
@@ -987,7 +988,12 @@ def get_gap_types(request):
         options_html += f'<option value="{gap_type.id}" {selected}>{gap_type.name}</option>'
     
     from django.http import HttpResponse
-    return HttpResponse(options_html)
+    response = HttpResponse(options_html)
+    # Empêcher la mise en cache côté navigateur pour les données dynamiques
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache' 
+    response['Expires'] = '0'
+    return response
 
 
 @login_required

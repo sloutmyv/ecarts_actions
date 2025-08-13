@@ -803,6 +803,31 @@ python manage.py clearsessions
 - **Gestion des erreurs** : Protection contre les suppressions sur données vides avec messages informatifs
 - **Architecture modulaire** : Organisation des templates dans `admin/notifications/` et `admin/historique/`
 
+### v2.9.0 - Système de Filtrage Actif/Inactif Complet (2025-08-13)
+
+#### 🎯 Filtrage actif/inactif étendu
+- **Sources d'audit (3.1)** : Ajout du champ `is_active` avec filtrage automatique dans les formulaires
+- **Types d'événement (3.3)** : Ajout du champ `is_active` avec filtrage automatique dans les formulaires
+- **Processus SMI (3.2)** : Filtrage actif/inactif existant optimisé avec icônes cohérentes
+- **Cohérence visuelle** : Icônes ✓/✗ standardisées pour tous les modèles dans l'admin Django
+
+#### 🔄 Synchronisation automatique multi-session
+- **Signaux Django** : Invalidation automatique du cache lors des modifications (`post_save`/`post_delete`)
+- **Cache intelligent** : Maintien des performances avec mise à jour temps réel entre toutes les sessions
+- **Headers anti-cache** : Prévention du cache navigateur pour les données dynamiques (`Cache-Control`, `Pragma`, `Expires`)
+- **API HTMX optimisée** : Requêtes sans cache pour les listes déroulantes dynamiques
+
+#### 🗃️ Préservation des données existantes
+- **Non-destructif** : Les éléments inactifs restent liés aux déclarations/écarts existants
+- **Filtrage intelligent** : Seuls les nouveaux formulaires filtrent les éléments inactifs
+- **Intégrité référentielle** : Aucune rupture des relations existantes lors de la désactivation
+
+#### 🔧 Architecture technique avancée
+- **Signaux automatisés** : `@receiver(post_save/post_delete)` pour AuditSource, Process, GapType
+- **Cache multi-niveaux** : Cache serveur + invalidation globale + headers navigateur
+- **Migrations sécurisées** : Ajout des champs `is_active` avec valeurs par défaut et index
+- **Formulaires dynamiques** : Filtrage en temps réel via HTMX avec gestion d'erreur robuste
+
 ### v2.5.1 - Corrections Interface et Suppression Services (2025-08-10)
 
 #### 🐛 Corrections critiques

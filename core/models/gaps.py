@@ -4,6 +4,8 @@ Modèles pour la gestion des écarts et des audits.
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 from .base import TimestampedModel, CodedModel
 from .services import Service
 
@@ -28,6 +30,11 @@ class AuditSource(TimestampedModel):
         verbose_name="Nécessite un processus",
         help_text="Si coché, un processus sera obligatoire pour cette source"
     )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Actif",
+        help_text="Les sources inactives ne sont plus proposées dans les formulaires mais les données existantes sont préservées"
+    )
 
     class Meta:
         verbose_name = "3.1 Source d'audit"
@@ -36,6 +43,7 @@ class AuditSource(TimestampedModel):
         indexes = [
             models.Index(fields=['name']),
             models.Index(fields=['requires_process']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -103,6 +111,11 @@ class GapType(TimestampedModel):
         verbose_name="Écart",
         help_text="Cochez si cet événement constitue un écart. Décochez pour un simple événement."
     )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Actif",
+        help_text="Les types inactifs ne sont plus proposés dans les formulaires mais les données existantes sont préservées"
+    )
 
     class Meta:
         verbose_name = "3.3 Type d'événement"
@@ -112,6 +125,7 @@ class GapType(TimestampedModel):
             models.Index(fields=['audit_source', 'name']),
             models.Index(fields=['is_gap']),
             models.Index(fields=['audit_source', 'is_gap']),
+            models.Index(fields=['is_active']),
         ]
 
     def __str__(self):
@@ -556,3 +570,28 @@ class HistoriqueModification(TimestampedModel):
             donnees_avant=donnees_avant,
             donnees_apres=donnees_apres
         )
+
+
+# Signaux pour invalider le cache automatiquement
+@receiver(post_save, sender=AuditSource)
+@receiver(post_delete, sender=AuditSource)
+def invalidate_audit_source_cache(sender, **kwargs):
+    """Invalide le cache quand une source d'audit est modifiée ou supprimée."""
+    from core.utils.cache import invalidate_reference_data_cache
+    invalidate_reference_data_cache()
+
+
+@receiver(post_save, sender=Process)
+@receiver(post_delete, sender=Process)
+def invalidate_process_cache(sender, **kwargs):
+    """Invalide le cache quand un processus est modifié ou supprimé."""
+    from core.utils.cache import invalidate_reference_data_cache
+    invalidate_reference_data_cache()
+
+
+@receiver(post_save, sender=GapType)
+@receiver(post_delete, sender=GapType)
+def invalidate_gap_type_cache(sender, **kwargs):
+    """Invalide le cache quand un type d'événement est modifié ou supprimé."""
+    from core.utils.cache import invalidate_reference_data_cache
+    invalidate_reference_data_cache()
