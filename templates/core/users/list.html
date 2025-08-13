@@ -38,13 +38,6 @@
                     </span>
                 {% endif %}
             </h1>
-            <p class="text-gray-600 mt-2">
-                {% if user_type_filter == 'validators' %}
-                    Consultez les utilisateurs validateurs et leurs rôles de validation
-                {% else %}
-                    Gérez les utilisateurs et leurs droits d'accès
-                {% endif %}
-            </p>
         </div>
         <div class="flex gap-3">
             {% if user_type_filter != 'validators' %}
