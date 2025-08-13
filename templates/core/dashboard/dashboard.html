@@ -2,6 +2,13 @@
 
 {% block title %}Tableau de bord - EcartsActions{% endblock %}
 
+{% block extra_head %}
+<!-- Empêcher la mise en cache de la page dashboard -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+{% endblock %}
+
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     
@@ -207,9 +214,9 @@
         </div>
         
         {% if user_history %}
-        <div class="space-y-3">
+        <div class="space-y-2">
             {% for item in user_history %}
-            <div class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <div class="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
                 <div class="flex-shrink-0 mt-0.5">
                     {% if item.type == 'action' %}
                         {% if item.data.action == 'creation' %}
@@ -284,21 +291,34 @@
                     {% endif %}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 pr-3">
                         {% if item.type == 'action' %}
-                        <p class="text-sm text-gray-900">
-                            {{ item.data.description }}
-                        </p>
+                        <div class="text-sm text-gray-900">
+                            {{ item.data.description|safe }}
+                        </div>
                         {% else %} {# notification #}
-                        <p class="text-sm text-gray-900">
-                            {{ item.data.title }}
-                        </p>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                            Traité
-                        </span>
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-medium text-gray-900">
+                                    {{ item.data.title }}
+                                </p>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                    notification traitée
+                                </span>
+                            </div>
+                            {% if item.data.message %}
+                            <p class="text-xs text-gray-600 pl-2">
+                                {{ item.data.message }}
+                            </p>
+                            {% endif %}
+                        </div>
                         {% endif %}
+                        </div>
+                        <div class="flex-shrink-0">
+                            <p class="text-xs text-gray-400">{{ item.timestamp|timesince }} ago</p>
+                        </div>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">{{ item.timestamp|timesince }} ago</p>
                 </div>
             </div>
             {% endfor %}
@@ -362,6 +382,15 @@ function markAsRead(notificationId) {
         console.error('Erreur:', error);
     });
 }
+
+// Solution simple : recharger si on détecte un retour de navigation
+window.addEventListener('pageshow', function(event) {
+    // Si la page est servie depuis le cache navigateur (retour via bouton précédent)
+    if (event.persisted) {
+        // Recharger la page pour avoir les notifications à jour
+        window.location.reload();
+    }
+});
 </script>
 
 <!-- Token CSRF pour les requêtes AJAX -->

@@ -113,18 +113,18 @@ def _generate_change_description(changes, action, model_name, instance=None):
         if instance:
             from .models.gaps import Gap, GapReport
             if isinstance(instance, Gap):
-                return f"Création de l'événement {instance.gap_number}"
+                return f"{instance.gap_number} - Événement créé"
             elif isinstance(instance, GapReport):
-                return f"Création de déclaration d'événement {instance.id}"
+                return f"{instance.id} - Déclaration d'événement créée"
         return f"Création de {model_name.lower()}"
     elif action == 'suppression':
         # Cas spécial pour la suppression d'écarts et déclarations
         if instance:
             from .models.gaps import Gap, GapReport
             if isinstance(instance, Gap):
-                return f"Suppression de l'événement {instance.gap_number}"
+                return f"{instance.gap_number} - Événement supprimé"
             elif isinstance(instance, GapReport):
-                return f"Suppression de déclaration d'événement {instance.id}"
+                return f"{instance.id} - Déclaration d'événement supprimée"
         return f"Suppression de {model_name.lower()}"
     elif not changes:
         return f"Modification de {model_name.lower()} (aucun changement détecté)"
@@ -176,11 +176,21 @@ def _generate_change_description(changes, action, model_name, instance=None):
                 }
                 old_val_fr = status_translations.get(old_val, old_val)
                 new_val_fr = status_translations.get(new_val, new_val)
-                descriptions.append(f"Changement de statut de l'événement {instance.gap_number} de '{old_val_fr}' vers '{new_val_fr}'")
+                descriptions.append(f'<div class="modification-item mb-3">'
+                                  f'<div class="font-medium text-gray-800 mb-1">• Statut</div>'
+                                  f'<div class="pl-4">'
+                                  f'<div class="mb-2"><span class="font-semibold text-red-600">Avant:</span><br><span class="text-gray-700">{old_val_fr}</span></div>'
+                                  f'<div><span class="font-semibold text-green-600">Après:</span><br><span class="text-gray-700">{new_val_fr}</span></div>'
+                                  f'</div></div>')
             else:
                 descriptions.append(f"Changement de statut de '{old_val}' vers '{new_val}'")
         else:
-            descriptions.append(f"{field_label}: '{old_val}' → '{new_val}'")
+            descriptions.append(f'<div class="modification-item mb-3">'
+                              f'<div class="font-medium text-gray-800 mb-1">• {field_label}</div>'
+                              f'<div class="pl-4">'
+                              f'<div class="mb-2"><span class="font-semibold text-red-600">Avant:</span><br><span class="text-gray-700">{old_val}</span></div>'
+                              f'<div><span class="font-semibold text-green-600">Après:</span><br><span class="text-gray-700">{new_val}</span></div>'
+                              f'</div></div>')
     
     # Pour les changements de statut d'écart, retourner directement la description
     if action == 'changement_statut':
@@ -195,9 +205,11 @@ def _generate_change_description(changes, action, model_name, instance=None):
     if instance:
         from .models.gaps import Gap, GapReport
         if isinstance(instance, Gap):
-            return f"Modification de l'événement {instance.gap_number} - " + ', '.join(descriptions)
+            title_html = f'<div class="text-gray-900 mb-3">{instance.gap_number} - Événement modifié</div>'
+            details_html = ''.join(descriptions)
+            return title_html + details_html
         elif isinstance(instance, GapReport):
-            return f"Modification de déclaration d'événement {instance.id} - " + ', '.join(descriptions)
+            return f"{instance.id} - Déclaration d'événement modifiée - " + ', '.join(descriptions)
     
     return f"Modification de {model_name.lower()} - " + ', '.join(descriptions)
 
@@ -331,7 +343,9 @@ def log_gap_changes(sender, instance, created, **kwargs):
             )
             
             # Créer une notification pour le déclarant sur la modification de l'écart
-            if hasattr(instance, 'gap_report') and instance.gap_report and instance.gap_report.declared_by:
+            # Mais pas si c'est le déclarant lui-même qui fait la modification
+            if (hasattr(instance, 'gap_report') and instance.gap_report and 
+                instance.gap_report.declared_by and instance.gap_report.declared_by != user):
                 from .models.notifications import Notification
                 
                 # Déterminer le type de notification selon le changement
@@ -339,31 +353,29 @@ def log_gap_changes(sender, instance, created, **kwargs):
                     old_status = changes['status']['avant']
                     new_status = changes['status']['apres']
                     
-                    if new_status == 'retained':
-                        notification_type = 'gap_retained'
-                        title = f"Écart {instance.gap_number} retenu"
-                        message = f"Votre événement {instance.gap_number} a été validé et retenu."
-                    elif new_status == 'rejected':
-                        notification_type = 'gap_rejected'
-                        title = f"Écart {instance.gap_number} rejeté"
-                        message = f"Votre événement {instance.gap_number} a été rejeté."
+                    # Pour les changements de statut de validation (retained/rejected),
+                    # laisser le ValidationService gérer les notifications
+                    if new_status in ['retained', 'rejected']:
+                        notification_type = None
                     else:
                         notification_type = 'gap_modified'
                         title = f"Écart {instance.gap_number} modifié"
-                        message = f"Le statut de votre écart {instance.gap_number} a été modifié : {old_status} → {new_status}."
+                        message = f"Le statut de votre écart {instance.gap_number} a été modifié par {user.get_full_name()} : {old_status} → {new_status}."
                 else:
                     notification_type = 'gap_modified'
                     title = f"Écart {instance.gap_number} modifié"
-                    message = f"Votre événement {instance.gap_number} a été modifié."
+                    message = f"Votre événement {instance.gap_number} a été modifié par {user.get_full_name()}."
                 
-                Notification.objects.create(
-                    user=instance.gap_report.declared_by,
-                    gap=instance,
-                    type=notification_type,
-                    title=title,
-                    message=message,
-                    priority='normal'
-                )
+                # Créer la notification seulement si un type a été défini
+                if notification_type:
+                    Notification.objects.create(
+                        user=instance.gap_report.declared_by,
+                        gap=instance,
+                        type=notification_type,
+                        title=title,
+                        message=message,
+                        priority='normal'
+                    )
 
 
 @receiver(post_delete, sender=GapReport)
@@ -420,6 +432,6 @@ def log_gap_deletion(sender, instance, **kwargs):
             gap=None,  # L'événement est supprimé, pas de référence
             type='gap_deleted',
             title=f"{instance.gap_number} - Événement supprimé",
-            message=f"Votre événement {instance.gap_number} ({instance.gap_type.name}) a été supprimé.",
+            message=f"Votre événement {instance.gap_number} ({instance.gap_type.name}) a été supprimé par {user.get_full_name()}.",
             priority='normal'
         )

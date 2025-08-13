@@ -65,9 +65,9 @@
                             <!-- Ligne principale -->
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-900 mb-1">
-                                        {{ entry.description }}
-                                    </p>
+                                    <div class="text-sm mb-1">
+                                        {{ entry.description|safe }}
+                                    </div>
                                     <div class="flex items-center space-x-4 text-xs text-gray-500">
                                         <span class="flex items-center space-x-1">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -63,7 +63,6 @@ def custom_login(request):
 def custom_logout(request):
     """Vue de déconnexion personnalisée"""
     logout(request)
-    messages.info(request, 'Vous avez été déconnecté avec succès.')
     return redirect('login')
 
 

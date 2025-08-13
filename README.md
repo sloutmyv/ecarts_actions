@@ -732,6 +732,35 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.10.0 - Interface Utilisateur Améliorée et Notifications Optimisées (2025-08-13)
+
+#### 🎨 Amélioration de l'affichage des notifications
+- **Format standardisé** : Toutes les notifications suivent le format "Numéro - Action" (ex: "23.1 - Événement créé")
+- **Historique des modifications structuré** : Affichage HTML enrichi avec séparation claire entre titre et détails
+- **Style avant/après amélioré** : Puces, couleurs distinctives (rouge/vert), et mise en page structurée
+- **Badge "notification traitée"** : Distinction visuelle entre actions directes et notifications traitées dans l'historique
+
+#### 🚫 Suppression des notifications en double
+- **Élimination des doublons de rejet** : Une seule notification conservée lors du rejet d'écart (format du ValidationService)
+- **Filtrage des notifications validateur** : Les validateurs ne reçoivent plus de notifications pour leurs propres actions
+- **Notifications ciblées** : Seul le déclarant reçoit les notifications pertinentes, pas l'auteur des modifications
+
+#### 🎯 Repositionnement des boutons de validation
+- **Validation en bas de page** : Boutons approuver/rejeter déplacés sous le contenu de l'écart pour workflow logique
+- **Interface dédiée** : Section "Actions de validation" avec cartes colorées et champs de commentaires agrandis
+- **Design cohérent** : Fond vert pour approbation, fond rouge pour rejet avec bordures assorties
+
+#### 🧹 Optimisations d'interface
+- **Suppression du popup de déconnexion** : Plus de message "Vous avez été déconnecté avec succès"
+- **Cache intelligent du dashboard** : Actualisation automatique des notifications après navigation
+- **Affichage des pièces jointes corrigé** : Nom descriptif affiché au lieu du chemin technique
+- **Compact vertical** : Espacement réduit dans l'historique avec timestamps alignés à droite
+
+#### 🔧 Améliorations techniques
+- **Gestion du cache navigateur** : Headers anti-cache et rechargement intelligent via JavaScript
+- **Rendu HTML sécurisé** : Utilisation du filtre `|safe` pour l'affichage enrichi des modifications
+- **Code nettoyé** : Suppression de la logique JavaScript inutile et simplification des templates
+
 ### v2.7.0 - Validation de Statut Restrictive et Historique Complet (2025-08-11)
 
 #### 🔒 Sécurité et Permissions Renforcées
