@@ -95,6 +95,7 @@ def dashboard(request):
         'user_stats': {
             'total_evenements': gaps_created.count() + events_created.count(),  # Total événements (écarts + non-écarts)
             'total_ecarts': gaps_created.count(),  # Détail écarts uniquement
+            'evenements_non_ecarts': events_created.count(),  # Événements qui ne sont pas des écarts
             'ecarts_declares': gaps_by_status['declared'],
             'ecarts_retenus': gaps_by_status['retained'],
             'ecarts_non_retenus': gaps_by_status['rejected'],

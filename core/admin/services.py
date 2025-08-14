@@ -108,6 +108,8 @@ class ServiceAdmin(admin.ModelAdmin):
         Validation personnalisée avant sauvegarde.
         Empêche la désactivation d'un service avec des contraintes.
         """
+        validation_failed = False
+        
         if change and 'actif' in form.changed_data:
             # Si on essaie de passer le service à inactif
             if not obj.actif:
@@ -123,8 +125,39 @@ class ServiceAdmin(admin.ModelAdmin):
                     )
                     # Rétablir le statut actif
                     obj.actif = True
+                    validation_failed = True
                     
         super().save_model(request, obj, form, change)
+        
+        # Si la validation a échoué, marquer la requête pour supprimer le message de succès
+        if validation_failed:
+            request._suppress_success_message = True
+
+    def response_change(self, request, obj):
+        """
+        Personnalise la réponse après modification pour supprimer le message de succès
+        si la validation a échoué.
+        """
+        response = super().response_change(request, obj)
+        
+        # Si on doit supprimer le message de succès
+        if getattr(request, '_suppress_success_message', False):
+            # Obtenir le stockage des messages
+            storage = messages.get_messages(request)
+            # Convertir en liste pour pouvoir la modifier
+            messages_list = list(storage)
+            # Filtrer pour enlever les messages de succès
+            filtered_messages = [
+                msg for msg in messages_list 
+                if not (msg.level == messages.SUCCESS and "modifié avec succès" in str(msg))
+            ]
+            
+            # Vider le stockage et remettre seulement les messages filtrés
+            storage._queued_messages.clear()
+            for msg in filtered_messages:
+                storage.add(msg.level, msg.message, msg.extra_tags)
+        
+        return response
     
     def delete_model(self, request, obj):
         """
@@ -139,10 +172,41 @@ class ServiceAdmin(admin.ModelAdmin):
                 f"Vous devez d'abord résoudre ces contraintes avant de pouvoir supprimer le service. "
                 f"Pour les rôles de validateur, utilisez la <a href='/workflow/'>gestion du workflow</a>."
             )
+            # Marquer que la suppression a été bloquée
+            request._suppress_delete_success_message = True
             return  # Annuler la suppression
         
         # Si toutes les vérifications passent, procéder à la suppression
         super().delete_model(request, obj)
+
+    def response_delete(self, request, obj_display, obj_id):
+        """
+        Personnalise la réponse après suppression pour supprimer le message de succès
+        si la suppression a été bloquée.
+        """
+        # Si la suppression a été bloquée, supprimer le message de succès
+        if getattr(request, '_suppress_delete_success_message', False):
+            # Obtenir le stockage des messages
+            storage = messages.get_messages(request)
+            # Convertir en liste pour pouvoir la modifier
+            messages_list = list(storage)
+            # Filtrer pour enlever les messages de succès de suppression
+            filtered_messages = [
+                msg for msg in messages_list 
+                if not (msg.level == messages.SUCCESS and "supprimé avec succès" in str(msg))
+            ]
+            
+            # Vider le stockage et remettre seulement les messages filtrés
+            storage._queued_messages.clear()
+            for msg in filtered_messages:
+                storage.add(msg.level, msg.message, msg.extra_tags)
+            
+            # Rediriger vers la liste au lieu de la page de confirmation de suppression
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse(f'admin:{self.model._meta.app_label}_{self.model._meta.model_name}_changelist'))
+        
+        return super().response_delete(request, obj_display, obj_id)
     
     def delete_queryset(self, request, queryset):
         """

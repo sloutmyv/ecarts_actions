@@ -46,6 +46,33 @@ class AuditSource(TimestampedModel):
             models.Index(fields=['is_active']),
         ]
 
+    def can_be_deactivated(self):
+        """
+        Vérifie si la source d'audit peut être désactivée.
+        Une source d'audit ne peut pas être désactivée si elle a des validateurs associés.
+        """
+        from .workflow import ValidateurService
+        return not ValidateurService.objects.filter(
+            audit_source=self,
+            actif=True
+        ).exists()
+
+    def get_deactivation_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle la source d'audit ne peut pas être désactivée.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        from .workflow import ValidateurService
+        validateurs_count = ValidateurService.objects.filter(
+            audit_source=self,
+            actif=True
+        ).count()
+        
+        if validateurs_count > 0:
+            return f"La source d'audit ne peut pas être désactivée car elle a {validateurs_count} validateur(s) associé(s)."
+        
+        return None
+
     def __str__(self):
         return self.name
 

@@ -41,15 +41,18 @@ def workflow_management(request):
     ).prefetch_related(
         Prefetch(
             'validateurs',
-            queryset=ValidateurService.objects.filter(actif=True).select_related(
+            queryset=ValidateurService.objects.filter(
+                actif=True,
+                audit_source__is_active=True  # Filtrer aussi par sources d'audit actives
+            ).select_related(
                 'validateur', 'audit_source'
             )
         )
     ).order_by(order_field)
     
-    # Récupérer tous les utilisateurs actifs et toutes les sources d'audit
+    # Récupérer tous les utilisateurs actifs et toutes les sources d'audit actives
     validateurs = User.objects.filter(actif=True).order_by('nom', 'prenom')  # Seuls les utilisateurs actifs
-    audit_sources = AuditSource.objects.all().order_by('name')
+    audit_sources = AuditSource.objects.filter(is_active=True).order_by('name')  # Seules les sources actives
     
     # Créer une structure optimisée Service × Source d'audit avec leurs validateurs
     services_avec_validateurs = []
@@ -65,7 +68,8 @@ def workflow_management(request):
     # Remplir le dictionnaire avec les validateurs existants
     for vs in ValidateurService.objects.filter(
         service__in=services_feuilles, 
-        actif=True
+        actif=True,
+        audit_source__is_active=True  # Filtrer par sources d'audit actives
     ).select_related('validateur', 'service', 'audit_source'):
         if vs.service.id in validateurs_dict and vs.audit_source.id in validateurs_dict[vs.service.id]:
             validateurs_dict[vs.service.id][vs.audit_source.id][vs.niveau] = vs
@@ -160,7 +164,8 @@ def assign_validator(request):
                 service=service,
                 audit_source=audit_source,
                 niveau=niveau,
-                actif=True
+                actif=True,
+                audit_source__is_active=True  # Filtrer par sources d'audit actives
             ).first()
             
             if existing_validator:
@@ -194,7 +199,8 @@ def assign_validator(request):
             'audit_source': audit_source,
             'niveau': niveau,
             'validateur_assigne': ValidateurService.objects.filter(
-                service=service, audit_source=audit_source, niveau=niveau, actif=True
+                service=service, audit_source=audit_source, niveau=niveau, actif=True,
+                audit_source__is_active=True  # Filtrer par sources d'audit actives
             ).first()
         }
         
@@ -203,9 +209,10 @@ def assign_validator(request):
         
         # Récupérer les données mises à jour pour l'aperçu des badges
         audit_sources_data = []
-        for audit_source_obj in AuditSource.objects.all():
+        for audit_source_obj in AuditSource.objects.filter(is_active=True):
             validateurs_niveaux = ValidateurService.objects.filter(
-                service=service, audit_source=audit_source_obj, actif=True
+                service=service, audit_source=audit_source_obj, actif=True,
+                audit_source__is_active=True  # Filtrer par sources d'audit actives
             )
             
             niveau_1 = validateurs_niveaux.filter(niveau=1).first()
@@ -257,7 +264,8 @@ def remove_validator(request, validateur_service_id):
         validators_count = ValidateurService.objects.filter(
             service=validateur_service.service,
             audit_source=validateur_service.audit_source,
-            actif=True
+            actif=True,
+            audit_source__is_active=True  # Filtrer par sources d'audit actives
         ).count()
         
         is_last_validator = validators_count <= 1
@@ -293,9 +301,10 @@ def remove_validator(request, validateur_service_id):
             
             # Récupérer les données mises à jour pour l'aperçu des badges
             audit_sources_data = []
-            for audit_source_obj in AuditSource.objects.all():
+            for audit_source_obj in AuditSource.objects.filter(is_active=True):
                 validateurs_niveaux = ValidateurService.objects.filter(
-                    service=service, audit_source=audit_source_obj, actif=True
+                    service=service, audit_source=audit_source_obj, actif=True,
+                    audit_source__is_active=True  # Filtrer par sources d'audit actives
                 )
                 
                 niveau_1 = validateurs_niveaux.filter(niveau=1).first()
@@ -393,7 +402,10 @@ def service_detail_api(request, service_id):
             Service.objects.filter(actif=True).prefetch_related(  # Service doit être actif
                 Prefetch(
                     'validateurs',
-                    queryset=ValidateurService.objects.filter(actif=True).select_related(
+                    queryset=ValidateurService.objects.filter(
+                        actif=True,
+                        audit_source__is_active=True  # Filtrer par sources d'audit actives
+                    ).select_related(
                         'validateur', 'audit_source'
                     )
                 )
@@ -401,7 +413,7 @@ def service_detail_api(request, service_id):
             pk=service_id
         )
         
-        audit_sources = AuditSource.objects.all().order_by('name')
+        audit_sources = AuditSource.objects.filter(is_active=True).order_by('name')
         
         # Créer un dictionnaire des validateurs par source et niveau
         validateurs_by_source = {}
@@ -486,10 +498,18 @@ def workflow_stats(request):
     try:
         stats = {
             'total_services': Service.objects.filter(sous_services__isnull=True).count(),
-            'services_avec_valideurs': ValidateurService.objects.values('service').distinct().count(),
-            'total_assignations': ValidateurService.objects.filter(actif=True).count(),
+            'services_avec_valideurs': ValidateurService.objects.filter(
+                audit_source__is_active=True  # Filtrer par sources d'audit actives
+            ).values('service').distinct().count(),
+            'total_assignations': ValidateurService.objects.filter(
+                actif=True,
+                audit_source__is_active=True  # Filtrer par sources d'audit actives
+            ).count(),
             'assignations_par_niveau': dict(
-                ValidateurService.objects.filter(actif=True).values('niveau').annotate(
+                ValidateurService.objects.filter(
+                    actif=True,
+                    audit_source__is_active=True  # Filtrer par sources d'audit actives
+                ).values('niveau').annotate(
                     count=models.Count('id')
                 ).values_list('niveau', 'count')
             )

@@ -10,6 +10,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.contrib import messages
 from django.utils.html import format_html
+from django.core.exceptions import ValidationError
 from core.models import AuditSource, Process, GapType, GapReport, Gap, GapReportAttachment, GapAttachment, HistoriqueModification
 
 
@@ -19,6 +20,7 @@ class AuditSourceAdmin(admin.ModelAdmin):
     list_filter = ['is_active', 'requires_process', 'created_at']
     search_fields = ['name', 'description']
     ordering = ['-is_active', 'name']
+    actions = ['desactiver_sources']
     
     fieldsets = (
         (None, {
@@ -33,6 +35,97 @@ class AuditSourceAdmin(admin.ModelAdmin):
         models.CharField: {'widget': TextInput(attrs={'size': '50'})},
         models.TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 50})},
     }
+
+    def save_model(self, request, obj, form, change):
+        """
+        Validation personnalisée avant sauvegarde.
+        Empêche la désactivation d'une source d'audit avec des validateurs associés.
+        """
+        validation_failed = False
+        
+        if change and 'is_active' in form.changed_data:
+            # Si on essaie de passer la source d'audit à inactive
+            if not obj.is_active:
+                if not obj.can_be_deactivated():
+                    reason = obj.get_deactivation_blocking_reason()
+                    messages.error(
+                        request, 
+                        f"Impossible de désactiver la source d'audit '{obj.name}': {reason}\n\n"
+                        f"Actions requises avant désactivation:\n"
+                        f"• Retirer tous les validateurs associés à cette source d'audit\n"
+                        f"• Utiliser la section '4. Validateurs' pour modifier les affectations"
+                    )
+                    # Rétablir le statut actif
+                    obj.is_active = True
+                    validation_failed = True
+        
+        # Sauvegarder normalement
+        super().save_model(request, obj, form, change)
+        
+        # Si la validation a échoué, marquer la requête pour supprimer le message de succès
+        if validation_failed:
+            request._suppress_success_message = True
+
+    def response_change(self, request, obj):
+        """
+        Personnalise la réponse après modification pour supprimer le message de succès
+        si la validation a échoué.
+        """
+        response = super().response_change(request, obj)
+        
+        # Si on doit supprimer le message de succès
+        if getattr(request, '_suppress_success_message', False):
+            # Obtenir le stockage des messages
+            storage = messages.get_messages(request)
+            # Convertir en liste pour pouvoir la modifier
+            messages_list = list(storage)
+            # Filtrer pour enlever les messages de succès
+            filtered_messages = [
+                msg for msg in messages_list 
+                if not (msg.level == messages.SUCCESS and "modifié avec succès" in str(msg))
+            ]
+            
+            # Vider le stockage et remettre seulement les messages filtrés
+            storage._queued_messages.clear()
+            for msg in filtered_messages:
+                storage.add(msg.level, msg.message, msg.extra_tags)
+        
+        return response
+
+    def desactiver_sources(self, request, queryset):
+        """Action pour désactiver les sources d'audit sélectionnées avec validation complète."""
+        updated_count = 0
+        blocked_sources = []
+        
+        for source in queryset:
+            if source.is_active:
+                if source.can_be_deactivated():
+                    source.is_active = False
+                    source.save()
+                    updated_count += 1
+                else:
+                    # Utiliser la méthode pour obtenir une raison détaillée
+                    reason = source.get_deactivation_blocking_reason()
+                    if reason:
+                        blocked_sources.append(f"{source.name}: {reason}")
+                    else:
+                        blocked_sources.append(f"{source.name} (raison inconnue)")
+        
+        if updated_count:
+            messages.success(request, f'{updated_count} source(s) d\'audit désactivée(s) avec succès.')
+        
+        if blocked_sources:
+            error_msg = "Impossible de désactiver les sources d'audit suivantes:\n"
+            for blocked in blocked_sources:
+                error_msg += f"• {blocked}\n"
+            error_msg += "\nActions requises avant désactivation:"
+            error_msg += "\n• Retirer tous les validateurs associés à cette source d'audit"  
+            error_msg += "\n• Utiliser la section '4. Validateurs' pour modifier les affectations"
+            messages.error(request, error_msg)
+        
+        if not updated_count and not blocked_sources:
+            messages.info(request, 'Aucune source d\'audit à désactiver (toutes déjà inactives).')
+    desactiver_sources.short_description = "Désactiver les sources d'audit sélectionnées"
 
 
 # Le modèle Department est remplacé par le modèle Service existant

@@ -30,7 +30,12 @@ class GapReportForm(forms.ModelForm):
                 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
                 'placeholder': 'Référence optionnelle'
             }),
-            'service': forms.Select(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors'}),
+            'service': forms.Select(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
+                'hx-get': '/gaps/api/audit-sources-field/',
+                'hx-target': '#audit-source-field',
+                'hx-include': '[name="service"]'
+            }),
             'process': forms.Select(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors'}),
             'location': forms.TextInput(attrs={
                 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
@@ -60,8 +65,36 @@ class GapReportForm(forms.ModelForm):
         # Configurer le format datetime-local pour le champ observation_date
         self.fields['observation_date'].input_formats = ['%Y-%m-%dT%H:%M']
         
-        # Définir les choix disponibles
-        self.fields['audit_source'].queryset = AuditSource.objects.filter(is_active=True).order_by('name')
+        # Définir les choix disponibles pour les sources d'audit selon le service
+        # Si un service est fourni dans les données initiales ou instance, filtrer les sources
+        service = None
+        if self.instance.pk and hasattr(self.instance, 'service') and self.instance.service:
+            service = self.instance.service
+        elif 'service' in self.initial:
+            try:
+                service = Service.objects.get(id=self.initial['service'])
+            except (Service.DoesNotExist, ValueError, TypeError):
+                pass
+        elif self.user and self.user.service:
+            # Utiliser le service de l'utilisateur par défaut
+            service = self.user.service
+            
+        if service:
+            # Filtrer les sources d'audit qui ont des validateurs pour ce service
+            from .models.workflow import ValidateurService
+            sources_with_validators = ValidateurService.objects.filter(
+                service=service,
+                actif=True,
+                audit_source__is_active=True
+            ).values_list('audit_source', flat=True).distinct()
+            
+            self.fields['audit_source'].queryset = AuditSource.objects.filter(
+                id__in=sources_with_validators,
+                is_active=True
+            ).order_by('name')
+        else:
+            # Aucun service défini, afficher toutes les sources actives
+            self.fields['audit_source'].queryset = AuditSource.objects.filter(is_active=True).order_by('name')
         
         # Utiliser le tri hiérarchique pour les services
         from core.views.gaps import get_services_hierarchical_order

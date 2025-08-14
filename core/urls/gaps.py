@@ -24,6 +24,7 @@ urlpatterns = [
     # API HTMX
     path('api/gap-types/', gaps.get_gap_types, name='get_gap_types'),
     path('api/process-field/', gaps.get_process_field, name='get_process_field'),
+    path('api/audit-sources-field/', gaps.get_audit_sources_field, name='get_audit_sources_field'),
     path('api/search-users/', gaps.search_users, name='search_users'),
     path('api/delete-attachment/<int:attachment_id>/', gaps.delete_attachment, name='delete_attachment'),
     path('api/delete-gap-attachment/<int:pk>/', gaps.delete_gap_attachment, name='delete_gap_attachment'),
