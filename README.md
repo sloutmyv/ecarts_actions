@@ -732,6 +732,24 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.11.1 - Correction Affichage Écarts Impliqués (2025-08-14)
+
+#### 🐛 Correction critique du filtrage des écarts
+- **Bug Django QuerySet résolu** : Les écarts auxquels un utilisateur était impliqué n'apparaissaient pas dans la vue par défaut
+- **Problème Prefetch corrigé** : Suppression du `Prefetch` sur `involved_users` qui causait des conflits avec les filtres Django
+- **Ordre des filtres optimisé** : Application du filtre `is_gap=True/False` en premier pour éviter les corruptions de QuerySet
+- **Logique de pré-remplissage corrigée** : Suppression du pré-remplissage automatique des champs dans la vue par défaut qui causait un sur-filtrage
+
+#### 🎯 Amélioration de l'expérience utilisateur
+- **Vue par défaut fonctionnelle** : Les utilisateurs voient maintenant correctement tous les écarts auxquels ils sont impliqués
+- **Visibilité des écarts annulés** : Les écarts annulés sont désormais visibles aux utilisateurs impliqués (pas seulement au déclarant)
+- **Détection de formulaire améliorée** : Meilleure distinction entre vue par défaut et formulaire soumis avec les checkboxes
+
+#### 🔧 Corrections techniques
+- **QuerySet propre** : Restructuration complète de la logique de filtrage pour éviter les interactions imprévisibles
+- **Méthode `is_visible_to_user()` améliorée** : Prise en compte des utilisateurs impliqués pour tous les statuts d'écart
+- **Architecture de filtrage simplifiée** : Suppression des optimisations complexes qui causaient des bugs subtils
+
 ### v2.11.0 - Filtrage Intelligent des Sources d'Audit (2025-08-14)
 
 #### 🎯 Filtrage des sources d'audit par validateurs

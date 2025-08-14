@@ -14,12 +14,10 @@ class ValidateurServiceAdmin(admin.ModelAdmin):
         'audit_source', 
         'validateur_name', 
         'niveau', 
-        'actif', 
         'created_at'
     ]
     list_filter = [
         'niveau', 
-        'actif', 
         'audit_source',
         'service',
         'created_at'
@@ -35,9 +33,6 @@ class ValidateurServiceAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Assignation', {
             'fields': ('service', 'audit_source', 'validateur', 'niveau')
-        }),
-        ('Statut', {
-            'fields': ('actif',)
         }),
     )
     

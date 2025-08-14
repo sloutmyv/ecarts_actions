@@ -2,7 +2,7 @@
 Signaux Django pour l'historique des modifications.
 """
 import json
-from django.db.models.signals import post_save, post_delete, pre_save
+from django.db.models.signals import post_save, post_delete, pre_save, m2m_changed
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
@@ -244,7 +244,7 @@ def store_pre_save_data(sender, instance, **kwargs):
 @receiver(post_save, sender=GapReport)
 def log_gap_report_changes(sender, instance, created, **kwargs):
     """
-    Enregistre les modifications des Déclarations d'évenements.
+    Enregistre les modifications des Déclarations d'évenements et crée des notifications pour les utilisateurs impliqués.
     """
     user = get_current_user()
     if not user:
@@ -259,6 +259,9 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
             description=_generate_change_description({}, 'creation', 'déclaration d\'événement', instance),
             donnees_apres=_serialize_model_instance(instance, for_json=True)
         )
+        
+        # Les notifications pour involved_users seront gérées par le signal m2m_changed
+        
     else:
         # Modification
         old_data = getattr(_thread_locals, f'pre_save_{sender.__name__}_{instance.pk}', None)
@@ -273,6 +276,10 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
                 donnees_avant=_convert_data_for_json(old_data),
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
+            
+            # Si les utilisateurs impliqués ont changé, notifier les nouveaux utilisateurs
+            # Note: Les changements dans les relations ManyToMany ne sont pas détectés par ce signal
+            # Cette logique sera gérée par la vue lors de la sauvegarde
 
 
 @receiver(post_save, sender=Gap)
@@ -435,3 +442,33 @@ def log_gap_deletion(sender, instance, **kwargs):
             message=f"Votre événement {instance.gap_number} ({instance.gap_type.name}) a été supprimé par {user.get_full_name()}.",
             priority='normal'
         )
+
+
+@receiver(m2m_changed, sender=GapReport.involved_users.through)
+def handle_involved_users_changed(sender, instance, action, pk_set, **kwargs):
+    """
+    Gère les changements dans les utilisateurs impliqués d'une déclaration.
+    Crée des notifications lors de l'ajout d'utilisateurs impliqués.
+    """
+    if action == 'post_add' and pk_set:
+        user = get_current_user()
+        if not user:
+            return
+            
+        from .models.notifications import Notification
+        
+        # Notifier chaque nouvel utilisateur impliqué (sauf le déclarant)
+        new_involved_users = User.objects.filter(
+            id__in=pk_set
+        ).exclude(id=user.id).exclude(id=instance.declared_by.id if instance.declared_by else None)
+        
+        for involved_user in new_involved_users:
+            Notification.objects.create(
+                user=involved_user,
+                gap=None,  # Pas d'écart spécifique
+                gap_report=instance,  # Référence à la déclaration
+                type='declaration_involved',
+                title=f"Déclaration #{instance.id} - Vous êtes impliqué",
+                message=f"Vous avez été associé à une déclaration d'événement créée par {user.get_full_name()}. Service: {instance.service.nom if instance.service else 'Non défini'}, Source: {instance.audit_source.name}.",
+                priority='normal'
+            )

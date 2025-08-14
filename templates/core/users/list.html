@@ -116,9 +116,6 @@
                 <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors">
                     Filtrer
                 </button>
-                {% if selected_service or selected_audit_source or user_type_filter != 'all' %}
-                    <a href="{% url 'users_list' %}" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md transition-colors">Effacer</a>
-                {% endif %}
             </div>
         </form>
     </div>

@@ -24,6 +24,7 @@ class Notification(TimestampedModel):
         ('gap_modified', 'Écart modifié'),
         ('gap_deleted', 'Écart supprimé'),
         ('gap_status_changed', 'Statut modifié'),
+        ('declaration_involved', 'Impliqué dans une déclaration'),
     ]
     
     PRIORITY_CHOICES = [
@@ -44,6 +45,15 @@ class Notification(TimestampedModel):
         on_delete=models.CASCADE,
         related_name='notifications',
         verbose_name="Écart concerné",
+        null=True,
+        blank=True
+    )
+    
+    gap_report = models.ForeignKey(
+        'GapReport',
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        verbose_name="Déclaration concernée",
         null=True,
         blank=True
     )

@@ -39,7 +39,7 @@ def dashboard(request):
     notifications = Notification.objects.filter(
         user=user,
         is_read=False
-    ).select_related('gap', 'gap__gap_report').order_by('-created_at')[:5]
+    ).select_related('gap', 'gap__gap_report', 'gap_report').order_by('-created_at')[:5]
     
     # Nombre de notifications non lues
     unread_notifications = Notification.objects.filter(

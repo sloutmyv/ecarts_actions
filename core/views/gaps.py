@@ -85,14 +85,21 @@ def gap_list(request):
     sort_order = request.GET.get('order', 'desc')
     
     # Construction de la requête de base optimisée
+    # BUGFIX: Le Prefetch sur involved_users causait des problèmes avec les filtres Django
     gaps = Gap.objects.select_related(
         'gap_report__audit_source', 
         'gap_report__service', 
         'gap_report__declared_by', 
         'gap_type'
-    ).prefetch_related(
-        Prefetch('gap_report__involved_users', queryset=User.objects.only('id', 'nom', 'prenom'))
     )
+    
+    # BUGFIX: Appliquer le filtre par type d'événement EN PREMIER pour éviter les corruptions de QuerySet
+    if show_gaps and not show_events:
+        # Seulement les écarts
+        gaps = gaps.filter(gap_type__is_gap=True)
+    elif show_events and not show_gaps:
+        # Seulement les événements
+        gaps = gaps.filter(gap_type__is_gap=False)
     
     # Vue par défaut : écarts du service de l'utilisateur + déclarés par lui + impliqués
     form_submitted = any([
@@ -102,7 +109,8 @@ def gap_list(request):
         selected_audit_source and selected_audit_source.strip() and selected_audit_source != 'None',
         declared_by_search and declared_by_search.strip() and declared_by_search != 'None',
         declared_by_id and declared_by_id.strip() and declared_by_id != 'None',
-        request.GET.get('show_gaps') is not None or request.GET.get('show_events') is not None
+        # Ne considérer les checkboxes show_gaps/show_events que si elles sont explicitement soumises
+        'show_gaps' in request.GET or 'show_events' in request.GET
     ])
     
     if not show_all and not form_submitted:
@@ -119,12 +127,9 @@ def gap_list(request):
         
         gaps = gaps.filter(user_gaps_filter).distinct()
         
-        # Pré-remplir les champs pour la vue personnalisée
-        if not selected_service and request.user.service:
-            selected_service = str(request.user.service.id)
-        if not declared_by_id:
-            declared_by_id = str(request.user.id)
-            declared_by_search = request.user.get_full_name() or request.user.matricule
+        # Dans la vue par défaut, NE PAS pré-remplir les champs pour éviter les filtres supplémentaires
+        # Le filtrage est déjà fait par user_gaps_filter ci-dessus
+        pass
     
     # Application des filtres
     if selected_service and selected_service.strip() and selected_service != 'None':
@@ -174,14 +179,7 @@ def gap_list(request):
             Q(gap_report__involved_users__matricule__icontains=declared_by_search)
         ).distinct()  # Éviter les doublons dus aux relations ManyToMany
     
-    # Filtrage par type d'événement (écarts vs événements)
-    if show_gaps and not show_events:
-        # Seulement les écarts
-        gaps = gaps.filter(gap_type__is_gap=True)
-    elif show_events and not show_gaps:
-        # Seulement les événements
-        gaps = gaps.filter(gap_type__is_gap=False)
-    # Si les deux sont cochées ou aucune (par défaut écarts), on affiche tout
+    # Le filtrage par type d'événement a été fait au début
     
     # Application du tri
     valid_sort_fields = {

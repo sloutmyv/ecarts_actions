@@ -410,13 +410,14 @@ class Gap(TimestampedModel):
         Détermine si un écart est visible pour un utilisateur donné.
         
         Règles de visibilité :
-        - Écarts annulés : visibles seulement par le déclarant et les administrateurs (SA/AD)
+        - Écarts annulés : visibles seulement par le déclarant, les utilisateurs impliqués et les administrateurs (SA/AD)
         - Autres statuts : visibles par tous les utilisateurs
         """
         if self.status == 'cancelled':
-            # Écart annulé : visible seulement par le déclarant et les administrateurs
+            # Écart annulé : visible seulement par le déclarant, les utilisateurs impliqués et les administrateurs
             return (
                 self.gap_report.declared_by == user or 
+                user in self.gap_report.involved_users.all() or
                 user.droits in ['SA', 'AD']
             )
         # Autres statuts : visibles par tous
