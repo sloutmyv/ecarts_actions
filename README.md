@@ -732,6 +732,32 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.13.0 - Historique des Pièces Jointes et Suppression des Doublons (2025-08-14)
+
+#### 📎 Suivi complet des pièces jointes
+- **Historique des ajouts** : Ajout de pièces jointes aux déclarations et événements maintenant tracé dans l'historique
+- **Historique des suppressions** : Suppression de pièces jointes enregistrée avec nom du fichier supprimé
+- **Signaux Django optimisés** : Gestionnaires `post_save` et `post_delete` pour les modèles `GapReportAttachment` et `GapAttachment`
+- **Descriptions explicites** : Messages clairs du type "27 - Déclaration d'événement modifiée - Ajout de pièce jointe : document.pdf"
+
+#### 🚫 Élimination des doublons d'historique
+- **Problème résolu** : Plus de doublons lors des modifications de pièces jointes ou personnes présentes
+- **Système de prévention centralisé** : Mécanisme global `set_specific_modification_in_progress()` pour coordonner les signaux
+- **Signaux coordonnés** : Synchronisation entre signaux M2M (`involved_users`) et signaux génériques (`post_save`)
+- **Solution technique élégante** : Flag temporaire thread-local pour éviter les entrées d'historique concurrentes
+
+#### 🔧 Architecture des signaux améliorée
+- **Fonctions utilitaires globales** : `set_specific_modification_in_progress()` et `is_specific_modification_in_progress()`
+- **Vue optimisée** : Définition du flag de prévention AVANT `form.save()` pour coordination parfaite des signaux
+- **Signaux M2M intelligents** : Respect du flag existant sans le redéfinir si déjà configuré par la vue
+- **Code nettoyé** : Suppression des logs de debug et fonctions inutilisées après validation
+
+#### 🎯 Expérience utilisateur améliorée
+- **Historique propre** : Une seule entrée par modification, plus de confusion avec les doublons
+- **Traçabilité exhaustive** : Toutes les modifications (champs, pièces jointes, personnes présentes) parfaitement enregistrées
+- **Performance maintenue** : Solution optimisée sans impact sur les performances des signaux Django
+- **Maintenance simplifiée** : Architecture centralisée facile à étendre pour de nouveaux types de modifications
+
 ### v2.12.0 - Protection des Champs et Historique Amélioré (2025-08-14)
 
 #### 🔒 Protection des champs lors d'édition avec écarts existants

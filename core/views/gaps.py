@@ -639,10 +639,30 @@ def gap_report_edit(request, pk):
     if request.method == 'POST':
         form = GapReportForm(request.POST, request.FILES, instance=gap_report, user=request.user)
         if form.is_valid():
+            # Import signal helpers
+            from core.signals import set_specific_modification_in_progress
+            
+            # Handle involved users BEFORE saving to set flag before post_save signal
+            involved_users_str = request.POST.get('involved_users', '')
+            current_involved_ids = set(gap_report.involved_users.values_list('id', flat=True))
+            
+            # Determine new involved users
+            if involved_users_str.strip():
+                try:
+                    new_involved_ids = set(int(id.strip()) for id in involved_users_str.split(',') if id.strip().isdigit())
+                except (ValueError, TypeError):
+                    new_involved_ids = set()
+            else:
+                new_involved_ids = set()
+            
+            # If involved users are changing, set flag BEFORE form.save()
+            if current_involved_ids != new_involved_ids:
+                set_specific_modification_in_progress('involved_user_modification')
+            
+            # Save the form - this will trigger post_save with flag already set
             gap_report = form.save()
             
-            # Gérer les utilisateurs impliqués depuis le champ caché
-            involved_users_str = request.POST.get('involved_users', '')
+            # Now apply the involved users changes - this will trigger m2m_changed
             if involved_users_str.strip():
                 try:
                     involved_users_ids = [int(id.strip()) for id in involved_users_str.split(',') if id.strip().isdigit()]

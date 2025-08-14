@@ -137,6 +137,13 @@ Lorsqu'une déclaration contient déjà des écarts, certains champs deviennent 
 - **Supprimer des personnes** : Cliquez sur la croix "✕" à côté du nom
 - **Traçabilité** : Tous les ajouts/suppressions sont enregistrés dans l'historique des modifications
 
+#### Gestion des pièces jointes
+- **Ajouter des pièces jointes** : Utilisez la section "Pièces jointes" du formulaire d'édition
+- **Supprimer des pièces jointes** : Cliquez sur le bouton "Supprimer" à côté de chaque fichier
+- **Formats supportés** : PDF, Word, Excel, images (JPG, PNG), etc.
+- **Taille maximale** : 20 MB par fichier
+- **Traçabilité complète** : Tous les ajouts/suppressions de fichiers sont enregistrés dans l'historique avec le nom du fichier
+
 ### Supprimer un écart
 
 **Qui peut supprimer ?**
@@ -272,4 +279,4 @@ Pour toute question ou problème :
 
 ---
 
-*Dernière mise à jour : 14 août 2025 - Version 2.11.0*
+*Dernière mise à jour : 14 août 2025 - Version 2.13.0*

@@ -9,6 +9,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from threading import local
 
 from .models.gaps import GapReport, Gap, HistoriqueModification
+from .models.attachments import GapReportAttachment, GapAttachment
 
 User = get_user_model()
 
@@ -29,6 +30,20 @@ def get_current_user():
     Récupère l'utilisateur actuel du thread.
     """
     return getattr(_thread_locals, 'user', None)
+
+
+def set_specific_modification_in_progress(modification_type):
+    """
+    Marque qu'une modification spécifique est en cours pour éviter les doublons génériques.
+    """
+    _thread_locals.specific_modification_in_progress = modification_type
+
+
+def is_specific_modification_in_progress():
+    """
+    Vérifie si une modification spécifique est en cours.
+    """
+    return hasattr(_thread_locals, 'specific_modification_in_progress')
 
 
 def _serialize_model_instance(instance, for_json=False):
@@ -263,6 +278,11 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
         # Les notifications pour involved_users seront gérées par le signal m2m_changed
         
     else:
+        # Vérifier si une modification spécifique est en cours pour éviter les doublons génériques
+        if is_specific_modification_in_progress():
+            # Ne pas effacer le flag ici car il peut être utilisé par d'autres signaux en séquence
+            return
+            
         # Modification
         old_data = getattr(_thread_locals, f'pre_save_{sender.__name__}_{instance.pk}', None)
         changes = _get_field_changes(old_data, instance)
@@ -276,6 +296,11 @@ def log_gap_report_changes(sender, instance, created, **kwargs):
                 donnees_avant=_convert_data_for_json(old_data),
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
+        else:
+            # Même sans changements de champs, vérifier si c'est dû à une modification M2M
+            # Si c'est le cas, ne pas créer d'entrée d'historique générique
+            if is_specific_modification_in_progress():
+                return
             
             # Si les utilisateurs impliqués ont changé, notifier les nouveaux utilisateurs
             # Note: Les changements dans les relations ManyToMany ne sont pas détectés par ce signal
@@ -330,6 +355,11 @@ def log_gap_changes(sender, instance, created, **kwargs):
             )
             
     else:
+        # Vérifier si une modification spécifique est en cours pour éviter les doublons génériques
+        if is_specific_modification_in_progress():
+            # Ne pas effacer le flag ici car il peut être utilisé par d'autres signaux en séquence
+            return
+            
         # Modification
         old_data = getattr(_thread_locals, f'pre_save_{sender.__name__}_{instance.pk}', None)
         changes = _get_field_changes(old_data, instance)
@@ -468,6 +498,11 @@ def handle_involved_users_changed(sender, instance, action, pk_set, **kwargs):
         return
     
     if action == 'post_add' and pk_set:
+        # Marquer qu'un ajout d'utilisateur impliqué est en cours pour éviter les doublons
+        # Seulement si pas déjà marqué par la vue
+        if not is_specific_modification_in_progress():
+            set_specific_modification_in_progress('involved_user_addition')
+        
         from .models.notifications import Notification
         
         # Récupérer les nouveaux utilisateurs ajoutés
@@ -506,6 +541,11 @@ def handle_involved_users_changed(sender, instance, action, pk_set, **kwargs):
             )
     
     elif action == 'post_remove' and pk_set:
+        # Marquer qu'une suppression d'utilisateur impliqué est en cours pour éviter les doublons
+        # Seulement si pas déjà marqué par la vue
+        if not is_specific_modification_in_progress():
+            set_specific_modification_in_progress('involved_user_removal')
+        
         # Récupérer les utilisateurs supprimés
         removed_users = User.objects.filter(id__in=pk_set)
         user_names = [u.get_full_name() or u.matricule for u in removed_users]
@@ -522,3 +562,89 @@ def handle_involved_users_changed(sender, instance, action, pk_set, **kwargs):
                 description=description,
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
+
+
+@receiver(post_save, sender=GapReportAttachment)
+def log_gap_report_attachment_changes(sender, instance, created, **kwargs):
+    """
+    Enregistre les ajouts de pièces jointes aux déclarations d'événements.
+    """
+    user = get_current_user()
+    if not user:
+        return
+    
+    if created:
+        # Marquer qu'un ajout d'attachment est en cours pour éviter les doublons
+        set_specific_modification_in_progress('attachment_addition')
+        
+        HistoriqueModification.enregistrer_modification(
+            objet=instance.gap_report,
+            action='modification',
+            utilisateur=user,
+            description=f"{instance.gap_report.id} - Déclaration d'événement modifiée - Ajout de pièce jointe : {instance.name}",
+            donnees_apres=_serialize_model_instance(instance.gap_report, for_json=True)
+        )
+
+
+@receiver(post_delete, sender=GapReportAttachment)
+def log_gap_report_attachment_deletion(sender, instance, **kwargs):
+    """
+    Enregistre les suppressions de pièces jointes des déclarations d'événements.
+    """
+    user = get_current_user()
+    if not user:
+        return
+    
+    # Marquer qu'une suppression d'attachment est en cours pour éviter les doublons    
+    set_specific_modification_in_progress('attachment_deletion')
+        
+    HistoriqueModification.enregistrer_modification(
+        objet=instance.gap_report,
+        action='modification',
+        utilisateur=user,
+        description=f"{instance.gap_report.id} - Déclaration d'événement modifiée - Suppression de pièce jointe : {instance.name}",
+        donnees_apres=_serialize_model_instance(instance.gap_report, for_json=True)
+    )
+
+
+@receiver(post_save, sender=GapAttachment)
+def log_gap_attachment_changes(sender, instance, created, **kwargs):
+    """
+    Enregistre les ajouts de pièces jointes aux événements.
+    """
+    user = get_current_user()
+    if not user:
+        return
+        
+    if created:
+        # Marquer qu'un ajout d'attachment est en cours pour éviter les doublons
+        set_specific_modification_in_progress('gap_attachment_addition')
+        
+        HistoriqueModification.enregistrer_modification(
+            objet=instance.gap,
+            action='modification',
+            utilisateur=user,
+            description=f"{instance.gap.gap_number} - Événement modifié - Ajout de pièce jointe : {instance.name}",
+            donnees_apres=_serialize_model_instance(instance.gap, for_json=True)
+        )
+
+
+@receiver(post_delete, sender=GapAttachment)
+def log_gap_attachment_deletion(sender, instance, **kwargs):
+    """
+    Enregistre les suppressions de pièces jointes des événements.
+    """
+    user = get_current_user()
+    if not user:
+        return
+    
+    # Marquer qu'une suppression d'attachment est en cours pour éviter les doublons
+    set_specific_modification_in_progress('gap_attachment_deletion')
+        
+    HistoriqueModification.enregistrer_modification(
+        objet=instance.gap,
+        action='modification',
+        utilisateur=user,
+        description=f"{instance.gap.gap_number} - Événement modifié - Suppression de pièce jointe : {instance.name}",
+        donnees_apres=_serialize_model_instance(instance.gap, for_json=True)
+        )
