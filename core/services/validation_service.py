@@ -82,6 +82,18 @@ class ValidationService:
             # Si rejet, l'écart est définitivement rejeté
             if action == 'rejected':
                 gap.status = 'rejected'
+                
+                # Créer l'historique de validation AVANT de sauvegarder pour éviter le signal générique
+                from ..models.gaps import HistoriqueModification
+                HistoriqueModification.enregistrer_modification(
+                    objet=gap,
+                    action='validation',
+                    utilisateur=validator,
+                    description=f"{gap.gap_number} - Écart rejeté par {validator.get_full_name()} - Niveau {level}" +
+                               (f"\nCommentaire: {comment}" if comment else ""),
+                    donnees_apres={'status': 'rejected', 'validated_by': validator.get_full_name(), 'level': level}
+                )
+                
                 gap.save(update_fields=['status', 'updated_at'])
                 
                 # Marquer comme lues les notifications de validation pour ce validateur
@@ -116,6 +128,18 @@ class ValidationService:
                 if level >= max_level:
                     # Validation terminée, écart retenu
                     gap.status = 'retained'
+                    
+                    # Créer l'historique de validation AVANT de sauvegarder pour éviter le signal générique
+                    from ..models.gaps import HistoriqueModification
+                    HistoriqueModification.enregistrer_modification(
+                        objet=gap,
+                        action='validation',
+                        utilisateur=validator,
+                        description=f"{gap.gap_number} - Écart retenu par {validator.get_full_name()} - Niveau {level}" +
+                                   (f"\nCommentaire: {comment}" if comment else ""),
+                        donnees_apres={'status': 'retained', 'validated_by': validator.get_full_name(), 'level': level}
+                    )
+                    
                     gap.save(update_fields=['status', 'updated_at'])
                     
                     # Marquer comme lues les notifications de validation pour ce validateur
@@ -296,9 +320,6 @@ class ValidationService:
             read_at=timezone.now()
         )
         
-        # Debug: log combien de notifications ont été mises à jour
-        print(f"DEBUG: Marqué {updated_count} notifications comme lues pour {validator} sur écart {gap.gap_number}")
-        
         # Marquer aussi toutes les notifications non lues de validation_request pour ce validateur
         # au cas où il y aurait un problème de correspondance
         additional_count = Notification.objects.filter(
@@ -310,5 +331,3 @@ class ValidationService:
             is_read=True,
             read_at=timezone.now()
         )
-        
-        print(f"DEBUG: Marqué {additional_count} notifications supplémentaires par numéro d'écart")

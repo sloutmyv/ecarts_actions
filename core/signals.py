@@ -339,6 +339,19 @@ def log_gap_changes(sender, instance, created, **kwargs):
             action = 'modification'
             if 'status' in changes:
                 action = 'changement_statut'
+                
+                # Vérifier si une validation vient d'être enregistrée pour éviter les doublons
+                from datetime import timedelta
+                from django.utils import timezone
+                recent_validation = HistoriqueModification.objects.filter(
+                    gap=instance,
+                    action='validation',
+                    created_at__gte=timezone.now() - timedelta(seconds=5)
+                ).exists()
+                
+                if recent_validation:
+                    # Une validation vient d'être enregistrée, ne pas créer l'historique générique
+                    return
             
             HistoriqueModification.enregistrer_modification(
                 objet=instance,

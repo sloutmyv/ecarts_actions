@@ -58,12 +58,15 @@ def dashboard(request):
     ).select_related('gap_report', 'gap').order_by('-created_at')[:10]
     
     # Notifications lues récemment (3 derniers jours, 10 max)
+    # Exclure les notifications validation_completed qui sont des confirmations personnelles
     three_days_ago = timezone.now() - timedelta(days=3)
     read_notifications = Notification.objects.filter(
         user=user,
         is_read=True,
         read_at__gte=three_days_ago
-    ).select_related('gap', 'gap__gap_report').order_by('-read_at')[:10]
+    ).exclude(
+        type='validation_completed'  # Exclure les notifications de confirmation de validation
+    ).select_related('gap', 'gap__gap_report', 'gap_report').order_by('-read_at')[:10]
     
     # Mélanger les actions et notifications lues, prendre les 5 plus récentes
     history_items = []
@@ -84,8 +87,15 @@ def dashboard(request):
             'data': notification
         })
     
-    # Trier par timestamp décroissant et prendre les 5 plus récents
-    history_items.sort(key=lambda x: x['timestamp'], reverse=True)
+    # Trier par timestamp décroissant avec priorité aux actions sur les notifications
+    # si les timestamps sont identiques ou très proches (moins de 10 secondes d'écart)
+    def sort_key(item):
+        timestamp = item['timestamp']
+        # Les actions ont une priorité légèrement plus élevée que les notifications
+        priority_bonus = 0 if item['type'] == 'action' else -0.1
+        return timestamp.timestamp() + priority_bonus
+    
+    history_items.sort(key=sort_key, reverse=True)
     user_history = history_items[:5]
     
     # Écarts en attente de validation par cet utilisateur
