@@ -732,6 +732,33 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.12.0 - Protection des Champs et Historique Amélioré (2025-08-14)
+
+#### 🔒 Protection des champs lors d'édition avec écarts existants
+- **Champ Service désactivé** : Le service ne peut plus être modifié quand des écarts sont associés à la déclaration
+- **Champ Source d'audit désactivé** : La source d'audit ne peut plus être modifiée quand des écarts sont associés
+- **Affichage des valeurs actuelles** : Les champs désactivés affichent correctement les valeurs sélectionnées initialement
+- **Style visuel cohérent** : Champs grisés avec curseur "not-allowed" pour indiquer qu'ils ne sont pas modifiables
+- **Messages d'aide explicites** : Indication claire que les champs ne peuvent pas être modifiés car des écarts existent
+
+#### 📝 Historique des modifications enrichi pour les personnes impliquées
+- **Traçabilité complète** : Ajout et suppression de "personnes présentes" maintenant enregistrés dans l'historique
+- **Descriptions explicites** : "Ajout de personnes présentes : [Nom Prénom]" et "Suppression de personnes présentes : [Nom Prénom]"
+- **Signal M2M optimisé** : Gestion des relations ManyToMany avec capture des changements en temps réel
+- **Données JSON enrichies** : Informations complètes des utilisateurs impliqués dans les champs avant/après de l'historique
+
+#### 🛡️ Intégrité des données renforcée
+- **Validation côté serveur** : Impossible de modifier service ou source d'audit via manipulation de formulaire
+- **Cohérence des écarts** : Garantit que les écarts restent cohérents avec leur déclaration d'origine
+- **Protection contre les erreurs** : Empêche les modifications accidentelles qui rendraient les écarts incohérents
+- **Architecture robuste** : Logique centralisée dans le formulaire Django avec validation en double sécurité
+
+#### 🔧 Améliorations techniques
+- **Queryset intelligent** : Inclusion automatique des valeurs actuelles même si elles ne sont plus dans le filtrage
+- **Templates épurés** : Utilisation directe du système de formulaires Django plutôt que des templates partiels complexes
+- **Signaux optimisés** : Gestion propre des changements M2M avec `set_current_user` pour traçabilité
+- **Code nettoyé** : Suppression du debug et consolidation de la logique de protection des champs
+
 ### v2.11.1 - Correction Affichage Écarts Impliqués (2025-08-14)
 
 #### 🐛 Correction critique du filtrage des écarts

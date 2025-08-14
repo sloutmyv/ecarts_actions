@@ -3,6 +3,7 @@ Formulaires pour la gestion des écarts.
 """
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from datetime import datetime
 
 from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, GapAttachment
@@ -34,7 +35,7 @@ class GapReportForm(forms.ModelForm):
                 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors',
                 'hx-get': '/gaps/api/audit-sources-field/',
                 'hx-target': '#audit-source-field',
-                'hx-include': '[name="service"]'
+                'hx-include': '[name="service"], [name="audit_source"]'
             }),
             'process': forms.Select(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors'}),
             'location': forms.TextInput(attrs={
@@ -120,10 +121,39 @@ class GapReportForm(forms.ModelForm):
         # Rendre le champ processus optionnel par défaut
         self.fields['process'].required = False
         
-        # Désactiver le champ audit_source si des écarts existent déjà
+        # Désactiver les champs audit_source et service si des écarts existent déjà
         if self.instance.pk and self.instance.gaps.exists():
+            # Désactiver la source d'audit
             self.fields['audit_source'].disabled = True
-            self.fields['audit_source'].help_text = "La source d'audit ne peut pas être modifiée car des écarts sont déjà associés à cette déclaration."
+            self.fields['audit_source'].help_text = "La source d'audit ne peut pas être modifiée car des événements sont déjà associés à cette déclaration."
+            
+            # S'assurer que la source d'audit actuelle est incluse dans le queryset
+            # même si elle n'est plus dans les sources validées pour le service
+            current_audit_source = self.instance.audit_source
+            if current_audit_source and not self.fields['audit_source'].queryset.filter(id=current_audit_source.id).exists():
+                # Ajouter la source d'audit actuelle au queryset existant
+                current_queryset = self.fields['audit_source'].queryset
+                self.fields['audit_source'].queryset = AuditSource.objects.filter(
+                    Q(id__in=current_queryset.values_list('id', flat=True)) | Q(id=current_audit_source.id)
+                ).order_by('name')
+            
+            # Mettre à jour les attributs du widget pour le style désactivé
+            audit_source_attrs = self.fields['audit_source'].widget.attrs
+            audit_source_attrs.update({
+                'class': audit_source_attrs.get('class', '') + ' bg-gray-100 text-gray-600 cursor-not-allowed opacity-75',
+                'disabled': True
+            })
+            
+            # Désactiver le service
+            self.fields['service'].disabled = True
+            self.fields['service'].help_text = "Le service ne peut pas être modifié car des événements sont déjà associés à cette déclaration."
+            
+            # Mettre à jour les attributs du widget service pour le style désactivé
+            service_attrs = self.fields['service'].widget.attrs
+            service_attrs.update({
+                'class': service_attrs.get('class', '') + ' bg-gray-100 text-gray-600 cursor-not-allowed opacity-75',
+                'disabled': True
+            })
 
     def clean(self):
         cleaned_data = super().clean()
@@ -151,12 +181,19 @@ class GapReportForm(forms.ModelForm):
                     'observation_date': 'La date d\'observation ne peut pas être postérieure à la date de déclaration.'
                 })
         
-        # Vérifier que la source d'audit n'est pas modifiée si des écarts existent
+        # Vérifier que la source d'audit et le service ne sont pas modifiés si des écarts existent
         if self.instance.pk and self.instance.gaps.exists():
             original_audit_source = self.instance.audit_source
             if audit_source and audit_source != original_audit_source:
                 raise ValidationError({
                     'audit_source': 'La source d\'audit ne peut pas être modifiée car des écarts sont déjà associés à cette déclaration.'
+                })
+            
+            original_service = self.instance.service
+            service = cleaned_data.get('service')
+            if service and service != original_service:
+                raise ValidationError({
+                    'service': 'Le service ne peut pas être modifié car des événements sont déjà associés à cette déclaration.'
                 })
         
         if audit_source:

@@ -461,21 +461,40 @@ def log_gap_deletion(sender, instance, **kwargs):
 def handle_involved_users_changed(sender, instance, action, pk_set, **kwargs):
     """
     Gère les changements dans les utilisateurs impliqués d'une déclaration.
-    Crée des notifications lors de l'ajout d'utilisateurs impliqués.
+    Crée des notifications et enregistre dans l'historique lors des modifications.
     """
+    user = get_current_user()
+    if not user:
+        return
+    
     if action == 'post_add' and pk_set:
-        user = get_current_user()
-        if not user:
-            return
-            
         from .models.notifications import Notification
         
-        # Notifier chaque nouvel utilisateur impliqué (sauf le déclarant)
-        new_involved_users = User.objects.filter(
-            id__in=pk_set
-        ).exclude(id=user.id).exclude(id=instance.declared_by.id if instance.declared_by else None)
+        # Récupérer les nouveaux utilisateurs ajoutés
+        new_involved_users = User.objects.filter(id__in=pk_set)
+        user_names = [u.get_full_name() or u.matricule for u in new_involved_users]
         
-        for involved_user in new_involved_users:
+        # Enregistrer dans l'historique des modifications
+        if new_involved_users.exists():
+            description = f"{instance.id} - Déclaration d'événement modifiée - Ajout de personnes présentes : {', '.join(user_names)}"
+            
+            # Créer l'historique de modification
+            HistoriqueModification.enregistrer_modification(
+                objet=instance,
+                action='modification',
+                utilisateur=user,
+                description=description,
+                donnees_apres=_serialize_model_instance(instance, for_json=True)
+            )
+        
+        # Notifier chaque nouvel utilisateur impliqué (sauf le déclarant et l'utilisateur qui fait la modification)
+        users_to_notify = new_involved_users.exclude(
+            id=user.id
+        ).exclude(
+            id=instance.declared_by.id if instance.declared_by else None
+        )
+        
+        for involved_user in users_to_notify:
             Notification.objects.create(
                 user=involved_user,
                 gap=None,  # Pas d'écart spécifique
@@ -484,4 +503,22 @@ def handle_involved_users_changed(sender, instance, action, pk_set, **kwargs):
                 title=f"Déclaration #{instance.id} - Vous êtes impliqué",
                 message=f"Vous avez été associé à une déclaration d'événement créée par {user.get_full_name()}. Service: {instance.service.nom if instance.service else 'Non défini'}, Source: {instance.audit_source.name}.",
                 priority='normal'
+            )
+    
+    elif action == 'post_remove' and pk_set:
+        # Récupérer les utilisateurs supprimés
+        removed_users = User.objects.filter(id__in=pk_set)
+        user_names = [u.get_full_name() or u.matricule for u in removed_users]
+        
+        # Enregistrer dans l'historique des modifications
+        if removed_users.exists():
+            description = f"{instance.id} - Déclaration d'événement modifiée - Suppression de personnes présentes : {', '.join(user_names)}"
+            
+            # Créer l'historique de modification
+            HistoriqueModification.enregistrer_modification(
+                objet=instance,
+                action='modification',
+                utilisateur=user,
+                description=description,
+                donnees_apres=_serialize_model_instance(instance, for_json=True)
             )

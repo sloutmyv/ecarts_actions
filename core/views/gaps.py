@@ -15,6 +15,7 @@ from core.models import GapReport, Gap, AuditSource, Service, Process, GapType, 
 from core.forms import GapReportForm, GapForm, GapAttachmentForm
 from core.utils.cache import get_cached_services, get_cached_gap_types, get_cached_audit_sources, cache_key_for_user
 from core.utils.pagination import paginate_queryset, get_page_range
+from core.signals import set_current_user
 
 
 def get_services_hierarchical_order():
@@ -625,6 +626,9 @@ def gap_report_edit(request, pk):
     Modification d'une déclaration d'écart existante.
     Seul le déclarant peut modifier une déclaration.
     """
+    # Définir l'utilisateur actuel pour les signaux
+    set_current_user(request.user)
+    
     gap_report = get_object_or_404(GapReport, pk=pk)
     
     # Vérifier que l'utilisateur connecté est le déclarant ou un administrateur
@@ -1209,6 +1213,7 @@ def get_audit_sources_field(request):
     Affiche seulement les sources qui ont au moins un validateur pour le service.
     """
     service_id = request.GET.get('service')
+    selected_audit_source = request.GET.get('selected_audit_source')
     
     if service_id:
         try:
@@ -1222,10 +1227,20 @@ def get_audit_sources_field(request):
                 audit_source__is_active=True
             ).values_list('audit_source', flat=True).distinct()
             
-            audit_sources = AuditSource.objects.filter(
-                id__in=sources_with_validators,
-                is_active=True
-            ).order_by('name')
+            # Construire le filtre de base
+            audit_sources_filter = Q(id__in=sources_with_validators, is_active=True)
+            
+            # Si une source d'audit est déjà sélectionnée (cas d'édition), 
+            # l'inclure même si elle n'est plus dans les sources validées pour le service
+            if selected_audit_source:
+                try:
+                    selected_id = int(selected_audit_source)
+                    audit_sources_filter |= Q(id=selected_id, is_active=True)
+                except (ValueError, TypeError):
+                    pass
+            
+            audit_sources = AuditSource.objects.filter(audit_sources_filter).order_by('name')
+            
         except Service.DoesNotExist:
             audit_sources = AuditSource.objects.none()
     else:
@@ -1234,7 +1249,7 @@ def get_audit_sources_field(request):
     
     context = {
         'audit_sources': audit_sources,
-        'selected_audit_source': request.GET.get('selected_audit_source'),
+        'selected_audit_source': selected_audit_source,
         'service_id': service_id
     }
     return render(request, 'core/gaps/partials/audit_sources_field.html', context)

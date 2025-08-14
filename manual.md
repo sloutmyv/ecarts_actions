@@ -119,6 +119,24 @@ Cliquez sur les en-têtes de colonnes pour trier :
 - Seuls les écarts "Déclarés" ou "Annulés" peuvent être modifiés
 - Les écarts en cours de validation ou clos ne peuvent plus être modifiés
 
+### Modifier une déclaration
+
+#### Cas général
+- Le déclarant peut modifier sa déclaration (service, lieu, date, personnes présentes, etc.)
+- Les administrateurs (SA et AD) peuvent modifier toute déclaration
+
+#### ⚠️ Restrictions importantes quand des écarts existent
+Lorsqu'une déclaration contient déjà des écarts, certains champs deviennent **non modifiables** pour préserver la cohérence des données :
+
+- **Service concerné** : Ne peut plus être modifié (champ grisé avec message d'information)
+- **Source de l'audit** : Ne peut plus être modifiée (champ grisé avec message d'information)
+- **Autres champs modifiables** : Date d'observation, lieu, référence source, personnes présentes
+
+#### Gestion des personnes impliquées
+- **Ajouter des personnes** : Utilisez le bouton "+" et recherchez par nom ou matricule
+- **Supprimer des personnes** : Cliquez sur la croix "✕" à côté du nom
+- **Traçabilité** : Tous les ajouts/suppressions sont enregistrés dans l'historique des modifications
+
 ### Supprimer un écart
 
 **Qui peut supprimer ?**
