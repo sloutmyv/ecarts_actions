@@ -732,6 +732,32 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.11.0 - Filtrage Intelligent des Sources d'Audit (2025-08-14)
+
+#### 🎯 Filtrage des sources d'audit par validateurs
+- **Filtrage automatique initial** : Seules les sources d'audit ayant des validateurs configurés pour le service apparaissent dans les formulaires
+- **Filtrage dynamique HTMX** : Mise à jour automatique des sources disponibles lors du changement de service
+- **Messages informatifs** : Indication claire quand aucune source n'est disponible pour un service donné
+- **Cohérence formulaires** : Système unifié entre formulaire complet et modal de déclaration
+
+#### 🔄 Amélioration de l'expérience utilisateur
+- **Prévention des erreurs** : Impossible de créer des déclarations avec des sources non-validables
+- **Template partiel centralisé** : Composant réutilisable `audit_sources_field.html` pour maintenir la cohérence
+- **Intégration seamless** : Fonctionnement identique dans les deux modes de saisie (page complète et modal HTMX)
+- **Performance optimisée** : Filtrage côté serveur pour éviter le chargement de données inutiles
+
+#### 🛡️ Sécurisation du workflow
+- **Validation préventive** : Empêche la création d'écarts qui ne pourraient pas être validés
+- **Filtrage par service utilisateur** : Sources filtrées automatiquement selon le service par défaut de l'utilisateur connecté
+- **Messages d'aide simplifiés** : Suppression du lien vers la gestion workflow dans les messages d'erreur
+- **Architecture consolidée** : Vue unique `get_audit_sources_field` pour gérer tous les cas de filtrage
+
+#### 🔧 Améliorations techniques
+- **Templates partiels HTMX** : Réutilisation du composant entre formulaire complet et modal
+- **Filtrage en cascade** : Service → ValidateurService → AuditSource pour garantir la cohérence
+- **JavaScript conditionnel** : Appel à `loadGapTypesReliable()` uniquement dans le contexte modal
+- **Requêtes optimisées** : Utilisation de `values_list().distinct()` pour des performances maximales
+
 ### v2.10.0 - Interface Utilisateur Améliorée et Notifications Optimisées (2025-08-13)
 
 #### 🎨 Amélioration de l'affichage des notifications

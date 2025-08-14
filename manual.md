@@ -43,26 +43,46 @@ L'interface se compose de :
 
 ### Déclarer un nouvel événement
 
-1. **Accès** : Cliquez sur "Nouvelle déclaration" dans le menu Écarts
-2. **Informations générales** :
-   - **Source d'audit** : Choisissez d'où provient l'observation
+#### Deux méthodes de déclaration
+
+**Option 1 : Modal "Déclarer un événement"** (recommandé)
+- Cliquez sur le bouton "Déclarer un événement" dans la liste des écarts
+- Formulaire modal optimisé avec filtrage intelligent
+
+**Option 2 : Formulaire complet**
+- Accédez via "Nouvelle déclaration" dans le menu Écarts
+- Formulaire page complète avec options avancées
+
+#### Processus de déclaration
+
+1. **Service concerné** :
+   - Sélectionnez le service où l'événement s'est produit
+   - ⚡ **Nouveau** : Les sources d'audit se filtrent automatiquement selon votre sélection
+
+2. **Source d'audit** :
+   - Seules les sources ayant des validateurs configurés pour votre service apparaissent
+   - Si aucune source n'est disponible, un message vous l'indique
+   - ✨ **Avantage** : Plus de risque de créer un écart non-validable
+
+3. **Autres informations** :
    - **Référence source** : Numéro de référence (optionnel)
-   - **Service concerné** : Service où l'événement s'est produit
    - **Lieu** : Localisation précise
    - **Date d'observation** : Quand l'événement s'est produit
 
-3. **Personnes impliquées** :
+4. **Personnes impliquées** :
    - Recherchez et sélectionnez les personnes présentes lors de l'observation
    - Utilisez l'autocomplétion pour trouver rapidement les utilisateurs
 
-4. **Description des écarts** :
-   - **Type d'écart** : Sélectionnez le type selon la source d'audit
+5. **Description des écarts** :
+   - **Type d'écart** : Sélectionnez le type selon la source d'audit choisie
    - **Description** : Décrivez précisément ce qui s'est passé
    - Ajoutez autant d'écarts que nécessaire
 
-5. **Pièces jointes** :
+6. **Pièces jointes** :
    - Ajoutez des documents, photos ou preuves
    - Formats supportés : PDF, Word, Excel, images, etc.
+
+> 💡 **Astuce** : Le filtrage intelligent des sources d'audit vous assure qu'un validateur sera toujours disponible pour traiter votre déclaration.
 
 ### Consulter et filtrer les écarts
 
@@ -234,4 +254,4 @@ Pour toute question ou problème :
 
 ---
 
-*Dernière mise à jour : 11 août 2025 - Version 2.7.0*
+*Dernière mise à jour : 14 août 2025 - Version 2.11.0*

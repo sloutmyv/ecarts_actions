@@ -573,7 +573,24 @@ def gap_report_create(request):
     
     # GET request - afficher le formulaire
     services = get_services_hierarchical_order()
-    audit_sources = AuditSource.objects.filter(is_active=True).order_by('name')
+    
+    # Filtrer les sources d'audit selon le service de l'utilisateur pour le modal
+    if request.user.service:
+        from core.models.workflow import ValidateurService
+        sources_with_validators = ValidateurService.objects.filter(
+            service=request.user.service,
+            actif=True,
+            audit_source__is_active=True
+        ).values_list('audit_source', flat=True).distinct()
+        
+        audit_sources = AuditSource.objects.filter(
+            id__in=sources_with_validators,
+            is_active=True
+        ).order_by('name')
+    else:
+        # Si pas de service défini, afficher toutes les sources actives
+        audit_sources = AuditSource.objects.filter(is_active=True).order_by('name')
+    
     processes = Process.objects.filter(is_active=True).order_by('code')
     users = User.objects.filter(actif=True).order_by('nom', 'prenom')  # Seuls les utilisateurs actifs
     gap_types = GapType.objects.filter(is_active=True).order_by('audit_source__name', 'name')
@@ -1186,3 +1203,40 @@ def gap_detail(request, pk):
     }
     
     return render(request, 'core/gaps/gap_detail.html', context)
+
+
+def get_audit_sources_field(request):
+    """
+    API HTMX pour filtrer les sources d'audit selon le service sélectionné.
+    Affiche seulement les sources qui ont au moins un validateur pour le service.
+    """
+    service_id = request.GET.get('service')
+    
+    if service_id:
+        try:
+            service = Service.objects.get(id=service_id)
+            # Récupérer les sources d'audit actives qui ont au moins un validateur 
+            # actif pour ce service
+            from core.models.workflow import ValidateurService
+            sources_with_validators = ValidateurService.objects.filter(
+                service=service,
+                actif=True,
+                audit_source__is_active=True
+            ).values_list('audit_source', flat=True).distinct()
+            
+            audit_sources = AuditSource.objects.filter(
+                id__in=sources_with_validators,
+                is_active=True
+            ).order_by('name')
+        except Service.DoesNotExist:
+            audit_sources = AuditSource.objects.none()
+    else:
+        # Aucun service sélectionné, afficher toutes les sources actives
+        audit_sources = AuditSource.objects.filter(is_active=True).order_by('name')
+    
+    context = {
+        'audit_sources': audit_sources,
+        'selected_audit_source': request.GET.get('selected_audit_source'),
+        'service_id': service_id
+    }
+    return render(request, 'core/gaps/partials/audit_sources_field.html', context)
