@@ -732,6 +732,41 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.14.0 - Système de Notifications Dynamiques et Interface Améliorée (2025-08-15)
+
+#### 🔄 Notifications dynamiques pour écarts/événements
+- **Mise à jour automatique** : Les notifications de validation s'adaptent dynamiquement quand un écart devient un événement
+- **Suppression intelligente** : Notifications de validation supprimées automatiquement quand `is_gap` passe de `True` à `False`
+- **Création automatique** : Notifications de validation créées automatiquement quand `is_gap` passe de `False` à `True`
+- **Double sécurité** : Détection via changement de `gap_type` ET nettoyage systématique pour garantir la cohérence
+- **Notifications aux déclarants** : Information automatique des utilisateurs lors des reclassements écart ↔ événement
+
+#### 🎯 Interface de liste améliorée
+- **Boutons de modification grisés** : Option "Modifier" désactivée visuellement pour écarts retenus/rejetés (non-administrateurs)
+- **Permissions granulaires** : Administrateurs (SA/AD) conservent tous les droits de modification
+- **Indicateurs visuels** : Icône grisée avec tooltip explicatif "Modification non autorisée (écart retenu/non retenu)"
+- **Cohérence UX** : Bouton actif pour écarts déclarés/annulés, grisé pour écarts finalisés
+
+#### 🛠️ Signaux Django optimisés
+- **Architecture centralisée** : Gestion unifiée des changements via signaux `Gap` et `GapType`
+- **Extraction robuste des IDs** : Gestion correcte des données de changement en format `{'id': X, 'str': 'Y'}`
+- **Nettoyage systématique** : Suppression automatique des notifications orphelines à chaque modification
+- **Gestion d'erreur silencieuse** : Traitement robuste des erreurs sans impact sur l'expérience utilisateur
+
+#### 🔧 Corrections techniques
+- **Erreur CSRF résolue** : Configuration `CSRF_TRUSTED_ORIGINS` et `ALLOWED_HOSTS` pour localhost:8001
+- **Dashboard corrigé** : Indicateur "Écarts" affiche maintenant `total_ecarts` au lieu de `evenements_non_ecarts`
+- **Template sécurisé** : Condition de grisage utilisant comparaisons directes sans filtre `split` inexistant
+- **Code épuré** : Suppression des logs de débogage et de la commande de nettoyage manuel devenue obsolète
+
+#### 🚀 Workflow utilisateur simplifié
+- **Plus de notifications parasites** : Les validateurs ne reçoivent que les notifications pertinentes
+- **Adaptation temps réel** : Changements de type reflétés immédiatement dans les notifications
+- **Cohérence garantie** : Double mécanisme (détection + nettoyage) pour éliminer les incohérences
+- **Interface intuitive** : Boutons grisés indiquent clairement les limitations selon le statut et les droits
+
+## 🆕 Changements récents
+
 ### v2.13.0 - Historique des Pièces Jointes et Suppression des Doublons (2025-08-14)
 
 #### 📎 Suivi complet des pièces jointes

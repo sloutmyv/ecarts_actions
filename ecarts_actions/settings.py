@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-monl+%t!7$lnb!-36otkj&zs&kkd-9s!tgwel*x81j4fn&l2kb
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver', '127.0.0.1:8001', 'localhost:8001']
 
 
 # Application definition
@@ -188,6 +188,14 @@ AUTH_USER_MODEL = 'core.User'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8001',
+    'http://localhost:8001',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [

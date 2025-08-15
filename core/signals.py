@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from threading import local
 
-from .models.gaps import GapReport, Gap, HistoriqueModification
+from .models.gaps import GapReport, Gap, HistoriqueModification, GapType
 from .models.attachments import GapReportAttachment, GapAttachment
 
 User = get_user_model()
@@ -392,6 +392,72 @@ def log_gap_changes(sender, instance, created, **kwargs):
                 donnees_apres=_serialize_model_instance(instance, for_json=True)
             )
             
+            # Vérifier si le gap_type a changé et gérer les notifications
+            if 'gap_type' in changes:
+                old_gap_type_data = changes['gap_type']['avant']
+                new_gap_type_data = changes['gap_type']['apres']
+                
+                # Extraire les IDs depuis les dictionnaires
+                old_gap_type_id = old_gap_type_data.get('id') if isinstance(old_gap_type_data, dict) else old_gap_type_data
+                new_gap_type_id = new_gap_type_data.get('id') if isinstance(new_gap_type_data, dict) else new_gap_type_data
+                
+                if old_gap_type_id and new_gap_type_id:
+                    try:
+                        from .models.gaps import GapType
+                        old_gap_type = GapType.objects.get(id=old_gap_type_id)
+                        new_gap_type = GapType.objects.get(id=new_gap_type_id)
+                        
+                        old_is_gap = old_gap_type.is_gap
+                        new_is_gap = new_gap_type.is_gap
+                        
+                        # Changement d'écart vers événement
+                        if old_is_gap and not new_is_gap:
+                            from .models.notifications import Notification
+                            Notification.objects.filter(
+                                gap=instance,
+                                type='validation_request',
+                                is_read=False
+                            ).delete()
+                            
+                            # Notifier le déclarant du changement
+                            if instance.gap_report and instance.gap_report.declared_by:
+                                Notification.objects.create(
+                                    user=instance.gap_report.declared_by,
+                                    gap=instance,
+                                    type='gap_modified',
+                                    title=f"Événement reclassé - {instance.gap_number}",
+                                    message=f"Votre déclaration {instance.gap_number} a été reclassée en événement simple (plus de validation nécessaire).",
+                                    priority='normal'
+                                )
+                                
+                        # Changement d'événement vers écart
+                        elif not old_is_gap and new_is_gap and instance.status == 'declared':
+                            from .services.validation_service import ValidationService
+                            ValidationService.create_gap_notification(instance)
+                            
+                            # Notifier le déclarant du changement
+                            if instance.gap_report and instance.gap_report.declared_by:
+                                from .models.notifications import Notification
+                                Notification.objects.create(
+                                    user=instance.gap_report.declared_by,
+                                    gap=instance,
+                                    type='gap_modified',
+                                    title=f"Écart reclassé - {instance.gap_number}",
+                                    message=f"Votre déclaration {instance.gap_number} a été reclassée en écart et nécessite désormais une validation.",
+                                    priority='high'
+                                )
+                    except Exception:
+                        pass  # Ignorer les erreurs silencieusement
+            
+            # Nettoyage systématique des notifications orphelines
+            if hasattr(instance, 'gap_type') and instance.gap_type and not instance.gap_type.is_gap:
+                from .models.notifications import Notification
+                Notification.objects.filter(
+                    gap=instance,
+                    type='validation_request',
+                    is_read=False
+                ).delete()
+            
             # Créer une notification pour le déclarant sur la modification de l'écart
             # Mais pas si c'est le déclarant lui-même qui fait la modification
             if (hasattr(instance, 'gap_report') and instance.gap_report and 
@@ -449,6 +515,90 @@ def log_gap_report_deletion(sender, instance, **kwargs):
         description=_generate_change_description({}, 'suppression', 'déclaration d\'événement', instance),
         donnees_avant=_serialize_model_instance(instance, for_json=True)
     )
+
+
+@receiver(pre_save, sender=GapType)
+def pre_save_gap_type(sender, instance, **kwargs):
+    """
+    Enregistre l'état du GapType avant sauvegarde pour détecter les changements.
+    """
+    if instance.pk:
+        try:
+            old_instance = sender.objects.get(pk=instance.pk)
+            thread_key = f'pre_save_{sender.__name__}_{instance.pk}'
+            setattr(_thread_locals, thread_key, _serialize_model_instance(old_instance))
+        except sender.DoesNotExist:
+            pass
+
+
+@receiver(post_save, sender=GapType)
+def handle_gap_type_changes(sender, instance, created, **kwargs):
+    """
+    Gère les changements du GapType, particulièrement les modifications du champ is_gap.
+    Met à jour les notifications de validation en conséquence.
+    """
+    if created:
+        return  # Pas de changement à gérer pour une création
+    
+    user = get_current_user()
+    if not user:
+        return
+    
+    # Récupérer les données avant modification
+    old_data = getattr(_thread_locals, f'pre_save_{sender.__name__}_{instance.pk}', None)
+    if not old_data:
+        return
+    
+    changes = _get_field_changes(old_data, instance)
+    
+    # Vérifier si le champ is_gap a changé
+    if 'is_gap' in changes:
+        old_is_gap = changes['is_gap']['avant']
+        new_is_gap = changes['is_gap']['apres']
+        
+        # Trouver tous les Gap qui utilisent ce GapType et qui sont en statut 'declared'
+        gaps_affected = Gap.objects.filter(
+            gap_type=instance,
+            status='declared'
+        )
+        
+        from .models.notifications import Notification
+        from .services.validation_service import ValidationService
+        
+        for gap in gaps_affected:
+            if old_is_gap and not new_is_gap:
+                # Changement d'écart vers événement: supprimer les notifications de validation
+                Notification.objects.filter(
+                    gap=gap,
+                    type='validation_request',
+                    is_read=False
+                ).delete()
+                
+                # Notifier le déclarant du changement
+                if gap.gap_report and gap.gap_report.declared_by:
+                    Notification.objects.create(
+                        user=gap.gap_report.declared_by,
+                        gap=gap,
+                        type='gap_modified',
+                        title=f"Modification de type - {gap.gap_number}",
+                        message=f"Votre déclaration {gap.gap_number} a été reclassée en événement simple (plus de validation nécessaire).",
+                        priority='normal'
+                    )
+                    
+            elif not old_is_gap and new_is_gap:
+                # Changement d'événement vers écart: créer les notifications de validation
+                ValidationService.create_gap_notification(gap)
+                
+                # Notifier le déclarant du changement
+                if gap.gap_report and gap.gap_report.declared_by:
+                    Notification.objects.create(
+                        user=gap.gap_report.declared_by,
+                        gap=gap,
+                        type='gap_modified',
+                        title=f"Modification de type - {gap.gap_number}",
+                        message=f"Votre déclaration {gap.gap_number} a été reclassée en écart et nécessite désormais une validation.",
+                        priority='high'
+                    )
 
 
 @receiver(post_delete, sender=Gap)
