@@ -732,6 +732,31 @@ python manage.py clearsessions
 
 ## 🆕 Changements récents
 
+### v2.15.0 - Protection contre la Suppression des Entités de Référence (2025-08-15)
+
+#### 🛡️ Protection complète contre la suppression accidentelle
+- **Sources d'audit protégées** : Impossible de supprimer si déclarations, types d'événements ou validateurs associés
+- **Processus SMI protégés** : Impossible de supprimer si déclarations d'événements associées
+- **Types d'événements protégés** : Impossible de supprimer si écarts/événements associés
+- **Messages d'erreur détaillés** : Explanation claire des contraintes et suggestions d'actions alternatives
+
+#### 🔧 Implémentation technique robuste
+- **Méthodes de validation** : `can_be_deleted()` et `get_deletion_blocking_reason()` pour chaque modèle protégé
+- **Protection admin Django** : Méthodes `delete_model()` et `delete_queryset()` avec validation préalable
+- **Cohérence avec les services** : Même pattern de protection que celui utilisé pour les services existants
+- **Alternative proposée** : Suggestion d'utiliser le statut "inactif" au lieu de la suppression
+
+#### 🎯 Sécurisation des données de référence
+- **Intégrité garantie** : Empêche la suppression de données critiques utilisées dans les déclarations/écarts
+- **Suppression en lot bloquée** : Protection contre les suppressions massives accidentelles via l'interface admin
+- **Messages contextuels** : Information précise sur le nombre d'éléments bloquant la suppression
+- **Actions recommandées** : Guidance claire sur les étapes à suivre pour résoudre les contraintes
+
+#### 🔄 Workflow de désactivation privilégié
+- **Alternative sécurisée** : Recommandation de passer les entités en "inactif" plutôt que de les supprimer
+- **Préservation de l'historique** : Maintien de l'intégrité des données existantes tout en empêchant l'utilisation future
+- **Cohérence système** : Même approche que pour les services et utilisateurs déjà implémentée
+
 ### v2.14.0 - Système de Notifications Dynamiques et Interface Améliorée (2025-08-15)
 
 #### 🔄 Notifications dynamiques pour écarts/événements

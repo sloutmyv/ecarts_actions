@@ -73,6 +73,57 @@ class AuditSource(TimestampedModel):
         
         return None
 
+    def can_be_deleted(self):
+        """
+        Vérifie si la source d'audit peut être supprimée définitivement.
+        Une source d'audit ne peut pas être supprimée si elle a :
+        - Des déclarations d'événements associées (GapReport)
+        - Des types d'événements associés (GapType)
+        - Des validateurs associés (ValidateurService)
+        """
+        # Vérifier les déclarations d'événements associées
+        if GapReport.objects.filter(audit_source=self).exists():
+            return False
+        
+        # Vérifier les types d'événements associés
+        if self.gap_types.exists():
+            return False
+        
+        # Vérifier les validateurs associés
+        from .workflow import ValidateurService
+        if ValidateurService.objects.filter(audit_source=self).exists():
+            return False
+        
+        return True
+
+    def get_deletion_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle la source d'audit ne peut pas être supprimée.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        reasons = []
+        
+        # Vérifier les déclarations d'événements associées
+        gap_reports_count = GapReport.objects.filter(audit_source=self).count()
+        if gap_reports_count > 0:
+            reasons.append(f"est associée à {gap_reports_count} déclaration(s) d'événement(s)")
+        
+        # Vérifier les types d'événements associés
+        gap_types_count = self.gap_types.count()
+        if gap_types_count > 0:
+            reasons.append(f"a {gap_types_count} type(s) d'événement(s) associé(s)")
+        
+        # Vérifier les validateurs associés
+        from .workflow import ValidateurService
+        validateurs_count = ValidateurService.objects.filter(audit_source=self).count()
+        if validateurs_count > 0:
+            reasons.append(f"a {validateurs_count} validateur(s) associé(s)")
+        
+        if reasons:
+            return f"La source d'audit ne peut pas être supprimée car elle {' et '.join(reasons)}."
+        
+        return None
+
     def __str__(self):
         return self.name
 
@@ -107,6 +158,27 @@ class Process(CodedModel, TimestampedModel):
             models.Index(fields=['code']),
             models.Index(fields=['is_active']),
         ]
+
+    def can_be_deleted(self):
+        """
+        Vérifie si le processus peut être supprimé définitivement.
+        Un processus ne peut pas être supprimé s'il a :
+        - Des déclarations d'événements associées (GapReport)
+        """
+        # Vérifier les déclarations d'événements associées
+        return not GapReport.objects.filter(process=self).exists()
+
+    def get_deletion_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle le processus ne peut pas être supprimé.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        # Vérifier les déclarations d'événements associées
+        gap_reports_count = GapReport.objects.filter(process=self).count()
+        if gap_reports_count > 0:
+            return f"Le processus ne peut pas être supprimé car il est associé à {gap_reports_count} déclaration(s) d'événement(s)."
+        
+        return None
 
     def __str__(self):
         return self.name
@@ -154,6 +226,27 @@ class GapType(TimestampedModel):
             models.Index(fields=['audit_source', 'is_gap']),
             models.Index(fields=['is_active']),
         ]
+
+    def can_be_deleted(self):
+        """
+        Vérifie si le type d'événement peut être supprimé définitivement.
+        Un type d'événement ne peut pas être supprimé s'il a :
+        - Des écarts associés (Gap)
+        """
+        # Vérifier les écarts associés
+        return not Gap.objects.filter(gap_type=self).exists()
+
+    def get_deletion_blocking_reason(self):
+        """
+        Retourne la raison pour laquelle le type d'événement ne peut pas être supprimé.
+        Utilisé pour afficher des messages d'erreur informatifs.
+        """
+        # Vérifier les écarts associés
+        gaps_count = Gap.objects.filter(gap_type=self).count()
+        if gaps_count > 0:
+            return f"Le type d'événement ne peut pas être supprimé car il est associé à {gaps_count} écart(s)/événement(s)."
+        
+        return None
 
     def __str__(self):
         return f"{self.audit_source.name} - {self.name}"

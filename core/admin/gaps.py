@@ -127,6 +127,60 @@ class AuditSourceAdmin(admin.ModelAdmin):
             messages.info(request, 'Aucune source d\'audit à désactiver (toutes déjà inactives).')
     desactiver_sources.short_description = "Désactiver les sources d'audit sélectionnées"
 
+    def delete_model(self, request, obj):
+        """
+        Validation personnalisée avant suppression.
+        Empêche la suppression d'une source d'audit avec des contraintes actives.
+        """
+        if not obj.can_be_deleted():
+            reason = obj.get_deletion_blocking_reason()
+            messages.error(
+                request,
+                f"Impossible de supprimer la source d'audit '{obj.name}': {reason}\n\n"
+                f"Vous devez d'abord résoudre ces contraintes avant de pouvoir supprimer la source d'audit. "
+                f"Vous pouvez passer la source d'audit en inactif pour ne plus l'utiliser dans les nouveaux formulaires."
+            )
+            # Marquer que la suppression a été bloquée
+            request._suppress_delete_success_message = True
+            return  # Annuler la suppression
+        
+        # Si toutes les vérifications passent, procéder à la suppression
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """
+        Validation personnalisée pour suppression en lot.
+        Empêche la suppression des sources d'audit avec des contraintes.
+        """
+        blocked_sources = []
+        deletable_sources = []
+        
+        for source in queryset:
+            if source.can_be_deleted():
+                deletable_sources.append(source)
+            else:
+                reason = source.get_deletion_blocking_reason()
+                blocked_sources.append(f"{source.name}: {reason}")
+        
+        # Supprimer seulement les sources sans contraintes
+        if deletable_sources:
+            deleted_count = len(deletable_sources)
+            for source in deletable_sources:
+                source.delete()
+            messages.success(request, f'{deleted_count} source(s) d\'audit supprimée(s) avec succès.')
+        
+        # Afficher les sources bloquées
+        if blocked_sources:
+            error_msg = "Impossible de supprimer les sources d'audit suivantes:\n"
+            for blocked in blocked_sources:
+                error_msg += f"• {blocked}\n"
+            error_msg += "\nActions possibles:"
+            error_msg += "\n• Supprimer ou transférer les déclarations d'événements associées"
+            error_msg += "\n• Supprimer les types d'événements associés"
+            error_msg += "\n• Retirer les validateurs associés"
+            error_msg += "\n• Ou passer la source d'audit en inactif pour ne plus l'utiliser"
+            messages.error(request, error_msg)
+
 
 # Le modèle Department est remplacé par le modèle Service existant
 
@@ -152,6 +206,58 @@ class ProcessAdmin(admin.ModelAdmin):
         models.TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 50})},
     }
 
+    def delete_model(self, request, obj):
+        """
+        Validation personnalisée avant suppression.
+        Empêche la suppression d'un processus avec des contraintes actives.
+        """
+        if not obj.can_be_deleted():
+            reason = obj.get_deletion_blocking_reason()
+            messages.error(
+                request,
+                f"Impossible de supprimer le processus '{obj.name}': {reason}\n\n"
+                f"Vous devez d'abord résoudre ces contraintes avant de pouvoir supprimer le processus. "
+                f"Vous pouvez passer le processus en inactif pour ne plus l'utiliser dans les nouveaux formulaires."
+            )
+            # Marquer que la suppression a été bloquée
+            request._suppress_delete_success_message = True
+            return  # Annuler la suppression
+        
+        # Si toutes les vérifications passent, procéder à la suppression
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """
+        Validation personnalisée pour suppression en lot.
+        Empêche la suppression des processus avec des contraintes.
+        """
+        blocked_processes = []
+        deletable_processes = []
+        
+        for process in queryset:
+            if process.can_be_deleted():
+                deletable_processes.append(process)
+            else:
+                reason = process.get_deletion_blocking_reason()
+                blocked_processes.append(f"{process.name}: {reason}")
+        
+        # Supprimer seulement les processus sans contraintes
+        if deletable_processes:
+            deleted_count = len(deletable_processes)
+            for process in deletable_processes:
+                process.delete()
+            messages.success(request, f'{deleted_count} processus supprimé(s) avec succès.')
+        
+        # Afficher les processus bloqués
+        if blocked_processes:
+            error_msg = "Impossible de supprimer les processus suivants:\n"
+            for blocked in blocked_processes:
+                error_msg += f"• {blocked}\n"
+            error_msg += "\nActions possibles:"
+            error_msg += "\n• Supprimer ou transférer les déclarations d'événements associées"
+            error_msg += "\n• Ou passer le processus en inactif pour ne plus l'utiliser"
+            messages.error(request, error_msg)
+
 
 @admin.register(GapType)
 class GapTypeAdmin(admin.ModelAdmin):
@@ -173,6 +279,58 @@ class GapTypeAdmin(admin.ModelAdmin):
         models.CharField: {'widget': TextInput(attrs={'size': '50'})},
         models.TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 50})},
     }
+
+    def delete_model(self, request, obj):
+        """
+        Validation personnalisée avant suppression.
+        Empêche la suppression d'un type d'événement avec des contraintes actives.
+        """
+        if not obj.can_be_deleted():
+            reason = obj.get_deletion_blocking_reason()
+            messages.error(
+                request,
+                f"Impossible de supprimer le type d'événement '{obj.name}': {reason}\n\n"
+                f"Vous devez d'abord résoudre ces contraintes avant de pouvoir supprimer le type d'événement. "
+                f"Vous pouvez passer le type d'événement en inactif pour ne plus l'utiliser dans les nouveaux formulaires."
+            )
+            # Marquer que la suppression a été bloquée
+            request._suppress_delete_success_message = True
+            return  # Annuler la suppression
+        
+        # Si toutes les vérifications passent, procéder à la suppression
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """
+        Validation personnalisée pour suppression en lot.
+        Empêche la suppression des types d'événement avec des contraintes.
+        """
+        blocked_types = []
+        deletable_types = []
+        
+        for gap_type in queryset:
+            if gap_type.can_be_deleted():
+                deletable_types.append(gap_type)
+            else:
+                reason = gap_type.get_deletion_blocking_reason()
+                blocked_types.append(f"{gap_type.name}: {reason}")
+        
+        # Supprimer seulement les types sans contraintes
+        if deletable_types:
+            deleted_count = len(deletable_types)
+            for gap_type in deletable_types:
+                gap_type.delete()
+            messages.success(request, f'{deleted_count} type(s) d\'événement supprimé(s) avec succès.')
+        
+        # Afficher les types bloqués
+        if blocked_types:
+            error_msg = "Impossible de supprimer les types d'événement suivants:\n"
+            for blocked in blocked_types:
+                error_msg += f"• {blocked}\n"
+            error_msg += "\nActions possibles:"
+            error_msg += "\n• Supprimer les écarts/événements associés"
+            error_msg += "\n• Ou passer le type d'événement en inactif pour ne plus l'utiliser"
+            messages.error(request, error_msg)
 
 
 class GapReportAttachmentInline(admin.TabularInline):
